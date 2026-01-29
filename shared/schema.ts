@@ -119,7 +119,7 @@ export const opportunities = pgTable("opportunities", {
   title: text("title").notNull(),
   clientId: varchar("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
   value: numeric("value", { precision: 12, scale: 2 }),
-  status: opportunityStatusEnum("status").default("lead"),
+  status: opportunityStatusEnum("status").default("novo_lead"),
   probability: integer("probability").default(0),
   expectedCloseDate: timestamp("expected_close_date"),
   description: text("description"),
