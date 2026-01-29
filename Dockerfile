@@ -23,10 +23,11 @@ RUN adduser --system --uid 1001 hermes
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
+
+RUN npm ci --only=production
 
 USER hermes
 
 EXPOSE 5000
 
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/index.cjs"]
