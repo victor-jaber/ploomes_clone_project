@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,10 +25,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, GripVertical, Building2, DollarSign, Calendar } from "lucide-react";
+import { Plus, GripVertical, Building2, DollarSign, Calendar, Settings, Webhook, Trash2, Pencil } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Opportunity, Client, InsertOpportunity } from "@shared/schema";
+import type { Opportunity, Client, InsertOpportunity, PipelineTrigger, InsertPipelineTrigger } from "@shared/schema";
 
 const stages = [
   { id: "lead", label: "Lead", color: "bg-blue-500" },
@@ -35,6 +46,8 @@ const stages = [
   { id: "closed_won", label: "Ganho", color: "bg-green-500" },
   { id: "closed_lost", label: "Perdido", color: "bg-red-500" },
 ];
+
+const httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -158,6 +171,369 @@ function PipelineColumn({
   );
 }
 
+function TriggerForm({
+  trigger,
+  onSave,
+  onCancel,
+  isPending,
+}: {
+  trigger?: PipelineTrigger;
+  onSave: (data: Partial<InsertPipelineTrigger>) => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) {
+  const [name, setName] = useState(trigger?.name || "");
+  const [fromStatus, setFromStatus] = useState(trigger?.fromStatus || "any");
+  const [toStatus, setToStatus] = useState(trigger?.toStatus || "");
+  const [webhookUrl, setWebhookUrl] = useState(trigger?.webhookUrl || "");
+  const [httpMethod, setHttpMethod] = useState(trigger?.httpMethod || "POST");
+  const [headers, setHeaders] = useState(trigger?.headers || "");
+  const [bodyTemplate, setBodyTemplate] = useState(trigger?.bodyTemplate || "");
+  const [isActive, setIsActive] = useState(trigger?.isActive ?? true);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      name,
+      fromStatus: fromStatus === "any" ? null : fromStatus as any,
+      toStatus: toStatus as any,
+      webhookUrl,
+      httpMethod: httpMethod as any,
+      headers: headers || null,
+      bodyTemplate: bodyTemplate || null,
+      isActive,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="trigger-name">Nome do Trigger</Label>
+        <Input
+          id="trigger-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Ex: Notificar quando ganho"
+          required
+          data-testid="input-trigger-name"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="from-status">De (Estágio Origem)</Label>
+          <Select value={fromStatus} onValueChange={setFromStatus}>
+            <SelectTrigger data-testid="select-trigger-from-status">
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="any">Qualquer estágio</SelectItem>
+              {stages.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="to-status">Para (Estágio Destino)</Label>
+          <Select value={toStatus} onValueChange={setToStatus} required>
+            <SelectTrigger data-testid="select-trigger-to-status">
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              {stages.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="http-method">Método HTTP</Label>
+          <Select value={httpMethod} onValueChange={setHttpMethod}>
+            <SelectTrigger data-testid="select-trigger-method">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {httpMethods.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2 col-span-2">
+          <Label htmlFor="webhook-url">URL do Webhook</Label>
+          <Input
+            id="webhook-url"
+            value={webhookUrl}
+            onChange={(e) => setWebhookUrl(e.target.value)}
+            placeholder="https://api.exemplo.com/webhook"
+            required
+            data-testid="input-trigger-url"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="headers">Headers (JSON)</Label>
+        <Textarea
+          id="headers"
+          value={headers}
+          onChange={(e) => setHeaders(e.target.value)}
+          placeholder='{"Authorization": "Bearer token123"}'
+          className="font-mono text-sm"
+          data-testid="input-trigger-headers"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="body-template">Template do Body (JSON)</Label>
+        <Textarea
+          id="body-template"
+          value={bodyTemplate}
+          onChange={(e) => setBodyTemplate(e.target.value)}
+          placeholder={'{\n  "oportunidade": "{{opportunity.title}}",\n  "valor": "{{opportunity.value}}",\n  "cliente": "{{client.companyName}}",\n  "novoStatus": "{{toStatus}}"\n}'}
+          className="font-mono text-sm min-h-[120px]"
+          data-testid="input-trigger-body"
+        />
+        <p className="text-xs text-muted-foreground">
+          Variáveis disponíveis: {"{{opportunity.id}}"}, {"{{opportunity.title}}"}, {"{{opportunity.value}}"}, {"{{opportunity.status}}"}, {"{{opportunity.probability}}"}, {"{{fromStatus}}"}, {"{{toStatus}}"}, {"{{client.id}}"}, {"{{client.companyName}}"}, {"{{client.email}}"}, {"{{client.phone}}"}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Switch
+          id="is-active"
+          checked={isActive}
+          onCheckedChange={setIsActive}
+          data-testid="switch-trigger-active"
+        />
+        <Label htmlFor="is-active">Trigger ativo</Label>
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={isPending} data-testid="button-save-trigger">
+          {isPending ? "Salvando..." : trigger ? "Atualizar" : "Criar Trigger"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+function TriggersTab() {
+  const { toast } = useToast();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingTrigger, setEditingTrigger] = useState<PipelineTrigger | null>(null);
+
+  const { data: triggers = [], isLoading } = useQuery<PipelineTrigger[]>({
+    queryKey: ["/api/pipeline-triggers"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: Partial<InsertPipelineTrigger>) => {
+      return apiRequest("POST", "/api/pipeline-triggers", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pipeline-triggers"] });
+      setIsDialogOpen(false);
+      toast({ title: "Sucesso", description: "Trigger criado com sucesso" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao criar trigger", variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertPipelineTrigger> }) => {
+      return apiRequest("PATCH", `/api/pipeline-triggers/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pipeline-triggers"] });
+      setIsDialogOpen(false);
+      setEditingTrigger(null);
+      toast({ title: "Sucesso", description: "Trigger atualizado com sucesso" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao atualizar trigger", variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/pipeline-triggers/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pipeline-triggers"] });
+      toast({ title: "Sucesso", description: "Trigger removido com sucesso" });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao remover trigger", variant: "destructive" });
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      return apiRequest("PATCH", `/api/pipeline-triggers/${id}`, { isActive });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pipeline-triggers"] });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Falha ao atualizar trigger", variant: "destructive" });
+    },
+  });
+
+  const handleSave = (data: Partial<InsertPipelineTrigger>) => {
+    if (editingTrigger) {
+      updateMutation.mutate({ id: editingTrigger.id, data });
+    } else {
+      createMutation.mutate(data);
+    }
+  };
+
+  const handleEdit = (trigger: PipelineTrigger) => {
+    setEditingTrigger(trigger);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingTrigger(null);
+  };
+
+  const getStageLabel = (id: string | null) => {
+    if (!id) return "Qualquer";
+    return stages.find((s) => s.id === id)?.label || id;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Triggers de Pipeline</h2>
+          <p className="text-sm text-muted-foreground">
+            Configure webhooks que disparam quando cards mudam de estágio
+          </p>
+        </div>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          if (!open) handleCloseDialog();
+          else setIsDialogOpen(true);
+        }}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-new-trigger">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Trigger
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editingTrigger ? "Editar Trigger" : "Novo Trigger"}
+              </DialogTitle>
+            </DialogHeader>
+            <TriggerForm
+              trigger={editingTrigger || undefined}
+              onSave={handleSave}
+              onCancel={handleCloseDialog}
+              isPending={createMutation.isPending || updateMutation.isPending}
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      ) : triggers.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Webhook className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="font-medium text-lg mb-1">Nenhum trigger configurado</h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md">
+              Crie triggers para enviar notificações automáticas para APIs externas quando oportunidades mudarem de estágio no pipeline.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ativo</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>De</TableHead>
+                <TableHead>Para</TableHead>
+                <TableHead>Método</TableHead>
+                <TableHead>URL</TableHead>
+                <TableHead className="w-[100px]">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {triggers.map((trigger) => (
+                <TableRow key={trigger.id} data-testid={`trigger-row-${trigger.id}`}>
+                  <TableCell>
+                    <Switch
+                      checked={trigger.isActive ?? true}
+                      onCheckedChange={(checked) => toggleMutation.mutate({ id: trigger.id, isActive: checked })}
+                      data-testid={`switch-trigger-${trigger.id}`}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">{trigger.name}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{getStageLabel(trigger.fromStatus)}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{getStageLabel(trigger.toStatus)}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge>{trigger.httpMethod}</Badge>
+                  </TableCell>
+                  <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
+                    {trigger.webhookUrl}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleEdit(trigger)}
+                        data-testid={`button-edit-trigger-${trigger.id}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => deleteMutation.mutate(trigger.id)}
+                        data-testid={`button-delete-trigger-${trigger.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default function PipelinePage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -255,106 +631,128 @@ export default function PipelinePage() {
             Visualize e gerencie seu funil de vendas
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-new-opportunity-pipeline">
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Oportunidade
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nova Oportunidade</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Título</Label>
-                <Input
-                  id="title"
-                  name="title"
-                  placeholder="Ex: Proposta Sistema ERP"
-                  required
-                  data-testid="input-opportunity-title"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="clientId">Cliente</Label>
-                <Select name="clientId" required>
-                  <SelectTrigger data-testid="select-opportunity-client">
-                    <SelectValue placeholder="Selecione um cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.companyName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="value">Valor (R$)</Label>
-                  <Input
-                    id="value"
-                    name="value"
-                    type="number"
-                    placeholder="0,00"
-                    data-testid="input-opportunity-value"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="probability">Probabilidade (%)</Label>
-                  <Input
-                    id="probability"
-                    name="probability"
-                    type="number"
-                    min="0"
-                    max="100"
-                    placeholder="50"
-                    data-testid="input-opportunity-probability"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  placeholder="Detalhes da oportunidade..."
-                  data-testid="input-opportunity-description"
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={createMutation.isPending}
-                data-testid="button-save-opportunity"
-              >
-                {createMutation.isPending ? "Criando..." : "Criar Oportunidade"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
 
-      <ScrollArea className="flex-1 w-full">
-        <div className="flex gap-4 pb-4 h-[calc(100vh-220px)]">
-          {stages.map((stage) => (
-            <PipelineColumn
-              key={stage.id}
-              stage={stage}
-              opportunities={opportunities.filter((o) => o.status === stage.id)}
-              clients={clients}
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragStart={handleDragStart}
-              isLoading={isLoading}
-            />
-          ))}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+      <Tabs defaultValue="pipeline" className="flex-1 flex flex-col">
+        <TabsList>
+          <TabsTrigger value="pipeline" data-testid="tab-pipeline">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Pipeline
+          </TabsTrigger>
+          <TabsTrigger value="triggers" data-testid="tab-triggers">
+            <Settings className="h-4 w-4 mr-2" />
+            Triggers
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pipeline" className="flex-1 mt-4">
+          <div className="flex items-center justify-end mb-4">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-new-opportunity-pipeline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Oportunidade
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Nova Oportunidade</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Título</Label>
+                    <Input
+                      id="title"
+                      name="title"
+                      placeholder="Ex: Proposta Sistema ERP"
+                      required
+                      data-testid="input-opportunity-title"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="clientId">Cliente</Label>
+                    <Select name="clientId" required>
+                      <SelectTrigger data-testid="select-opportunity-client">
+                        <SelectValue placeholder="Selecione um cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.companyName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="value">Valor (R$)</Label>
+                      <Input
+                        id="value"
+                        name="value"
+                        type="number"
+                        placeholder="0,00"
+                        data-testid="input-opportunity-value"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="probability">Probabilidade (%)</Label>
+                      <Input
+                        id="probability"
+                        name="probability"
+                        type="number"
+                        min="0"
+                        max="100"
+                        placeholder="50"
+                        data-testid="input-opportunity-probability"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      placeholder="Detalhes da oportunidade..."
+                      data-testid="input-opportunity-description"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={createMutation.isPending}
+                    data-testid="button-save-opportunity"
+                  >
+                    {createMutation.isPending ? "Criando..." : "Criar Oportunidade"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <ScrollArea className="flex-1 w-full">
+            <div className="flex gap-4 pb-4 h-[calc(100vh-320px)]">
+              {stages.map((stage) => (
+                <PipelineColumn
+                  key={stage.id}
+                  stage={stage}
+                  opportunities={opportunities.filter((o) => o.status === stage.id)}
+                  clients={clients}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragStart={handleDragStart}
+                  isLoading={isLoading}
+                />
+              ))}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="triggers" className="mt-4">
+          <TriggersTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

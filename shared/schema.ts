@@ -217,6 +217,28 @@ export const insertActivitySchema = createInsertSchema(activities).omit({ id: tr
 export const insertProposalSchema = createInsertSchema(proposals).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProposalItemSchema = createInsertSchema(proposalItems).omit({ id: true });
 
+// Pipeline Triggers for external API calls
+export const httpMethodEnum = pgEnum("http_method", ["GET", "POST", "PUT", "PATCH", "DELETE"]);
+
+export const pipelineTriggers = pgTable("pipeline_triggers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  fromStatus: opportunityStatusEnum("from_status"),
+  toStatus: opportunityStatusEnum("to_status").notNull(),
+  webhookUrl: text("webhook_url").notNull(),
+  httpMethod: httpMethodEnum("http_method").default("POST"),
+  headers: text("headers"), // JSON string
+  bodyTemplate: text("body_template"), // JSON template with placeholders
+  isActive: boolean("is_active").default(true),
+  ownerId: varchar("owner_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPipelineTriggerSchema = createInsertSchema(pipelineTriggers).omit({ id: true, createdAt: true, updatedAt: true });
+export type PipelineTrigger = typeof pipelineTriggers.$inferSelect;
+export type InsertPipelineTrigger = z.infer<typeof insertPipelineTriggerSchema>;
+
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Contact = typeof contacts.$inferSelect;

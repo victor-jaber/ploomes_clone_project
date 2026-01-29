@@ -10,7 +10,93 @@ import {
   insertProposalSchema,
   insertContactSchema,
   insertProposalItemSchema,
+  insertPipelineTriggerSchema,
+  type Opportunity,
+  type Client,
 } from "@shared/schema";
+
+// Helper function to fire webhook triggers asynchronously
+async function fireWebhookTriggers(
+  ownerId: string,
+  fromStatus: string | null,
+  toStatus: string,
+  opportunity: Opportunity,
+  client?: Client
+) {
+  try {
+    const triggers = await storage.getMatchingTriggers(ownerId, fromStatus, toStatus);
+    
+    for (const trigger of triggers) {
+      try {
+        // Parse headers
+        let headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (trigger.headers) {
+          try {
+            headers = { ...headers, ...JSON.parse(trigger.headers) };
+          } catch (e) {
+            console.error("Invalid headers JSON for trigger:", trigger.id);
+          }
+        }
+        
+        // Build request body from template
+        let body: string | undefined;
+        if (trigger.bodyTemplate) {
+          body = trigger.bodyTemplate
+            .replace(/\{\{opportunity\.id\}\}/g, opportunity.id)
+            .replace(/\{\{opportunity\.title\}\}/g, opportunity.title)
+            .replace(/\{\{opportunity\.value\}\}/g, String(opportunity.value || 0))
+            .replace(/\{\{opportunity\.status\}\}/g, opportunity.status || "")
+            .replace(/\{\{opportunity\.probability\}\}/g, String(opportunity.probability || 0))
+            .replace(/\{\{opportunity\.description\}\}/g, opportunity.description || "")
+            .replace(/\{\{fromStatus\}\}/g, fromStatus || "")
+            .replace(/\{\{toStatus\}\}/g, toStatus)
+            .replace(/\{\{client\.id\}\}/g, client?.id || "")
+            .replace(/\{\{client\.companyName\}\}/g, client?.companyName || "")
+            .replace(/\{\{client\.email\}\}/g, client?.email || "")
+            .replace(/\{\{client\.phone\}\}/g, client?.phone || "");
+        } else {
+          // Default body
+          body = JSON.stringify({
+            event: "opportunity_status_changed",
+            fromStatus,
+            toStatus,
+            opportunity: {
+              id: opportunity.id,
+              title: opportunity.title,
+              value: opportunity.value,
+              status: opportunity.status,
+              probability: opportunity.probability,
+            },
+            client: client ? {
+              id: client.id,
+              companyName: client.companyName,
+              email: client.email,
+              phone: client.phone,
+            } : null,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        
+        // Make the HTTP request
+        const fetchOptions: RequestInit = {
+          method: trigger.httpMethod || "POST",
+          headers,
+        };
+        
+        if (trigger.httpMethod !== "GET") {
+          fetchOptions.body = body;
+        }
+        
+        const response = await fetch(trigger.webhookUrl, fetchOptions);
+        console.log(`Trigger "${trigger.name}" fired: ${response.status} ${response.statusText}`);
+      } catch (error) {
+        console.error(`Error firing trigger "${trigger.name}":`, error);
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching triggers:", error);
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -310,11 +396,29 @@ export async function registerRoutes(
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
+      
+      // Get the current opportunity to check for status change
+      const currentOpportunity = await storage.getOpportunity(req.params.id, userId);
+      if (!currentOpportunity) {
+        res.status(404).json({ message: "Opportunity not found" });
+        return;
+      }
+      
+      const fromStatus = currentOpportunity.status;
+      const toStatus = partial.data.status;
+      
       const opportunity = await storage.updateOpportunity(req.params.id, userId, partial.data);
       if (!opportunity) {
         res.status(404).json({ message: "Opportunity not found" });
         return;
       }
+      
+      // Fire triggers if status changed
+      if (toStatus && fromStatus !== toStatus) {
+        const client = await storage.getClient(opportunity.clientId, userId);
+        fireWebhookTriggers(userId, fromStatus, toStatus, opportunity, client || undefined);
+      }
+      
       res.json(opportunity);
     } catch (error) {
       console.error("Error updating opportunity:", error);
@@ -575,6 +679,84 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting proposal item:", error);
       res.status(500).json({ message: "Failed to delete proposal item" });
+    }
+  });
+
+  // Pipeline Triggers
+  app.get("/api/pipeline-triggers", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const triggers = await storage.getPipelineTriggers(userId);
+      res.json(triggers);
+    } catch (error) {
+      console.error("Error fetching pipeline triggers:", error);
+      res.status(500).json({ message: "Failed to fetch pipeline triggers" });
+    }
+  });
+
+  app.get("/api/pipeline-triggers/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const trigger = await storage.getPipelineTrigger(req.params.id, userId);
+      if (!trigger) {
+        res.status(404).json({ message: "Pipeline trigger not found" });
+        return;
+      }
+      res.json(trigger);
+    } catch (error) {
+      console.error("Error fetching pipeline trigger:", error);
+      res.status(500).json({ message: "Failed to fetch pipeline trigger" });
+    }
+  });
+
+  app.post("/api/pipeline-triggers", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const parsed = insertPipelineTriggerSchema.safeParse({ ...req.body, ownerId: userId });
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const trigger = await storage.createPipelineTrigger(parsed.data);
+      res.status(201).json(trigger);
+    } catch (error) {
+      console.error("Error creating pipeline trigger:", error);
+      res.status(500).json({ message: "Failed to create pipeline trigger" });
+    }
+  });
+
+  app.patch("/api/pipeline-triggers/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const partial = insertPipelineTriggerSchema.partial().safeParse(req.body);
+      if (!partial.success) {
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
+      }
+      const trigger = await storage.updatePipelineTrigger(req.params.id, userId, partial.data);
+      if (!trigger) {
+        res.status(404).json({ message: "Pipeline trigger not found" });
+        return;
+      }
+      res.json(trigger);
+    } catch (error) {
+      console.error("Error updating pipeline trigger:", error);
+      res.status(500).json({ message: "Failed to update pipeline trigger" });
+    }
+  });
+
+  app.delete("/api/pipeline-triggers/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const deleted = await storage.deletePipelineTrigger(req.params.id, userId);
+      if (!deleted) {
+        res.status(404).json({ message: "Pipeline trigger not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting pipeline trigger:", error);
+      res.status(500).json({ message: "Failed to delete pipeline trigger" });
     }
   });
 
