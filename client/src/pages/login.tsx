@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { HermesLogo } from "@/components/hermes-logo";
 
 const loginFormSchema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -70,8 +71,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
       <div className="relative w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 mb-4">
-            <span className="font-bold text-2xl">H</span>
+          <div className="relative mb-4">
+            <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-xl scale-150" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/25">
+              <HermesLogo size={52} />
+            </div>
           </div>
           <h1 className="text-2xl font-bold" data-testid="text-brand-name">Hermes</h1>
           <p className="text-sm text-muted-foreground" data-testid="text-brand-tagline">CRM</p>

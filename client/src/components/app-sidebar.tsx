@@ -24,6 +24,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { AuthUser } from "@/lib/auth";
+import { HermesLogo } from "@/components/hermes-logo";
 
 interface AppSidebarProps {
   user: AuthUser;
@@ -57,8 +58,8 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-lg">
-            H
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <HermesLogo size={28} />
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-lg text-sidebar-foreground">Hermes</span>
