@@ -8,7 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -46,7 +52,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, GripVertical, Building2, DollarSign, Calendar, Settings, Webhook, Trash2, Pencil } from "lucide-react";
+import { Plus, GripVertical, Building2, DollarSign, Calendar, Webhook, Trash2, Pencil, Settings2 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Opportunity, Client, InsertOpportunity, PipelineTrigger, InsertPipelineTrigger } from "@shared/schema";
 
@@ -730,128 +736,122 @@ export default function PipelinePage() {
             Visualize e gerencie seu funil de vendas
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-new-opportunity-pipeline">
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Oportunidade
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nova Oportunidade</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Título</Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    placeholder="Ex: Proposta Sistema ERP"
+                    required
+                    data-testid="input-opportunity-title"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="clientId">Cliente</Label>
+                  <Select name="clientId" required>
+                    <SelectTrigger data-testid="select-opportunity-client">
+                      <SelectValue placeholder="Selecione um cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.companyName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="value">Valor (R$)</Label>
+                    <Input
+                      id="value"
+                      name="value"
+                      type="number"
+                      placeholder="0,00"
+                      data-testid="input-opportunity-value"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="probability">Probabilidade (%)</Label>
+                    <Input
+                      id="probability"
+                      name="probability"
+                      type="number"
+                      min="0"
+                      max="100"
+                      placeholder="50"
+                      data-testid="input-opportunity-probability"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    placeholder="Detalhes da oportunidade..."
+                    data-testid="input-opportunity-description"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={createMutation.isPending}
+                  data-testid="button-save-opportunity"
+                >
+                  {createMutation.isPending ? "Criando..." : "Criar Oportunidade"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" data-testid="button-pipeline-settings">
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+              <SheetHeader className="mb-6">
+                <SheetTitle>Automações do Pipeline</SheetTitle>
+              </SheetHeader>
+              <TriggersTab />
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
 
-      <Tabs defaultValue="pipeline" className="flex-1 flex flex-col">
-        <TabsList>
-          <TabsTrigger value="pipeline" data-testid="tab-pipeline">
-            <DollarSign className="h-4 w-4 mr-2" />
-            Pipeline
-          </TabsTrigger>
-          <TabsTrigger value="triggers" data-testid="tab-triggers">
-            <Settings className="h-4 w-4 mr-2" />
-            Triggers
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="pipeline" className="flex-1 mt-4">
-          <div className="flex items-center justify-end mb-4">
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-new-opportunity-pipeline">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Oportunidade
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Nova Oportunidade</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Título</Label>
-                    <Input
-                      id="title"
-                      name="title"
-                      placeholder="Ex: Proposta Sistema ERP"
-                      required
-                      data-testid="input-opportunity-title"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="clientId">Cliente</Label>
-                    <Select name="clientId" required>
-                      <SelectTrigger data-testid="select-opportunity-client">
-                        <SelectValue placeholder="Selecione um cliente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.companyName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="value">Valor (R$)</Label>
-                      <Input
-                        id="value"
-                        name="value"
-                        type="number"
-                        placeholder="0,00"
-                        data-testid="input-opportunity-value"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="probability">Probabilidade (%)</Label>
-                      <Input
-                        id="probability"
-                        name="probability"
-                        type="number"
-                        min="0"
-                        max="100"
-                        placeholder="50"
-                        data-testid="input-opportunity-probability"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Descrição</Label>
-                    <Textarea
-                      id="description"
-                      name="description"
-                      placeholder="Detalhes da oportunidade..."
-                      data-testid="input-opportunity-description"
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={createMutation.isPending}
-                    data-testid="button-save-opportunity"
-                  >
-                    {createMutation.isPending ? "Criando..." : "Criar Oportunidade"}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <ScrollArea className="flex-1 w-full">
-            <div className="flex gap-4 pb-4 h-[calc(100vh-320px)]">
-              {stages.map((stage) => (
-                <PipelineColumn
-                  key={stage.id}
-                  stage={stage}
-                  opportunities={opportunities.filter((o) => o.status === stage.id)}
-                  clients={clients}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragStart={handleDragStart}
-                  isLoading={isLoading}
-                />
-              ))}
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="triggers" className="mt-4">
-          <TriggersTab />
-        </TabsContent>
-      </Tabs>
+      <ScrollArea className="flex-1 w-full">
+        <div className="flex gap-4 pb-4 h-[calc(100vh-180px)]">
+          {stages.map((stage) => (
+            <PipelineColumn
+              key={stage.id}
+              stage={stage}
+              opportunities={opportunities.filter((o) => o.status === stage.id)}
+              clients={clients}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragStart={handleDragStart}
+              isLoading={isLoading}
+            />
+          ))}
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </div>
   );
 }
