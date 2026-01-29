@@ -8,8 +8,8 @@ import {
   Package,
   FileText,
   LogOut,
-  Sparkles,
 } from "lucide-react";
+import { HermesLogo } from "@/components/hermes-logo";
 import {
   Sidebar,
   SidebarContent,
@@ -58,8 +58,9 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
       <SidebarHeader className="p-6 pb-8">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-lg">
-              <Sparkles className="w-6 h-6 text-white" />
+            <div className="absolute inset-0 bg-purple-500/30 rounded-xl blur-xl" />
+            <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
+              <HermesLogo size={32} className="text-white" />
             </div>
             <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-sidebar animate-pulse" />
           </div>
