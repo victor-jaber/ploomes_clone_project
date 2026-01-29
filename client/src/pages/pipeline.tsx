@@ -54,12 +54,14 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   Plus, GripVertical, Building2, DollarSign, Calendar, Webhook, Trash2, Pencil, Settings2,
-  Phone, Mail, User, MessageSquare, ChevronRight, Clock, CheckCircle2, Circle, ArrowRight
+  Phone, Mail, User, MessageSquare, ChevronRight, Clock, CheckCircle2, Circle, ArrowRight,
+  Send, Paperclip, FileText, X
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Opportunity, Client, InsertOpportunity, PipelineTrigger, InsertPipelineTrigger, Activity, Contact } from "@shared/schema";
+import type { Opportunity, Client, InsertOpportunity, PipelineTrigger, InsertPipelineTrigger, Activity, Contact, Interaction } from "@shared/schema";
 
 const stages = [
   { id: "novo_lead", label: "Novo Lead", color: "bg-blue-500" },
@@ -128,173 +130,276 @@ function OpportunityDetailPanel({
   onAdvanceStage: () => void;
   isPending: boolean;
 }) {
+  const { toast } = useToast();
+  const [commentText, setCommentText] = useState("");
+  
   const currentStageIndex = stages.findIndex(s => s.id === opportunity.status);
+  const currentStage = stages[currentStageIndex];
   const nextStage = currentStageIndex < stages.length - 1 ? stages[currentStageIndex + 1] : null;
   const opportunityActivities = activities.filter(a => a.opportunityId === opportunity.id);
   const clientContacts = contacts.filter(c => c.clientId === opportunity.clientId);
 
+  const { data: interactionsList = [], isLoading: loadingInteractions } = useQuery<Interaction[]>({
+    queryKey: ["/api/opportunities", opportunity.id, "interactions"],
+  });
+
+  const createInteractionMutation = useMutation({
+    mutationFn: async (data: { type: string; content: string }) => {
+      return apiRequest("POST", "/api/interactions", {
+        opportunityId: opportunity.id,
+        type: data.type,
+        content: data.content,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/opportunities", opportunity.id, "interactions"] });
+      setCommentText("");
+      toast({ title: "Comentário adicionado" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao adicionar comentário", variant: "destructive" });
+    },
+  });
+
+  const handleSendComment = () => {
+    if (!commentText.trim()) return;
+    createInteractionMutation.mutate({ type: "comment", content: commentText });
+  };
+
+  const getInteractionIcon = (type: string) => {
+    switch (type) {
+      case "comment": return <MessageSquare className="h-4 w-4" />;
+      case "file": return <FileText className="h-4 w-4" />;
+      case "status_change": return <ArrowRight className="h-4 w-4" />;
+      case "call_log": return <Phone className="h-4 w-4" />;
+      case "email_log": return <Mail className="h-4 w-4" />;
+      default: return <MessageSquare className="h-4 w-4" />;
+    }
+  };
+
+  const getInteractionLabel = (type: string) => {
+    switch (type) {
+      case "comment": return "Comentário";
+      case "file": return "Arquivo";
+      case "status_change": return "Mudança de Status";
+      case "call_log": return "Registro de Ligação";
+      case "email_log": return "Registro de E-mail";
+      default: return "Interação";
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Building2 className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="font-semibold text-lg truncate">{opportunity.title}</h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-              {client && <span>{client.companyName}</span>}
-              <Badge variant="secondary">{formatCurrency(Number(opportunity.value || 0))}</Badge>
+      <div className="p-6 border-b bg-muted/30">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            <Avatar className="h-12 w-12 shrink-0">
+              <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+                {(client?.companyName || opportunity.title).charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold text-xl truncate">{opportunity.title}</h2>
+              <p className="text-muted-foreground truncate">{client?.companyName || "Cliente não informado"}</p>
             </div>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-2xl font-bold text-primary">{formatCurrency(Number(opportunity.value || 0))}</div>
+            {currentStage && (
+              <Badge className={`${currentStage.color} text-white mt-1`}>
+                {currentStage.label}
+              </Badge>
+            )}
           </div>
         </div>
 
-        <div className="flex gap-1">
+        <div className="flex gap-1 mb-2">
           {stages.map((stage, index) => (
             <div
               key={stage.id}
-              className={`flex-1 h-2 rounded-full ${index <= currentStageIndex ? stage.color : "bg-muted"}`}
+              className={`flex-1 h-2 rounded-full transition-colors ${index <= currentStageIndex ? stage.color : "bg-muted"}`}
               title={stage.label}
             />
           ))}
         </div>
-        <div className="flex justify-between text-xs text-muted-foreground">
-          {stages.map((stage, index) => (
-            <span 
-              key={stage.id} 
-              className={`${index <= currentStageIndex ? "text-foreground font-medium" : ""} ${index === 0 ? "" : index === stages.length - 1 ? "text-right" : "text-center"}`}
-              style={{ flex: 1 }}
+        
+        {nextStage && (
+          <div className="flex justify-end mt-4">
+            <Button 
+              onClick={onAdvanceStage} 
+              disabled={isPending}
+              data-testid="button-advance-stage"
             >
-              {stage.label}
-            </span>
-          ))}
-        </div>
+              Avançar para {nextStage.label}
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        )}
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="flex">
-          <div className="w-72 border-r p-4 space-y-6">
+      <div className="flex-1 flex overflow-hidden">
+        <div className="w-80 border-r bg-muted/10 overflow-y-auto">
+          <div className="p-4 space-y-6">
             <div>
-              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Cliente
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Informações do Cliente
               </h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Circle className="h-2 w-2 fill-green-500 text-green-500" />
-                  <span className="font-medium">{client?.companyName || "—"}</span>
+              <Card className="p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="font-medium truncate">{client?.companyName || "—"}</span>
+                  </div>
+                  {client?.phone && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-muted-foreground">{client.phone}</span>
+                    </div>
+                  )}
+                  {client?.email && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-muted-foreground truncate">{client.email}</span>
+                    </div>
+                  )}
                 </div>
-              </div>
+              </Card>
             </div>
-
-            {client?.phone && (
-              <div>
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  Telefone Principal
-                </h3>
-                <div className="text-sm text-muted-foreground">{client.phone}</div>
-              </div>
-            )}
 
             {clientContacts.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  Contatos
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Contatos ({clientContacts.length})
                 </h3>
                 <div className="space-y-2">
                   {clientContacts.map((contact) => (
-                    <div key={contact.id} className="text-sm space-y-1">
-                      <div className="font-medium">{contact.name}</div>
-                      {contact.phone && (
-                        <div className="text-muted-foreground flex items-center gap-2">
-                          <Phone className="h-3 w-3" />
-                          {contact.phone}
+                    <Card key={contact.id} className="p-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="text-xs">
+                            {contact.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-sm truncate">{contact.name}</div>
+                          {contact.position && (
+                            <div className="text-xs text-muted-foreground truncate">{contact.position}</div>
+                          )}
                         </div>
-                      )}
-                      {contact.email && (
-                        <div className="text-muted-foreground flex items-center gap-2">
-                          <Mail className="h-3 w-3" />
-                          {contact.email}
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                      <div className="mt-2 pl-11 space-y-1">
+                        {contact.phone && (
+                          <div className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {contact.phone}
+                          </div>
+                        )}
+                        {contact.email && (
+                          <div className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                            <Mail className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{contact.email}</span>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
                   ))}
                 </div>
               </div>
             )}
 
-            {client?.email && (
-              <div>
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  E-mail do Cliente
-                </h3>
-                <div className="text-sm text-muted-foreground break-all">{client.email}</div>
-              </div>
-            )}
-
-            <Separator />
-
-            {nextStage && (
-              <Button 
-                onClick={onAdvanceStage} 
-                disabled={isPending}
-                className="w-full"
-                data-testid="button-advance-stage"
-              >
-                Avançar para {nextStage.label}
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            )}
-
-            <Separator />
-
             <div>
-              <h3 className="text-sm font-semibold mb-3">Dados Básicos</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Título</span>
-                  <span className="font-medium">{opportunity.title}</span>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Detalhes da Oportunidade
+              </h3>
+              <Card className="p-4">
+                <div className="space-y-3 text-sm">
+                  {opportunity.probability !== null && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Probabilidade</span>
+                      <Badge variant="secondary">{opportunity.probability}%</Badge>
+                    </div>
+                  )}
+                  {opportunity.expectedCloseDate && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Previsão</span>
+                      <span className="font-medium">{new Date(opportunity.expectedCloseDate).toLocaleDateString("pt-BR")}</span>
+                    </div>
+                  )}
+                  {opportunity.description && (
+                    <div className="pt-2 border-t">
+                      <span className="text-muted-foreground text-xs block mb-1">Descrição</span>
+                      <p className="text-sm whitespace-pre-wrap">{opportunity.description}</p>
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Valor</span>
-                  <span className="font-medium">{formatCurrency(Number(opportunity.value || 0))}</span>
-                </div>
-                {opportunity.probability !== null && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Probabilidade</span>
-                    <span className="font-medium">{opportunity.probability}%</span>
-                  </div>
-                )}
-                {opportunity.expectedCloseDate && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Previsão</span>
-                    <span className="font-medium">{new Date(opportunity.expectedCloseDate).toLocaleDateString("pt-BR")}</span>
-                  </div>
-                )}
-              </div>
+              </Card>
             </div>
           </div>
+        </div>
 
-          <div className="flex-1 p-4">
-            <Tabs defaultValue="historico" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="historico" data-testid="tab-history">Histórico</TabsTrigger>
-                <TabsTrigger value="descricao" data-testid="tab-description">Descrição</TabsTrigger>
-              </TabsList>
-              <TabsContent value="historico" className="space-y-4">
-                {opportunityActivities.length === 0 ? (
-                  <div className="text-sm text-muted-foreground text-center py-8">
-                    Nenhuma atividade registrada
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {opportunityActivities.map((activity) => (
-                      <Card key={activity.id} className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="p-4 border-b">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Histórico de Interações
+            </h3>
+          </div>
+          
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-4">
+              {loadingInteractions ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : interactionsList.length === 0 && opportunityActivities.length === 0 ? (
+                <div className="text-center py-12">
+                  <MessageSquare className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-muted-foreground">Nenhuma interação registrada</p>
+                  <p className="text-xs text-muted-foreground mt-1">Adicione um comentário abaixo</p>
+                </div>
+              ) : (
+                <>
+                  {interactionsList.map((interaction) => (
+                    <div key={interaction.id} className="flex gap-3">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        {getInteractionIcon(interaction.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="text-xs">
+                            {getInteractionLabel(interaction.type)}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {interaction.createdAt && new Date(interaction.createdAt).toLocaleDateString("pt-BR", {
+                              day: "2-digit",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        {interaction.content && (
+                          <p className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap">{interaction.content}</p>
+                        )}
+                        {interaction.fileName && (
+                          <div className="flex items-center gap-2 text-sm text-primary mt-1">
+                            <Paperclip className="h-3 w-3" />
+                            {interaction.fileName}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {opportunityActivities.length > 0 && (
+                    <>
+                      <Separator className="my-4" />
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                        Atividades
+                      </h4>
+                      {opportunityActivities.map((activity) => (
+                        <div key={activity.id} className="flex gap-3">
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
                             activity.status === "completed" ? "bg-green-500/10 text-green-500" : "bg-muted"
                           }`}>
                             {activity.status === "completed" ? (
@@ -303,10 +408,10 @@ function OpportunityDetailPanel({
                               <Clock className="h-4 w-4 text-muted-foreground" />
                             )}
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
                               <span className="font-medium text-sm">{activity.title}</span>
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-muted-foreground shrink-0">
                                 {activity.createdAt && new Date(activity.createdAt).toLocaleDateString("pt-BR")}
                               </span>
                             </div>
@@ -321,24 +426,47 @@ function OpportunityDetailPanel({
                             </Badge>
                           </div>
                         </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-              <TabsContent value="descricao">
-                <Card className="p-4">
-                  {opportunity.description ? (
-                    <p className="text-sm whitespace-pre-wrap">{opportunity.description}</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">Sem descrição</p>
+                      ))}
+                    </>
                   )}
-                </Card>
-              </TabsContent>
-            </Tabs>
+                </>
+              )}
+            </div>
+          </ScrollArea>
+
+          <div className="p-4 border-t bg-muted/20">
+            <div className="flex gap-2">
+              <Textarea
+                placeholder="Digite um comentário..."
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                className="min-h-[80px] resize-none"
+                data-testid="input-comment"
+              />
+            </div>
+            <div className="flex justify-end gap-2 mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                title="Em breve"
+              >
+                <Paperclip className="h-4 w-4 mr-1" />
+                Anexar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSendComment}
+                disabled={!commentText.trim() || createInteractionMutation.isPending}
+                data-testid="button-send-comment"
+              >
+                <Send className="h-4 w-4 mr-1" />
+                Enviar
+              </Button>
+            </div>
           </div>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
