@@ -101,16 +101,19 @@ function OpportunityCard({
   opportunity,
   client,
   onDragStart,
+  onDragEnd,
 }: {
   opportunity: Opportunity;
   client?: Client;
   onDragStart: (e: React.DragEvent, id: string) => void;
+  onDragEnd: () => void;
 }) {
   return (
     <Card
       draggable
       onDragStart={(e) => onDragStart(e, opportunity.id)}
-      className="cursor-grab active:cursor-grabbing hover-elevate transition-all"
+      onDragEnd={onDragEnd}
+      className="cursor-grab active:cursor-grabbing hover-elevate transition-all select-none"
       data-testid={`pipeline-card-${opportunity.id}`}
     >
       <CardContent className="p-4 space-y-3">
@@ -154,16 +157,22 @@ function PipelineColumn({
   clients,
   onDrop,
   onDragOver,
+  onDragLeave,
   onDragStart,
+  onDragEnd,
   isLoading,
+  isDragOver,
 }: {
   stage: { id: string; label: string; color: string };
   opportunities: Opportunity[];
   clients: Client[];
   onDrop: (e: React.DragEvent, stageId: string) => void;
-  onDragOver: (e: React.DragEvent) => void;
+  onDragOver: (e: React.DragEvent, stageId: string) => void;
+  onDragLeave: () => void;
   onDragStart: (e: React.DragEvent, id: string) => void;
+  onDragEnd: () => void;
   isLoading: boolean;
+  isDragOver: boolean;
 }) {
   const totalValue = opportunities.reduce((acc, o) => acc + Number(o.value || 0), 0);
 
@@ -171,7 +180,8 @@ function PipelineColumn({
     <div
       className="flex flex-col h-full min-w-[280px] w-[280px] flex-shrink-0"
       onDrop={(e) => onDrop(e, stage.id)}
-      onDragOver={onDragOver}
+      onDragOver={(e) => onDragOver(e, stage.id)}
+      onDragLeave={onDragLeave}
     >
       <div className="flex items-center justify-between p-3 bg-muted/50 rounded-t-lg border border-b-0">
         <div className="flex items-center gap-2">
@@ -185,15 +195,15 @@ function PipelineColumn({
           {formatCurrency(totalValue)}
         </span>
       </div>
-      <div className="flex-1 bg-muted/20 border border-t-0 rounded-b-lg p-2 space-y-2 min-h-[200px]">
+      <div className={`flex-1 border border-t-0 rounded-b-lg p-2 space-y-2 min-h-[200px] transition-colors duration-150 ${isDragOver ? "bg-primary/10 border-primary/50" : "bg-muted/20"}`}>
         {isLoading ? (
           <>
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-24 w-full" />
           </>
         ) : opportunities.length === 0 ? (
-          <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
-            Arraste oportunidades aqui
+          <div className={`flex items-center justify-center h-24 text-sm transition-colors ${isDragOver ? "text-primary" : "text-muted-foreground"}`}>
+            {isDragOver ? "Solte aqui" : "Arraste oportunidades aqui"}
           </div>
         ) : (
           opportunities.map((opp) => (
@@ -202,6 +212,7 @@ function PipelineColumn({
               opportunity={opp}
               client={clients.find((c) => c.id === opp.clientId)}
               onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
             />
           ))
         )}
@@ -541,7 +552,7 @@ function TriggersTab() {
               Novo Trigger
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingTrigger ? "Editar Trigger" : "Novo Trigger"}
@@ -643,6 +654,7 @@ export default function PipelinePage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
   const { data: opportunities = [], isLoading: oppLoading } = useQuery<Opportunity[]>({
     queryKey: ["/api/opportunities"],
@@ -658,15 +670,26 @@ export default function PipelinePage() {
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       return apiRequest("PATCH", `/api/opportunities/${id}`, { status });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/opportunities"] });
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/opportunities"] });
+      const previousOpportunities = queryClient.getQueryData<Opportunity[]>(["/api/opportunities"]);
+      queryClient.setQueryData<Opportunity[]>(["/api/opportunities"], (old) =>
+        old?.map((opp) => (opp.id === id ? { ...opp, status: status as any } : opp)) ?? []
+      );
+      return { previousOpportunities };
     },
-    onError: () => {
+    onError: (err, variables, context) => {
+      if (context?.previousOpportunities) {
+        queryClient.setQueryData(["/api/opportunities"], context.previousOpportunities);
+      }
       toast({
         title: "Erro",
         description: "Não foi possível atualizar a oportunidade",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/opportunities"] });
     },
   });
 
@@ -694,11 +717,27 @@ export default function PipelinePage() {
   const handleDragStart = (e: React.DragEvent, id: string) => {
     setDraggedId(id);
     e.dataTransfer.effectAllowed = "move";
+    if (e.dataTransfer.setDragImage) {
+      const target = e.currentTarget as HTMLElement;
+      e.dataTransfer.setDragImage(target, target.offsetWidth / 2, 20);
+    }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    if (dragOverStage !== stageId) {
+      setDragOverStage(stageId);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverStage(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverStage(null);
   };
 
   const handleDrop = (e: React.DragEvent, stageId: string) => {
@@ -710,6 +749,7 @@ export default function PipelinePage() {
       }
     }
     setDraggedId(null);
+    setDragOverStage(null);
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -845,8 +885,11 @@ export default function PipelinePage() {
               clients={clients}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
               onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
               isLoading={isLoading}
+              isDragOver={dragOverStage === stage.id}
             />
           ))}
         </div>
