@@ -1,11 +1,20 @@
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Zap, BarChart3, Users, FileText } from "lucide-react";
+import { Loader2, Users, BarChart3, FileText, TrendingUp, Shield, Zap } from "lucide-react";
+
+const loginFormSchema = z.object({
+  email: z.string().email("E-mail inválido"),
+  password: z.string().min(1, "Senha é obrigatória"),
+});
+
+type LoginFormValues = z.infer<typeof loginFormSchema>;
 
 interface LoginPageProps {
   onLogin: (user: { id: string; name: string; email: string }, token: string) => void;
@@ -14,21 +23,23 @@ interface LoginPageProps {
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("login");
 
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const handleLogin = async (values: LoginFormValues) => {
     setIsLoading(true);
-
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
 
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(values),
       });
 
       const data = await response.json();
@@ -50,261 +61,181 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    const formData = new FormData(e.currentTarget);
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
-
-    if (password !== confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Falha ao registrar");
-      }
-
-      onLogin(data.user, data.token);
-      toast({ title: "Conta criada!", description: `Bem-vindo ao Hermes, ${data.user.name}!` });
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Não foi possível criar a conta",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary/90 to-primary/80 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIyIi8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
+      <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/80" />
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-white rounded-full translate-x-1/3 translate-y-1/3" />
+          <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-white rounded-full -translate-x-1/2 -translate-y-1/2" />
+        </div>
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }} />
         
-        <div className="relative z-10 flex flex-col justify-center p-12 text-white">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/20 backdrop-blur text-white font-bold text-2xl">
-              H
+        <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
+          <div>
+            <div className="flex items-center gap-4 mb-16">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm border border-white/20 shadow-xl">
+                <span className="font-bold text-3xl text-white">H</span>
+              </div>
+              <div>
+                <span className="font-bold text-3xl tracking-tight">Hermes</span>
+                <p className="text-white/70 text-sm">Customer Relationship Management</p>
+              </div>
             </div>
-            <span className="font-bold text-3xl">Hermes</span>
+
+            <div className="max-w-lg">
+              <h1 className="text-5xl font-bold mb-6 leading-tight" data-testid="text-hero-title">
+                Gerencie seu negócio com
+                <span className="text-white/80"> inteligência</span>
+              </h1>
+              
+              <p className="text-xl text-white/80 mb-12 leading-relaxed" data-testid="text-hero-description">
+                Plataforma completa para gestão de clientes, vendas e propostas comerciais da sua empresa.
+              </p>
+            </div>
           </div>
 
-          <h1 className="text-4xl font-bold mb-6 leading-tight">
-            Gerencie seu negócio<br />
-            com inteligência
-          </h1>
-          
-          <p className="text-lg text-white/80 mb-12 max-w-md">
-            Plataforma completa de CRM para gestão de clientes, vendas e propostas comerciais da sua empresa.
-          </p>
-
-          <div className="space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white/20 backdrop-blur">
+          <div className="grid grid-cols-2 gap-6">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 mb-4">
                 <Users className="h-6 w-6" />
               </div>
-              <div>
-                <h3 className="font-semibold">Gestão de Clientes</h3>
-                <p className="text-sm text-white/70">Organize todos os seus contatos em um só lugar</p>
-              </div>
+              <h3 className="font-semibold text-lg mb-2">Gestão de Clientes</h3>
+              <p className="text-sm text-white/70">Organize todos os seus contatos e empresas em um só lugar</p>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white/20 backdrop-blur">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 mb-4">
                 <BarChart3 className="h-6 w-6" />
               </div>
-              <div>
-                <h3 className="font-semibold">Pipeline Visual</h3>
-                <p className="text-sm text-white/70">Acompanhe suas oportunidades de forma visual</p>
-              </div>
+              <h3 className="font-semibold text-lg mb-2">Pipeline Visual</h3>
+              <p className="text-sm text-white/70">Acompanhe suas oportunidades de forma visual e intuitiva</p>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white/20 backdrop-blur">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 mb-4">
                 <FileText className="h-6 w-6" />
               </div>
-              <div>
-                <h3 className="font-semibold">Propostas Comerciais</h3>
-                <p className="text-sm text-white/70">Crie e gerencie propostas profissionais</p>
-              </div>
+              <h3 className="font-semibold text-lg mb-2">Propostas Comerciais</h3>
+              <p className="text-sm text-white/70">Crie e gerencie propostas profissionais com facilidade</p>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white/20 backdrop-blur">
-                <Zap className="h-6 w-6" />
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 mb-4">
+                <TrendingUp className="h-6 w-6" />
               </div>
-              <div>
-                <h3 className="font-semibold">Produtividade</h3>
-                <p className="text-sm text-white/70">Automatize tarefas e economize tempo</p>
-              </div>
+              <h3 className="font-semibold text-lg mb-2">Análise de Vendas</h3>
+              <p className="text-sm text-white/70">Métricas e insights para tomar decisões estratégicas</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
+      <div className="w-full lg:w-2/5 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-xl">
-              H
+          <div className="lg:hidden flex items-center justify-center gap-3 mb-12">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
+              <span className="font-bold text-2xl">H</span>
             </div>
-            <span className="font-bold text-2xl">Hermes</span>
+            <div>
+              <span className="font-bold text-2xl">Hermes</span>
+              <p className="text-xs text-muted-foreground">CRM</p>
+            </div>
           </div>
 
-          <Card className="border-0 shadow-xl">
-            <CardHeader className="space-y-1 pb-6">
-              <CardTitle className="text-2xl font-bold text-center">
-                {activeTab === "login" ? "Entrar no sistema" : "Criar conta"}
+          <Card className="border-0 shadow-2xl">
+            <CardHeader className="space-y-3 pb-8 pt-8 px-8">
+              <div className="flex items-center justify-center mb-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
+                  <Shield className="h-8 w-8" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl font-bold text-center" data-testid="text-login-title">
+                Bem-vindo de volta
               </CardTitle>
-              <CardDescription className="text-center">
-                {activeTab === "login" 
-                  ? "Digite suas credenciais para acessar" 
-                  : "Preencha os dados para criar sua conta"}
+              <CardDescription className="text-center text-base" data-testid="text-login-description">
+                Entre com suas credenciais para acessar o sistema
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="login" data-testid="tab-login">Entrar</TabsTrigger>
-                  <TabsTrigger value="register" data-testid="tab-register">Registrar</TabsTrigger>
-                </TabsList>
+            <CardContent className="px-8 pb-8">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>E-mail</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="seu@email.com"
+                            type="email"
+                            data-testid="input-login-email"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Senha</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Sua senha"
+                            type="password"
+                            data-testid="input-login-password"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    size="lg"
+                    disabled={isLoading}
+                    data-testid="button-login"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Entrando...
+                      </>
+                    ) : (
+                      "Entrar no sistema"
+                    )}
+                  </Button>
+                </form>
+              </Form>
 
-                <TabsContent value="login">
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="login-email">E-mail</Label>
-                      <Input
-                        id="login-email"
-                        name="email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        required
-                        data-testid="input-login-email"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="login-password">Senha</Label>
-                      <Input
-                        id="login-password"
-                        name="password"
-                        type="password"
-                        placeholder="Sua senha"
-                        required
-                        data-testid="input-login-password"
-                      />
-                    </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      size="lg" 
-                      disabled={isLoading}
-                      data-testid="button-login"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Entrando...
-                        </>
-                      ) : (
-                        "Entrar"
-                      )}
-                    </Button>
-                  </form>
-                </TabsContent>
-
-                <TabsContent value="register">
-                  <form onSubmit={handleRegister} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="register-name">Nome completo</Label>
-                      <Input
-                        id="register-name"
-                        name="name"
-                        type="text"
-                        placeholder="Seu nome"
-                        required
-                        data-testid="input-register-name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="register-email">E-mail</Label>
-                      <Input
-                        id="register-email"
-                        name="email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        required
-                        data-testid="input-register-email"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="register-password">Senha</Label>
-                      <Input
-                        id="register-password"
-                        name="password"
-                        type="password"
-                        placeholder="Mínimo 6 caracteres"
-                        minLength={6}
-                        required
-                        data-testid="input-register-password"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="register-confirm">Confirmar senha</Label>
-                      <Input
-                        id="register-confirm"
-                        name="confirmPassword"
-                        type="password"
-                        placeholder="Confirme sua senha"
-                        required
-                        data-testid="input-register-confirm"
-                      />
-                    </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      size="lg" 
-                      disabled={isLoading}
-                      data-testid="button-register"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Criando conta...
-                        </>
-                      ) : (
-                        "Criar conta"
-                      )}
-                    </Button>
-                  </form>
-                </TabsContent>
-              </Tabs>
+              <div className="mt-8 pt-6 border-t">
+                <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2" data-testid="badge-secure">
+                    <Shield className="h-4 w-4" />
+                    <span>Acesso Seguro</span>
+                  </div>
+                  <div className="flex items-center gap-2" data-testid="badge-performance">
+                    <Zap className="h-4 w-4" />
+                    <span>Alta Performance</span>
+                  </div>
+                </div>
+              </div>
             </CardContent>
-            <CardFooter className="flex justify-center pb-6">
-              <p className="text-sm text-muted-foreground">
-                Sistema interno - Hermes CRM
-              </p>
-            </CardFooter>
           </Card>
+
+          <p className="text-center text-sm text-muted-foreground mt-8">
+            Sistema interno &middot; Hermes CRM
+          </p>
         </div>
       </div>
     </div>
