@@ -7,6 +7,7 @@ import {
   proposals,
   proposalItems,
   pipelineTriggers,
+  interactions,
   type Client,
   type InsertClient,
   type Contact,
@@ -23,6 +24,8 @@ import {
   type InsertProposalItem,
   type PipelineTrigger,
   type InsertPipelineTrigger,
+  type Interaction,
+  type InsertInteraction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -84,6 +87,11 @@ export interface IStorage {
   updatePipelineTrigger(id: string, ownerId: string, trigger: Partial<InsertPipelineTrigger>): Promise<PipelineTrigger | undefined>;
   deletePipelineTrigger(id: string, ownerId: string): Promise<boolean>;
   getMatchingTriggers(ownerId: string, fromStatus: string | null, toStatus: string): Promise<PipelineTrigger[]>;
+
+  // Interactions
+  getInteractions(opportunityId: string): Promise<Interaction[]>;
+  createInteraction(interaction: InsertInteraction): Promise<Interaction>;
+  deleteInteraction(id: string, ownerId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -320,6 +328,21 @@ export class DatabaseStorage implements IStorage {
     
     // Filter triggers that match fromStatus (null means any)
     return allTriggers.filter(t => !t.fromStatus || t.fromStatus === fromStatus);
+  }
+
+  // Interactions
+  async getInteractions(opportunityId: string): Promise<Interaction[]> {
+    return db.select().from(interactions).where(eq(interactions.opportunityId, opportunityId)).orderBy(desc(interactions.createdAt));
+  }
+
+  async createInteraction(interaction: InsertInteraction): Promise<Interaction> {
+    const [newInteraction] = await db.insert(interactions).values(interaction).returning();
+    return newInteraction;
+  }
+
+  async deleteInteraction(id: string, ownerId: string): Promise<boolean> {
+    const result = await db.delete(interactions).where(and(eq(interactions.id, id), eq(interactions.ownerId, ownerId))).returning();
+    return result.length > 0;
   }
 }
 

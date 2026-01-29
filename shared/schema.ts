@@ -239,6 +239,38 @@ export const insertPipelineTriggerSchema = createInsertSchema(pipelineTriggers).
 export type PipelineTrigger = typeof pipelineTriggers.$inferSelect;
 export type InsertPipelineTrigger = z.infer<typeof insertPipelineTriggerSchema>;
 
+export const interactionTypeEnum = pgEnum("interaction_type", [
+  "comment",
+  "file",
+  "status_change",
+  "call_log",
+  "email_log"
+]);
+
+export const interactions = pgTable("interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  opportunityId: varchar("opportunity_id").notNull().references(() => opportunities.id, { onDelete: "cascade" }),
+  type: interactionTypeEnum("type").notNull(),
+  content: text("content"),
+  fileName: text("file_name"),
+  fileUrl: text("file_url"),
+  fileType: text("file_type"),
+  metadata: text("metadata"),
+  ownerId: varchar("owner_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const interactionsRelations = relations(interactions, ({ one }) => ({
+  opportunity: one(opportunities, {
+    fields: [interactions.opportunityId],
+    references: [opportunities.id],
+  }),
+}));
+
+export const insertInteractionSchema = createInsertSchema(interactions).omit({ id: true, createdAt: true });
+export type Interaction = typeof interactions.$inferSelect;
+export type InsertInteraction = z.infer<typeof insertInteractionSchema>;
+
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Contact = typeof contacts.$inferSelect;

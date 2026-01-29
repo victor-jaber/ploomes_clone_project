@@ -11,6 +11,7 @@ import {
   insertContactSchema,
   insertProposalItemSchema,
   insertPipelineTriggerSchema,
+  insertInteractionSchema,
   type Opportunity,
   type Client,
 } from "@shared/schema";
@@ -760,6 +761,59 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting pipeline trigger:", error);
       res.status(500).json({ message: "Failed to delete pipeline trigger" });
+    }
+  });
+
+  // Interactions (comments, files, etc.)
+  app.get("/api/opportunities/:opportunityId/interactions", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const opportunity = await storage.getOpportunity(req.params.opportunityId, userId);
+      if (!opportunity) {
+        res.status(404).json({ message: "Opportunity not found" });
+        return;
+      }
+      const interactionsList = await storage.getInteractions(req.params.opportunityId);
+      res.json(interactionsList);
+    } catch (error) {
+      console.error("Error fetching interactions:", error);
+      res.status(500).json({ message: "Failed to fetch interactions" });
+    }
+  });
+
+  app.post("/api/interactions", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const parsed = insertInteractionSchema.safeParse({ ...req.body, ownerId: userId });
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const opportunity = await storage.getOpportunity(parsed.data.opportunityId, userId);
+      if (!opportunity) {
+        res.status(404).json({ message: "Opportunity not found" });
+        return;
+      }
+      const interaction = await storage.createInteraction(parsed.data);
+      res.status(201).json(interaction);
+    } catch (error) {
+      console.error("Error creating interaction:", error);
+      res.status(500).json({ message: "Failed to create interaction" });
+    }
+  });
+
+  app.delete("/api/interactions/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const deleted = await storage.deleteInteraction(req.params.id, userId);
+      if (!deleted) {
+        res.status(404).json({ message: "Interaction not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting interaction:", error);
+      res.status(500).json({ message: "Failed to delete interaction" });
     }
   });
 
