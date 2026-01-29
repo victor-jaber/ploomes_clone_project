@@ -52,9 +52,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, GripVertical, Building2, DollarSign, Calendar, Webhook, Trash2, Pencil, Settings2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Plus, GripVertical, Building2, DollarSign, Calendar, Webhook, Trash2, Pencil, Settings2,
+  Phone, Mail, User, MessageSquare, ChevronRight, Clock, CheckCircle2, Circle, ArrowRight
+} from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Opportunity, Client, InsertOpportunity, PipelineTrigger, InsertPipelineTrigger } from "@shared/schema";
+import type { Opportunity, Client, InsertOpportunity, PipelineTrigger, InsertPipelineTrigger, Activity, Contact } from "@shared/schema";
 
 const stages = [
   { id: "novo_lead", label: "Novo Lead", color: "bg-blue-500" },
@@ -92,62 +97,350 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatCurrencyShort(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
 }
 
-function OpportunityCard({
+function OpportunityDetailPanel({
   opportunity,
   client,
-  onDragStart,
-  onDragEnd,
+  contacts,
+  activities,
+  onClose,
+  onAdvanceStage,
+  isPending,
 }: {
   opportunity: Opportunity;
   client?: Client;
-  onDragStart: (e: React.DragEvent, id: string) => void;
-  onDragEnd: () => void;
+  contacts: Contact[];
+  activities: Activity[];
+  onClose: () => void;
+  onAdvanceStage: () => void;
+  isPending: boolean;
 }) {
+  const currentStageIndex = stages.findIndex(s => s.id === opportunity.status);
+  const nextStage = currentStageIndex < stages.length - 1 ? stages[currentStageIndex + 1] : null;
+  const opportunityActivities = activities.filter(a => a.opportunityId === opportunity.id);
+  const clientContacts = contacts.filter(c => c.clientId === opportunity.clientId);
+
   return (
-    <Card
-      draggable
-      onDragStart={(e) => onDragStart(e, opportunity.id)}
-      onDragEnd={onDragEnd}
-      className="cursor-grab active:cursor-grabbing hover-elevate transition-all select-none"
-      data-testid={`pipeline-card-${opportunity.id}`}
-    >
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-start gap-2">
-          <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-          <div className="space-y-1 flex-1 min-w-0">
-            <p className="font-medium text-sm truncate">{opportunity.title}</p>
-            {client && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Building2 className="h-3 w-3" />
-                <span className="truncate">{client.companyName}</span>
+    <div className="h-full flex flex-col">
+      <div className="p-4 border-b space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Building2 className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-semibold text-lg truncate">{opportunity.title}</h2>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+              {client && <span>{client.companyName}</span>}
+              <Badge variant="secondary">{formatCurrency(Number(opportunity.value || 0))}</Badge>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-1">
+          {stages.map((stage, index) => (
+            <div
+              key={stage.id}
+              className={`flex-1 h-2 rounded-full ${index <= currentStageIndex ? stage.color : "bg-muted"}`}
+              title={stage.label}
+            />
+          ))}
+        </div>
+        <div className="flex justify-between text-xs text-muted-foreground">
+          {stages.map((stage, index) => (
+            <span 
+              key={stage.id} 
+              className={`${index <= currentStageIndex ? "text-foreground font-medium" : ""} ${index === 0 ? "" : index === stages.length - 1 ? "text-right" : "text-center"}`}
+              style={{ flex: 1 }}
+            >
+              {stage.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="flex">
+          <div className="w-72 border-r p-4 space-y-6">
+            <div>
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Cliente
+              </h3>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Circle className="h-2 w-2 fill-green-500 text-green-500" />
+                  <span className="font-medium">{client?.companyName || "—"}</span>
+                </div>
+              </div>
+            </div>
+
+            {client?.phone && (
+              <div>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Telefone Principal
+                </h3>
+                <div className="text-sm text-muted-foreground">{client.phone}</div>
               </div>
             )}
+
+            {clientContacts.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Contatos
+                </h3>
+                <div className="space-y-2">
+                  {clientContacts.map((contact) => (
+                    <div key={contact.id} className="text-sm space-y-1">
+                      <div className="font-medium">{contact.name}</div>
+                      {contact.phone && (
+                        <div className="text-muted-foreground flex items-center gap-2">
+                          <Phone className="h-3 w-3" />
+                          {contact.phone}
+                        </div>
+                      )}
+                      {contact.email && (
+                        <div className="text-muted-foreground flex items-center gap-2">
+                          <Mail className="h-3 w-3" />
+                          {contact.email}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {client?.email && (
+              <div>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  E-mail do Cliente
+                </h3>
+                <div className="text-sm text-muted-foreground break-all">{client.email}</div>
+              </div>
+            )}
+
+            <Separator />
+
+            {nextStage && (
+              <Button 
+                onClick={onAdvanceStage} 
+                disabled={isPending}
+                className="w-full"
+                data-testid="button-advance-stage"
+              >
+                Avançar para {nextStage.label}
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            )}
+
+            <Separator />
+
+            <div>
+              <h3 className="text-sm font-semibold mb-3">Dados Básicos</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Título</span>
+                  <span className="font-medium">{opportunity.title}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Valor</span>
+                  <span className="font-medium">{formatCurrency(Number(opportunity.value || 0))}</span>
+                </div>
+                {opportunity.probability !== null && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Probabilidade</span>
+                    <span className="font-medium">{opportunity.probability}%</span>
+                  </div>
+                )}
+                {opportunity.expectedCloseDate && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Previsão</span>
+                    <span className="font-medium">{new Date(opportunity.expectedCloseDate).toLocaleDateString("pt-BR")}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 p-4">
+            <Tabs defaultValue="historico" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="historico" data-testid="tab-history">Histórico</TabsTrigger>
+                <TabsTrigger value="descricao" data-testid="tab-description">Descrição</TabsTrigger>
+              </TabsList>
+              <TabsContent value="historico" className="space-y-4">
+                {opportunityActivities.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-8">
+                    Nenhuma atividade registrada
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {opportunityActivities.map((activity) => (
+                      <Card key={activity.id} className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                            activity.status === "completed" ? "bg-green-500/10 text-green-500" : "bg-muted"
+                          }`}>
+                            {activity.status === "completed" ? (
+                              <CheckCircle2 className="h-4 w-4" />
+                            ) : (
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-sm">{activity.title}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {activity.createdAt && new Date(activity.createdAt).toLocaleDateString("pt-BR")}
+                              </span>
+                            </div>
+                            {activity.description && (
+                              <p className="text-sm text-muted-foreground mt-1">{activity.description}</p>
+                            )}
+                            <Badge variant="outline" className="mt-2 text-xs">
+                              {activity.type === "call" ? "Ligação" :
+                               activity.type === "email" ? "E-mail" :
+                               activity.type === "meeting" ? "Reunião" :
+                               activity.type === "task" ? "Tarefa" : "Nota"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+              <TabsContent value="descricao">
+                <Card className="p-4">
+                  {opportunity.description ? (
+                    <p className="text-sm whitespace-pre-wrap">{opportunity.description}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">Sem descrição</p>
+                  )}
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 text-sm font-semibold text-primary">
-            <DollarSign className="h-3.5 w-3.5" />
-            {formatCurrency(Number(opportunity.value || 0))}
+      </ScrollArea>
+    </div>
+  );
+}
+
+function OpportunityCard({
+  opportunity,
+  client,
+  contacts,
+  activities,
+  onDragStart,
+  onDragEnd,
+  onUpdateStatus,
+  isUpdating,
+}: {
+  opportunity: Opportunity;
+  client?: Client;
+  contacts: Contact[];
+  activities: Activity[];
+  onDragStart: (e: React.DragEvent, id: string) => void;
+  onDragEnd: () => void;
+  onUpdateStatus: (id: string, status: string) => void;
+  isUpdating: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const currentStageIndex = stages.findIndex(s => s.id === opportunity.status);
+  const nextStage = currentStageIndex < stages.length - 1 ? stages[currentStageIndex + 1] : null;
+
+  const handleAdvanceStage = () => {
+    if (nextStage) {
+      onUpdateStatus(opportunity.id, nextStage.id);
+    }
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('[data-drag-handle]')) {
+      return;
+    }
+    setIsOpen(true);
+  };
+
+  return (
+    <>
+      <Card
+        draggable
+        onDragStart={(e) => onDragStart(e, opportunity.id)}
+        onDragEnd={onDragEnd}
+        onClick={handleCardClick}
+        className="cursor-pointer hover-elevate transition-all select-none"
+        data-testid={`pipeline-card-${opportunity.id}`}
+      >
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <div data-drag-handle className="cursor-grab active:cursor-grabbing">
+              <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+            </div>
+            <div className="space-y-1 flex-1 min-w-0">
+              <p className="font-medium text-sm truncate">{opportunity.title}</p>
+              {client && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Building2 className="h-3 w-3" />
+                  <span className="truncate">{client.companyName}</span>
+                </div>
+              )}
+            </div>
           </div>
-          {opportunity.probability !== null && opportunity.probability !== undefined && (
-            <Badge variant="secondary" className="text-xs">
-              {opportunity.probability}%
-            </Badge>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1 text-sm font-semibold text-primary">
+              <DollarSign className="h-3.5 w-3.5" />
+              {formatCurrencyShort(Number(opportunity.value || 0))}
+            </div>
+            {opportunity.probability !== null && opportunity.probability !== undefined && (
+              <Badge variant="secondary" className="text-xs">
+                {opportunity.probability}%
+              </Badge>
+            )}
+          </div>
+          {opportunity.expectedCloseDate && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Calendar className="h-3 w-3" />
+              {new Date(opportunity.expectedCloseDate).toLocaleDateString("pt-BR")}
+            </div>
           )}
-        </div>
-        {opportunity.expectedCloseDate && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Calendar className="h-3 w-3" />
-            {new Date(opportunity.expectedCloseDate).toLocaleDateString("pt-BR")}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-3xl p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Detalhes da Oportunidade</SheetTitle>
+          </SheetHeader>
+          <OpportunityDetailPanel
+            opportunity={opportunity}
+            client={client}
+            contacts={contacts}
+            activities={activities}
+            onClose={() => setIsOpen(false)}
+            onAdvanceStage={handleAdvanceStage}
+            isPending={isUpdating}
+          />
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
 
@@ -155,24 +448,32 @@ function PipelineColumn({
   stage,
   opportunities,
   clients,
+  contacts,
+  activities,
   onDrop,
   onDragOver,
   onDragLeave,
   onDragStart,
   onDragEnd,
+  onUpdateStatus,
   isLoading,
   isDragOver,
+  isUpdating,
 }: {
   stage: { id: string; label: string; color: string };
   opportunities: Opportunity[];
   clients: Client[];
+  contacts: Contact[];
+  activities: Activity[];
   onDrop: (e: React.DragEvent, stageId: string) => void;
   onDragOver: (e: React.DragEvent, stageId: string) => void;
   onDragLeave: () => void;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDragEnd: () => void;
+  onUpdateStatus: (id: string, status: string) => void;
   isLoading: boolean;
   isDragOver: boolean;
+  isUpdating: boolean;
 }) {
   const totalValue = opportunities.reduce((acc, o) => acc + Number(o.value || 0), 0);
 
@@ -192,7 +493,7 @@ function PipelineColumn({
           </Badge>
         </div>
         <span className="text-xs text-muted-foreground font-medium">
-          {formatCurrency(totalValue)}
+          {formatCurrencyShort(totalValue)}
         </span>
       </div>
       <div className={`flex-1 border border-t-0 rounded-b-lg p-2 space-y-2 min-h-[200px] transition-colors duration-150 ${isDragOver ? "bg-primary/10 border-primary/50" : "bg-muted/20"}`}>
@@ -211,8 +512,12 @@ function PipelineColumn({
               key={opp.id}
               opportunity={opp}
               client={clients.find((c) => c.id === opp.clientId)}
+              contacts={contacts}
+              activities={activities}
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
+              onUpdateStatus={onUpdateStatus}
+              isUpdating={isUpdating}
             />
           ))
         )}
@@ -664,6 +969,14 @@ export default function PipelinePage() {
     queryKey: ["/api/clients"],
   });
 
+  const { data: contacts = [] } = useQuery<Contact[]>({
+    queryKey: ["/api/contacts"],
+  });
+
+  const { data: activities = [] } = useQuery<Activity[]>({
+    queryKey: ["/api/activities"],
+  });
+
   const isLoading = oppLoading || clientsLoading;
 
   const updateMutation = useMutation({
@@ -883,13 +1196,17 @@ export default function PipelinePage() {
               stage={stage}
               opportunities={opportunities.filter((o) => o.status === stage.id)}
               clients={clients}
+              contacts={contacts}
+              activities={activities}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
+              onUpdateStatus={(id, status) => updateMutation.mutate({ id, status })}
               isLoading={isLoading}
               isDragOver={dragOverStage === stage.id}
+              isUpdating={updateMutation.isPending}
             />
           ))}
         </div>
