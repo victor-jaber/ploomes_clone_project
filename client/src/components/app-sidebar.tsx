@@ -56,14 +56,8 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
   return (
     <Sidebar className="gradient-sidebar border-r-0">
       <SidebarHeader className="p-6 pb-8">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="absolute inset-0 bg-purple-500/30 rounded-xl blur-xl" />
-            <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
-              <HermesLogo size={32} className="text-white" />
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-sidebar animate-pulse" />
-          </div>
+        <div className="flex items-center gap-2">
+          <HermesLogo size={48} className="text-purple-300" />
           <div className="flex flex-col">
             <span className="font-bold text-2xl bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
               Hermes
