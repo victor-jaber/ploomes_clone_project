@@ -10,6 +10,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getToken, getUser, setAuth, clearAuth, AuthUser } from "@/lib/auth";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
@@ -42,6 +43,8 @@ interface AuthenticatedLayoutProps {
 }
 
 function AuthenticatedLayout({ user, onLogout }: AuthenticatedLayoutProps) {
+  useWebSocket();
+  
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "4rem",

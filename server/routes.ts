@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
 import { isAuthenticated, registerAuthRoutes, AuthRequest } from "./auth";
+import { wsManager } from "./websocket";
 import {
   insertClientSchema,
   insertProductSchema,
@@ -103,6 +104,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  wsManager.initialize(httpServer);
   registerAuthRoutes(app);
 
   // Clients
@@ -382,6 +384,7 @@ export async function registerRoutes(
         return;
       }
       const opportunity = await storage.createOpportunity(parsed.data);
+      wsManager.broadcastOpportunityCreated(opportunity);
       res.status(201).json(opportunity);
     } catch (error) {
       console.error("Error creating opportunity:", error);
@@ -423,6 +426,7 @@ export async function registerRoutes(
         });
       }
       
+      wsManager.broadcastOpportunityUpdate(opportunity);
       res.json(opportunity);
     } catch (error) {
       console.error("Error updating opportunity:", error);
@@ -438,6 +442,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Opportunity not found" });
         return;
       }
+      wsManager.broadcastOpportunityDeleted(req.params.id);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting opportunity:", error);
