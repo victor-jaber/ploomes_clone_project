@@ -57,12 +57,10 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <HermesLogo size={28} />
-          </div>
+        <div className="flex items-center gap-2">
+          <HermesLogo size={44} className="text-primary" />
           <div className="flex flex-col">
-            <span className="font-semibold text-lg text-sidebar-foreground">Hermes</span>
+            <span className="font-bold text-xl text-sidebar-foreground">Hermes</span>
             <span className="text-xs text-muted-foreground">CRM</span>
           </div>
         </div>
