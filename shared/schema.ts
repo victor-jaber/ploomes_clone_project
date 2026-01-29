@@ -27,12 +27,12 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export const opportunityStatusEnum = pgEnum("opportunity_status", [
-  "lead",
-  "qualified",
-  "proposal",
-  "negotiation",
-  "closed_won",
-  "closed_lost"
+  "novo_lead",
+  "falando_escritorio",
+  "sem_resposta",
+  "em_atendimento",
+  "buscar_casos",
+  "leads_quentes"
 ]);
 
 export const activityTypeEnum = pgEnum("activity_type", [

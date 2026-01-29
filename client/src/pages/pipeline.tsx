@@ -57,12 +57,12 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Opportunity, Client, InsertOpportunity, PipelineTrigger, InsertPipelineTrigger } from "@shared/schema";
 
 const stages = [
-  { id: "lead", label: "Lead", color: "bg-blue-500" },
-  { id: "qualified", label: "Qualificado", color: "bg-purple-500" },
-  { id: "proposal", label: "Proposta", color: "bg-orange-500" },
-  { id: "negotiation", label: "Negociação", color: "bg-yellow-500" },
-  { id: "closed_won", label: "Ganho", color: "bg-green-500" },
-  { id: "closed_lost", label: "Perdido", color: "bg-red-500" },
+  { id: "novo_lead", label: "Novo Lead", color: "bg-blue-500" },
+  { id: "falando_escritorio", label: "Falando com Escritório", color: "bg-purple-500" },
+  { id: "sem_resposta", label: "Sem Resposta", color: "bg-orange-500" },
+  { id: "em_atendimento", label: "Em Atendimento", color: "bg-yellow-500" },
+  { id: "buscar_casos", label: "Buscar Casos no Sistema", color: "bg-cyan-500" },
+  { id: "leads_quentes", label: "Leads Quentes", color: "bg-green-500" },
 ];
 
 const httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
@@ -759,7 +759,7 @@ export default function PipelinePage() {
       title: formData.get("title") as string,
       clientId: formData.get("clientId") as string,
       value: formData.get("value") as string,
-      status: "lead",
+      status: "novo_lead",
       probability: parseInt(formData.get("probability") as string) || 0,
       description: formData.get("description") as string,
       ownerId: "",
