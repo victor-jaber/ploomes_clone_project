@@ -413,10 +413,13 @@ export async function registerRoutes(
         return;
       }
       
-      // Fire triggers if status changed
+      // Fire triggers if status changed (non-blocking)
       if (toStatus && fromStatus !== toStatus) {
         const client = await storage.getClient(opportunity.clientId, userId);
-        fireWebhookTriggers(userId, fromStatus, toStatus, opportunity, client || undefined);
+        // Use setImmediate to ensure webhook firing doesn't block the response
+        setImmediate(() => {
+          fireWebhookTriggers(userId, fromStatus, toStatus, opportunity, client || undefined);
+        });
       }
       
       res.json(opportunity);

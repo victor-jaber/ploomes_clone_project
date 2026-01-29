@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +37,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, GripVertical, Building2, DollarSign, Calendar, Settings, Webhook, Trash2, Pencil } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -47,7 +59,28 @@ const stages = [
   { id: "closed_lost", label: "Perdido", color: "bg-red-500" },
 ];
 
-const httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+const httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+
+const triggerFormSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  fromStatus: z.string().default("any"),
+  toStatus: z.string().min(1, "Estágio destino é obrigatório"),
+  webhookUrl: z.string().url("URL inválida").min(1, "URL é obrigatória"),
+  httpMethod: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]).default("POST"),
+  headers: z.string().optional().refine((val) => {
+    if (!val || val.trim() === "") return true;
+    try {
+      JSON.parse(val);
+      return true;
+    } catch {
+      return false;
+    }
+  }, { message: "Headers deve ser um JSON válido" }),
+  bodyTemplate: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+type TriggerFormData = z.infer<typeof triggerFormSchema>;
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -182,152 +215,218 @@ function TriggerForm({
   onCancel: () => void;
   isPending: boolean;
 }) {
-  const [name, setName] = useState(trigger?.name || "");
-  const [fromStatus, setFromStatus] = useState(trigger?.fromStatus || "any");
-  const [toStatus, setToStatus] = useState(trigger?.toStatus || "");
-  const [webhookUrl, setWebhookUrl] = useState(trigger?.webhookUrl || "");
-  const [httpMethod, setHttpMethod] = useState(trigger?.httpMethod || "POST");
-  const [headers, setHeaders] = useState(trigger?.headers || "");
-  const [bodyTemplate, setBodyTemplate] = useState(trigger?.bodyTemplate || "");
-  const [isActive, setIsActive] = useState(trigger?.isActive ?? true);
+  const form = useForm<TriggerFormData>({
+    resolver: zodResolver(triggerFormSchema),
+    defaultValues: {
+      name: trigger?.name || "",
+      fromStatus: trigger?.fromStatus || "any",
+      toStatus: trigger?.toStatus || "",
+      webhookUrl: trigger?.webhookUrl || "",
+      httpMethod: (trigger?.httpMethod as any) || "POST",
+      headers: trigger?.headers || "",
+      bodyTemplate: trigger?.bodyTemplate || "",
+      isActive: trigger?.isActive ?? true,
+    },
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (data: TriggerFormData) => {
     onSave({
-      name,
-      fromStatus: fromStatus === "any" ? null : fromStatus as any,
-      toStatus: toStatus as any,
-      webhookUrl,
-      httpMethod: httpMethod as any,
-      headers: headers || null,
-      bodyTemplate: bodyTemplate || null,
-      isActive,
+      name: data.name,
+      fromStatus: data.fromStatus === "any" ? null : data.fromStatus as any,
+      toStatus: data.toStatus as any,
+      webhookUrl: data.webhookUrl,
+      httpMethod: data.httpMethod as any,
+      headers: data.headers || null,
+      bodyTemplate: data.bodyTemplate || null,
+      isActive: data.isActive,
     });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="trigger-name">Nome do Trigger</Label>
-        <Input
-          id="trigger-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Ex: Notificar quando ganho"
-          required
-          data-testid="input-trigger-name"
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nome do Trigger</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  placeholder="Ex: Notificar quando ganho"
+                  data-testid="input-trigger-name"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="from-status">De (Estágio Origem)</Label>
-          <Select value={fromStatus} onValueChange={setFromStatus}>
-            <SelectTrigger data-testid="select-trigger-from-status">
-              <SelectValue placeholder="Selecione" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="any">Qualquer estágio</SelectItem>
-              {stages.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="to-status">Para (Estágio Destino)</Label>
-          <Select value={toStatus} onValueChange={setToStatus} required>
-            <SelectTrigger data-testid="select-trigger-to-status">
-              <SelectValue placeholder="Selecione" />
-            </SelectTrigger>
-            <SelectContent>
-              {stages.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="http-method">Método HTTP</Label>
-          <Select value={httpMethod} onValueChange={setHttpMethod}>
-            <SelectTrigger data-testid="select-trigger-method">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {httpMethods.map((m) => (
-                <SelectItem key={m} value={m}>
-                  {m}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2 col-span-2">
-          <Label htmlFor="webhook-url">URL do Webhook</Label>
-          <Input
-            id="webhook-url"
-            value={webhookUrl}
-            onChange={(e) => setWebhookUrl(e.target.value)}
-            placeholder="https://api.exemplo.com/webhook"
-            required
-            data-testid="input-trigger-url"
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="fromStatus"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>De (Estágio Origem)</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-trigger-from-status">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="any">Qualquer estágio</SelectItem>
+                    {stages.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="toStatus"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Para (Estágio Destino)</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-trigger-to-status">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {stages.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         </div>
-      </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="headers">Headers (JSON)</Label>
-        <Textarea
-          id="headers"
-          value={headers}
-          onChange={(e) => setHeaders(e.target.value)}
-          placeholder='{"Authorization": "Bearer token123"}'
-          className="font-mono text-sm"
-          data-testid="input-trigger-headers"
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="httpMethod"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Método HTTP</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-trigger-method">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {httpMethods.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="webhookUrl"
+            render={({ field }) => (
+              <FormItem className="col-span-2">
+                <FormLabel>URL do Webhook</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    placeholder="https://api.exemplo.com/webhook"
+                    data-testid="input-trigger-url"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="headers"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Headers (JSON)</FormLabel>
+              <FormControl>
+                <Textarea
+                  {...field}
+                  placeholder='{"Authorization": "Bearer token123"}'
+                  className="font-mono text-sm"
+                  data-testid="input-trigger-headers"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="body-template">Template do Body (JSON)</Label>
-        <Textarea
-          id="body-template"
-          value={bodyTemplate}
-          onChange={(e) => setBodyTemplate(e.target.value)}
-          placeholder={'{\n  "oportunidade": "{{opportunity.title}}",\n  "valor": "{{opportunity.value}}",\n  "cliente": "{{client.companyName}}",\n  "novoStatus": "{{toStatus}}"\n}'}
-          className="font-mono text-sm min-h-[120px]"
-          data-testid="input-trigger-body"
+        <FormField
+          control={form.control}
+          name="bodyTemplate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Template do Body (JSON)</FormLabel>
+              <FormControl>
+                <Textarea
+                  {...field}
+                  placeholder={'{\n  "oportunidade": "{{opportunity.title}}",\n  "valor": "{{opportunity.value}}",\n  "cliente": "{{client.companyName}}",\n  "novoStatus": "{{toStatus}}"\n}'}
+                  className="font-mono text-sm min-h-[120px]"
+                  data-testid="input-trigger-body"
+                />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">
+                Variáveis disponíveis: {"{{opportunity.id}}"}, {"{{opportunity.title}}"}, {"{{opportunity.value}}"}, {"{{opportunity.status}}"}, {"{{opportunity.probability}}"}, {"{{fromStatus}}"}, {"{{toStatus}}"}, {"{{client.id}}"}, {"{{client.companyName}}"}, {"{{client.email}}"}, {"{{client.phone}}"}
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        <p className="text-xs text-muted-foreground">
-          Variáveis disponíveis: {"{{opportunity.id}}"}, {"{{opportunity.title}}"}, {"{{opportunity.value}}"}, {"{{opportunity.status}}"}, {"{{opportunity.probability}}"}, {"{{fromStatus}}"}, {"{{toStatus}}"}, {"{{client.id}}"}, {"{{client.companyName}}"}, {"{{client.email}}"}, {"{{client.phone}}"}
-        </p>
-      </div>
 
-      <div className="flex items-center gap-2">
-        <Switch
-          id="is-active"
-          checked={isActive}
-          onCheckedChange={setIsActive}
-          data-testid="switch-trigger-active"
+        <FormField
+          control={form.control}
+          name="isActive"
+          render={({ field }) => (
+            <FormItem className="flex items-center gap-2 space-y-0">
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  data-testid="switch-trigger-active"
+                />
+              </FormControl>
+              <FormLabel className="!mt-0">Trigger ativo</FormLabel>
+            </FormItem>
+          )}
         />
-        <Label htmlFor="is-active">Trigger ativo</Label>
-      </div>
 
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={isPending} data-testid="button-save-trigger">
-          {isPending ? "Salvando..." : trigger ? "Atualizar" : "Criar Trigger"}
-        </Button>
-      </DialogFooter>
-    </form>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={isPending} data-testid="button-save-trigger">
+            {isPending ? "Salvando..." : trigger ? "Atualizar" : "Criar Trigger"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
   );
 }
 
