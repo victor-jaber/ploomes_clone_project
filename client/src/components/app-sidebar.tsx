@@ -7,7 +7,6 @@ import {
   CalendarCheck,
   Package,
   FileText,
-  Settings,
   LogOut,
 } from "lucide-react";
 import {
@@ -22,8 +21,14 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from "@/hooks/use-auth";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { AuthUser } from "@/lib/auth";
+
+interface AppSidebarProps {
+  user: AuthUser;
+  onLogout: () => void;
+}
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -35,9 +40,8 @@ const menuItems = [
   { title: "Propostas", url: "/propostas", icon: FileText },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ user, onLogout }: AppSidebarProps) {
   const [location] = useLocation();
-  const { user } = useAuth();
 
   const getInitials = (name?: string | null) => {
     if (!name) return "U";
@@ -48,10 +52,6 @@ export function AppSidebar() {
       .toUpperCase()
       .slice(0, 2);
   };
-
-  const displayName = user?.firstName
-    ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
-    : user?.email || "Usuário";
 
   return (
     <Sidebar>
@@ -92,18 +92,22 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border p-4">
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={user?.profileImageUrl || undefined} alt={displayName} />
             <AvatarFallback className="bg-primary/10 text-primary text-sm">
-              {getInitials(displayName)}
+              {getInitials(user.name)}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col flex-1 min-w-0">
-            <span className="text-sm font-medium truncate">{displayName}</span>
-            <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
+            <span className="text-sm font-medium truncate">{user.name}</span>
+            <span className="text-xs text-muted-foreground truncate">{user.email}</span>
           </div>
-          <a href="/api/logout" data-testid="button-logout">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onLogout}
+            data-testid="button-logout"
+          >
             <LogOut className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-          </a>
+          </Button>
         </div>
       </SidebarFooter>
     </Sidebar>
