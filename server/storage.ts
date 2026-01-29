@@ -6,6 +6,7 @@ import {
   activities,
   proposals,
   proposalItems,
+  pipelineTriggers,
   type Client,
   type InsertClient,
   type Contact,
@@ -20,6 +21,8 @@ import {
   type InsertProposal,
   type ProposalItem,
   type InsertProposalItem,
+  type PipelineTrigger,
+  type InsertPipelineTrigger,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -73,6 +76,14 @@ export interface IStorage {
   createProposalItem(item: InsertProposalItem): Promise<ProposalItem>;
   updateProposalItem(id: string, item: Partial<InsertProposalItem>): Promise<ProposalItem | undefined>;
   deleteProposalItem(id: string): Promise<void>;
+
+  // Pipeline Triggers
+  getPipelineTriggers(ownerId: string): Promise<PipelineTrigger[]>;
+  getPipelineTrigger(id: string, ownerId: string): Promise<PipelineTrigger | undefined>;
+  createPipelineTrigger(trigger: InsertPipelineTrigger): Promise<PipelineTrigger>;
+  updatePipelineTrigger(id: string, ownerId: string, trigger: Partial<InsertPipelineTrigger>): Promise<PipelineTrigger | undefined>;
+  deletePipelineTrigger(id: string, ownerId: string): Promise<boolean>;
+  getMatchingTriggers(ownerId: string, fromStatus: string | null, toStatus: string): Promise<PipelineTrigger[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -267,6 +278,48 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProposalItem(id: string): Promise<void> {
     await db.delete(proposalItems).where(eq(proposalItems.id, id));
+  }
+
+  // Pipeline Triggers
+  async getPipelineTriggers(ownerId: string): Promise<PipelineTrigger[]> {
+    return db.select().from(pipelineTriggers).where(eq(pipelineTriggers.ownerId, ownerId)).orderBy(desc(pipelineTriggers.createdAt));
+  }
+
+  async getPipelineTrigger(id: string, ownerId: string): Promise<PipelineTrigger | undefined> {
+    const [trigger] = await db.select().from(pipelineTriggers).where(and(eq(pipelineTriggers.id, id), eq(pipelineTriggers.ownerId, ownerId)));
+    return trigger;
+  }
+
+  async createPipelineTrigger(trigger: InsertPipelineTrigger): Promise<PipelineTrigger> {
+    const [newTrigger] = await db.insert(pipelineTriggers).values(trigger).returning();
+    return newTrigger;
+  }
+
+  async updatePipelineTrigger(id: string, ownerId: string, trigger: Partial<InsertPipelineTrigger>): Promise<PipelineTrigger | undefined> {
+    const [updated] = await db
+      .update(pipelineTriggers)
+      .set({ ...trigger, updatedAt: new Date() })
+      .where(and(eq(pipelineTriggers.id, id), eq(pipelineTriggers.ownerId, ownerId)))
+      .returning();
+    return updated;
+  }
+
+  async deletePipelineTrigger(id: string, ownerId: string): Promise<boolean> {
+    const result = await db.delete(pipelineTriggers).where(and(eq(pipelineTriggers.id, id), eq(pipelineTriggers.ownerId, ownerId))).returning();
+    return result.length > 0;
+  }
+
+  async getMatchingTriggers(ownerId: string, fromStatus: string | null, toStatus: string): Promise<PipelineTrigger[]> {
+    const allTriggers = await db.select().from(pipelineTriggers).where(
+      and(
+        eq(pipelineTriggers.ownerId, ownerId),
+        eq(pipelineTriggers.isActive, true),
+        eq(pipelineTriggers.toStatus, toStatus as any)
+      )
+    );
+    
+    // Filter triggers that match fromStatus (null means any)
+    return allTriggers.filter(t => !t.fromStatus || t.fromStatus === fromStatus);
   }
 }
 
