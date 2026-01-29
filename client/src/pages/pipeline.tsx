@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1111,6 +1111,50 @@ export default function PipelinePage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
+  
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isDraggingScroll, setIsDraggingScroll] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    if ((e.target as HTMLElement).closest('[draggable="true"]')) return;
+    
+    setIsDraggingScroll(true);
+    setStartX(e.pageX - container.offsetLeft);
+    setScrollLeft(container.scrollLeft);
+    container.style.cursor = 'grabbing';
+    container.style.userSelect = 'none';
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDraggingScroll) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    e.preventDefault();
+    const x = e.pageX - container.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    container.scrollLeft = scrollLeft - walk;
+  }, [isDraggingScroll, startX, scrollLeft]);
+
+  const handleMouseUp = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.style.cursor = 'grab';
+      container.style.userSelect = '';
+    }
+    setIsDraggingScroll(false);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (isDraggingScroll) {
+      handleMouseUp();
+    }
+  }, [isDraggingScroll, handleMouseUp]);
 
   const { data: opportunities = [], isLoading: oppLoading } = useQuery<Opportunity[]>({
     queryKey: ["/api/opportunities"],
@@ -1366,8 +1410,16 @@ export default function PipelinePage() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 w-full">
-        <div className="flex gap-4 pb-4 h-[calc(100vh-180px)]">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 w-full overflow-x-auto overflow-y-hidden cursor-grab scrollbar-thin scrollbar-thumb-purple-500/30 scrollbar-track-transparent"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        style={{ scrollBehavior: isDraggingScroll ? 'auto' : 'smooth' }}
+      >
+        <div className="flex gap-4 pb-4 h-[calc(100vh-180px)] min-w-max">
           {stages.map((stage) => (
             <PipelineColumn
               key={stage.id}
@@ -1388,8 +1440,7 @@ export default function PipelinePage() {
             />
           ))}
         </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+      </div>
     </div>
   );
 }
