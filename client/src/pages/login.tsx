@@ -123,11 +123,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     <div className="min-h-screen flex">
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 lg:px-16 xl:px-24 py-12 bg-background">
         <div className="w-full max-w-md mx-auto">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <HermesLogo size={28} />
-            </div>
-            <span className="font-bold text-xl" data-testid="text-brand-name">Hermes</span>
+          <div className="flex items-center gap-2 mb-12">
+            <HermesLogo size={48} className="text-primary" />
+            <span className="font-bold text-2xl" data-testid="text-brand-name">Hermes</span>
           </div>
 
           <div className="mb-8">
