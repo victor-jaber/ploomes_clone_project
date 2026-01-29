@@ -1,7 +1,7 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
+import type { Express, Request, Response } from "express";
+import { type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { isAuthenticated, registerAuthRoutes, AuthRequest } from "./auth";
 import {
   insertClientSchema,
   insertProductSchema,
@@ -16,13 +16,12 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  await setupAuth(app);
   registerAuthRoutes(app);
 
   // Clients
-  app.get("/api/clients", isAuthenticated, async (req: any, res) => {
+  app.get("/api/clients", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const clients = await storage.getClients(userId);
       res.json(clients);
     } catch (error) {
@@ -31,12 +30,13 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/clients/:id", isAuthenticated, async (req: any, res) => {
+  app.get("/api/clients/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const client = await storage.getClient(req.params.id, userId);
       if (!client) {
-        return res.status(404).json({ message: "Client not found" });
+        res.status(404).json({ message: "Client not found" });
+        return;
       }
       res.json(client);
     } catch (error) {
@@ -45,12 +45,13 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/clients", isAuthenticated, async (req: any, res) => {
+  app.post("/api/clients", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const parsed = insertClientSchema.safeParse({ ...req.body, ownerId: userId });
       if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
       }
       const client = await storage.createClient(parsed.data);
       res.status(201).json(client);
@@ -60,16 +61,18 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/clients/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/clients/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const partial = insertClientSchema.partial().safeParse(req.body);
       if (!partial.success) {
-        return res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
       }
       const client = await storage.updateClient(req.params.id, userId, partial.data);
       if (!client) {
-        return res.status(404).json({ message: "Client not found" });
+        res.status(404).json({ message: "Client not found" });
+        return;
       }
       res.json(client);
     } catch (error) {
@@ -78,12 +81,13 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/clients/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/clients/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const deleted = await storage.deleteClient(req.params.id, userId);
       if (!deleted) {
-        return res.status(404).json({ message: "Client not found" });
+        res.status(404).json({ message: "Client not found" });
+        return;
       }
       res.status(204).send();
     } catch (error) {
@@ -92,9 +96,15 @@ export async function registerRoutes(
     }
   });
 
-  // Contacts
-  app.get("/api/clients/:clientId/contacts", isAuthenticated, async (req: any, res) => {
+  // Contacts (verify client ownership)
+  app.get("/api/clients/:clientId/contacts", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = (req as AuthRequest).user!.id;
+      const client = await storage.getClient(req.params.clientId, userId);
+      if (!client) {
+        res.status(404).json({ message: "Client not found" });
+        return;
+      }
       const contacts = await storage.getContacts(req.params.clientId);
       res.json(contacts);
     } catch (error) {
@@ -103,11 +113,18 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/contacts", isAuthenticated, async (req: any, res) => {
+  app.post("/api/contacts", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = (req as AuthRequest).user!.id;
       const parsed = insertContactSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const client = await storage.getClient(parsed.data.clientId, userId);
+      if (!client) {
+        res.status(404).json({ message: "Client not found" });
+        return;
       }
       const contact = await storage.createContact(parsed.data);
       res.status(201).json(contact);
@@ -117,16 +134,25 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/contacts/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/contacts/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = (req as AuthRequest).user!.id;
+      const existingContact = await storage.getContact(req.params.id);
+      if (!existingContact) {
+        res.status(404).json({ message: "Contact not found" });
+        return;
+      }
+      const client = await storage.getClient(existingContact.clientId, userId);
+      if (!client) {
+        res.status(404).json({ message: "Contact not found" });
+        return;
+      }
       const partial = insertContactSchema.partial().safeParse(req.body);
       if (!partial.success) {
-        return res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
       }
       const contact = await storage.updateContact(req.params.id, partial.data);
-      if (!contact) {
-        return res.status(404).json({ message: "Contact not found" });
-      }
       res.json(contact);
     } catch (error) {
       console.error("Error updating contact:", error);
@@ -134,8 +160,19 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/contacts/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/contacts/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = (req as AuthRequest).user!.id;
+      const existingContact = await storage.getContact(req.params.id);
+      if (!existingContact) {
+        res.status(404).json({ message: "Contact not found" });
+        return;
+      }
+      const client = await storage.getClient(existingContact.clientId, userId);
+      if (!client) {
+        res.status(404).json({ message: "Contact not found" });
+        return;
+      }
       await storage.deleteContact(req.params.id);
       res.status(204).send();
     } catch (error) {
@@ -145,9 +182,9 @@ export async function registerRoutes(
   });
 
   // Products
-  app.get("/api/products", isAuthenticated, async (req: any, res) => {
+  app.get("/api/products", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const products = await storage.getProducts(userId);
       res.json(products);
     } catch (error) {
@@ -156,12 +193,13 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/products/:id", isAuthenticated, async (req: any, res) => {
+  app.get("/api/products/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const product = await storage.getProduct(req.params.id, userId);
       if (!product) {
-        return res.status(404).json({ message: "Product not found" });
+        res.status(404).json({ message: "Product not found" });
+        return;
       }
       res.json(product);
     } catch (error) {
@@ -170,12 +208,13 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/products", isAuthenticated, async (req: any, res) => {
+  app.post("/api/products", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const parsed = insertProductSchema.safeParse({ ...req.body, ownerId: userId });
       if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
       }
       const product = await storage.createProduct(parsed.data);
       res.status(201).json(product);
@@ -185,16 +224,18 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/products/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/products/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const partial = insertProductSchema.partial().safeParse(req.body);
       if (!partial.success) {
-        return res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
       }
       const product = await storage.updateProduct(req.params.id, userId, partial.data);
       if (!product) {
-        return res.status(404).json({ message: "Product not found" });
+        res.status(404).json({ message: "Product not found" });
+        return;
       }
       res.json(product);
     } catch (error) {
@@ -203,12 +244,13 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/products/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/products/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const deleted = await storage.deleteProduct(req.params.id, userId);
       if (!deleted) {
-        return res.status(404).json({ message: "Product not found" });
+        res.status(404).json({ message: "Product not found" });
+        return;
       }
       res.status(204).send();
     } catch (error) {
@@ -218,9 +260,9 @@ export async function registerRoutes(
   });
 
   // Opportunities
-  app.get("/api/opportunities", isAuthenticated, async (req: any, res) => {
+  app.get("/api/opportunities", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const opportunities = await storage.getOpportunities(userId);
       res.json(opportunities);
     } catch (error) {
@@ -229,12 +271,13 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/opportunities/:id", isAuthenticated, async (req: any, res) => {
+  app.get("/api/opportunities/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const opportunity = await storage.getOpportunity(req.params.id, userId);
       if (!opportunity) {
-        return res.status(404).json({ message: "Opportunity not found" });
+        res.status(404).json({ message: "Opportunity not found" });
+        return;
       }
       res.json(opportunity);
     } catch (error) {
@@ -243,12 +286,13 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/opportunities", isAuthenticated, async (req: any, res) => {
+  app.post("/api/opportunities", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const parsed = insertOpportunitySchema.safeParse({ ...req.body, ownerId: userId });
       if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
       }
       const opportunity = await storage.createOpportunity(parsed.data);
       res.status(201).json(opportunity);
@@ -258,16 +302,18 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/opportunities/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/opportunities/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const partial = insertOpportunitySchema.partial().safeParse(req.body);
       if (!partial.success) {
-        return res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
       }
       const opportunity = await storage.updateOpportunity(req.params.id, userId, partial.data);
       if (!opportunity) {
-        return res.status(404).json({ message: "Opportunity not found" });
+        res.status(404).json({ message: "Opportunity not found" });
+        return;
       }
       res.json(opportunity);
     } catch (error) {
@@ -276,12 +322,13 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/opportunities/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/opportunities/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const deleted = await storage.deleteOpportunity(req.params.id, userId);
       if (!deleted) {
-        return res.status(404).json({ message: "Opportunity not found" });
+        res.status(404).json({ message: "Opportunity not found" });
+        return;
       }
       res.status(204).send();
     } catch (error) {
@@ -291,9 +338,9 @@ export async function registerRoutes(
   });
 
   // Activities
-  app.get("/api/activities", isAuthenticated, async (req: any, res) => {
+  app.get("/api/activities", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const activities = await storage.getActivities(userId);
       res.json(activities);
     } catch (error) {
@@ -302,12 +349,13 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/activities/:id", isAuthenticated, async (req: any, res) => {
+  app.get("/api/activities/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const activity = await storage.getActivity(req.params.id, userId);
       if (!activity) {
-        return res.status(404).json({ message: "Activity not found" });
+        res.status(404).json({ message: "Activity not found" });
+        return;
       }
       res.json(activity);
     } catch (error) {
@@ -316,12 +364,13 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/activities", isAuthenticated, async (req: any, res) => {
+  app.post("/api/activities", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const parsed = insertActivitySchema.safeParse({ ...req.body, ownerId: userId });
       if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
       }
       const activity = await storage.createActivity(parsed.data);
       res.status(201).json(activity);
@@ -331,16 +380,18 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/activities/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/activities/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const partial = insertActivitySchema.partial().safeParse(req.body);
       if (!partial.success) {
-        return res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
       }
       const activity = await storage.updateActivity(req.params.id, userId, partial.data);
       if (!activity) {
-        return res.status(404).json({ message: "Activity not found" });
+        res.status(404).json({ message: "Activity not found" });
+        return;
       }
       res.json(activity);
     } catch (error) {
@@ -349,12 +400,13 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/activities/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/activities/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const deleted = await storage.deleteActivity(req.params.id, userId);
       if (!deleted) {
-        return res.status(404).json({ message: "Activity not found" });
+        res.status(404).json({ message: "Activity not found" });
+        return;
       }
       res.status(204).send();
     } catch (error) {
@@ -364,9 +416,9 @@ export async function registerRoutes(
   });
 
   // Proposals
-  app.get("/api/proposals", isAuthenticated, async (req: any, res) => {
+  app.get("/api/proposals", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const proposals = await storage.getProposals(userId);
       res.json(proposals);
     } catch (error) {
@@ -375,12 +427,13 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/proposals/:id", isAuthenticated, async (req: any, res) => {
+  app.get("/api/proposals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const proposal = await storage.getProposal(req.params.id, userId);
       if (!proposal) {
-        return res.status(404).json({ message: "Proposal not found" });
+        res.status(404).json({ message: "Proposal not found" });
+        return;
       }
       res.json(proposal);
     } catch (error) {
@@ -389,12 +442,13 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/proposals", isAuthenticated, async (req: any, res) => {
+  app.post("/api/proposals", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const parsed = insertProposalSchema.safeParse({ ...req.body, ownerId: userId });
       if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
       }
       const proposal = await storage.createProposal(parsed.data);
       res.status(201).json(proposal);
@@ -404,16 +458,18 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/proposals/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/proposals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const partial = insertProposalSchema.partial().safeParse(req.body);
       if (!partial.success) {
-        return res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
       }
       const proposal = await storage.updateProposal(req.params.id, userId, partial.data);
       if (!proposal) {
-        return res.status(404).json({ message: "Proposal not found" });
+        res.status(404).json({ message: "Proposal not found" });
+        return;
       }
       res.json(proposal);
     } catch (error) {
@@ -422,12 +478,13 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/proposals/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/proposals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = (req as AuthRequest).user!.id;
       const deleted = await storage.deleteProposal(req.params.id, userId);
       if (!deleted) {
-        return res.status(404).json({ message: "Proposal not found" });
+        res.status(404).json({ message: "Proposal not found" });
+        return;
       }
       res.status(204).send();
     } catch (error) {
@@ -436,9 +493,15 @@ export async function registerRoutes(
     }
   });
 
-  // Proposal Items
-  app.get("/api/proposals/:proposalId/items", isAuthenticated, async (req: any, res) => {
+  // Proposal Items (verify proposal ownership)
+  app.get("/api/proposals/:proposalId/items", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = (req as AuthRequest).user!.id;
+      const proposal = await storage.getProposal(req.params.proposalId, userId);
+      if (!proposal) {
+        res.status(404).json({ message: "Proposal not found" });
+        return;
+      }
       const items = await storage.getProposalItems(req.params.proposalId);
       res.json(items);
     } catch (error) {
@@ -447,11 +510,18 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/proposal-items", isAuthenticated, async (req: any, res) => {
+  app.post("/api/proposal-items", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = (req as AuthRequest).user!.id;
       const parsed = insertProposalItemSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const proposal = await storage.getProposal(parsed.data.proposalId, userId);
+      if (!proposal) {
+        res.status(404).json({ message: "Proposal not found" });
+        return;
       }
       const item = await storage.createProposalItem(parsed.data);
       res.status(201).json(item);
@@ -461,16 +531,25 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/proposal-items/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/proposal-items/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = (req as AuthRequest).user!.id;
+      const existingItem = await storage.getProposalItem(req.params.id);
+      if (!existingItem) {
+        res.status(404).json({ message: "Proposal item not found" });
+        return;
+      }
+      const proposal = await storage.getProposal(existingItem.proposalId, userId);
+      if (!proposal) {
+        res.status(404).json({ message: "Proposal item not found" });
+        return;
+      }
       const partial = insertProposalItemSchema.partial().safeParse(req.body);
       if (!partial.success) {
-        return res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
       }
       const item = await storage.updateProposalItem(req.params.id, partial.data);
-      if (!item) {
-        return res.status(404).json({ message: "Proposal item not found" });
-      }
       res.json(item);
     } catch (error) {
       console.error("Error updating proposal item:", error);
@@ -478,8 +557,19 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/proposal-items/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/proposal-items/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const userId = (req as AuthRequest).user!.id;
+      const existingItem = await storage.getProposalItem(req.params.id);
+      if (!existingItem) {
+        res.status(404).json({ message: "Proposal item not found" });
+        return;
+      }
+      const proposal = await storage.getProposal(existingItem.proposalId, userId);
+      if (!proposal) {
+        res.status(404).json({ message: "Proposal item not found" });
+        return;
+      }
       await storage.deleteProposalItem(req.params.id);
       res.status(204).send();
     } catch (error) {
