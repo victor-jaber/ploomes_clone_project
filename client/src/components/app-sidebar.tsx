@@ -8,13 +8,13 @@ import {
   Package,
   FileText,
   LogOut,
+  Sparkles,
 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -24,7 +24,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { AuthUser } from "@/lib/auth";
-import { HermesLogo } from "@/components/hermes-logo";
 
 interface AppSidebarProps {
   user: AuthUser;
@@ -55,58 +54,92 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
   };
 
   return (
-    <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-2">
-          <HermesLogo size={44} className="text-primary" />
+    <Sidebar className="gradient-sidebar border-r-0">
+      <SidebarHeader className="p-6 pb-8">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-lg">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-sidebar animate-pulse" />
+          </div>
           <div className="flex flex-col">
-            <span className="font-bold text-xl text-sidebar-foreground">Hermes</span>
-            <span className="text-xs text-muted-foreground">CRM</span>
+            <span className="font-bold text-2xl bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+              Hermes
+            </span>
+            <span className="text-xs text-purple-300/70 font-medium tracking-wider uppercase">
+              CRM Premium
+            </span>
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      
+      <SidebarContent className="px-3">
         <SidebarGroup>
-          <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                    data-testid={`nav-${item.url.replace("/", "") || "dashboard"}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+            <SidebarMenu className="space-y-1">
+              {menuItems.map((item) => {
+                const isActive = location === item.url;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className={`
+                        relative h-11 rounded-xl transition-all duration-300 group
+                        ${isActive 
+                          ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white' 
+                          : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }
+                      `}
+                      data-testid={`nav-${item.url.replace("/", "") || "dashboard"}`}
+                    >
+                      <Link href={item.url}>
+                        <div className={`
+                          p-2 rounded-lg transition-all duration-300
+                          ${isActive 
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30' 
+                            : 'bg-white/5 group-hover:bg-white/10'
+                          }
+                        `}>
+                          <item.icon className="h-4 w-4" />
+                        </div>
+                        <span className="font-medium">{item.title}</span>
+                        {isActive && (
+                          <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400" />
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary/10 text-primary text-sm">
-              {getInitials(user.name)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col flex-1 min-w-0">
-            <span className="text-sm font-medium truncate">{user.name}</span>
-            <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+      
+      <SidebarFooter className="p-4 mt-auto">
+        <div className="rounded-2xl bg-gradient-to-r from-purple-900/50 to-pink-900/30 p-4 border border-purple-500/20">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10 ring-2 ring-purple-500/50 ring-offset-2 ring-offset-sidebar">
+              <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-sm font-semibold">
+                {getInitials(user.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-sm font-semibold text-white truncate">{user.name}</span>
+              <span className="text-xs text-purple-300/70 truncate">{user.email}</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onLogout}
+              className="h-9 w-9 rounded-xl bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all duration-300"
+              data-testid="button-logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onLogout}
-            data-testid="button-logout"
-          >
-            <LogOut className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-          </Button>
         </div>
       </SidebarFooter>
     </Sidebar>

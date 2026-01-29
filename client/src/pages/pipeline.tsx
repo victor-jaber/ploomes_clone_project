@@ -58,18 +58,18 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   Plus, GripVertical, Building2, DollarSign, Calendar, Webhook, Trash2, Pencil, Settings2,
   Phone, Mail, User, MessageSquare, ChevronRight, Clock, CheckCircle2, Circle, ArrowRight,
-  Send, Paperclip, FileText, X
+  Send, Paperclip, FileText, X, Kanban, Target
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Opportunity, Client, InsertOpportunity, PipelineTrigger, InsertPipelineTrigger, Activity, Contact, Interaction } from "@shared/schema";
 
 const stages = [
-  { id: "novo_lead", label: "Novo Lead", color: "bg-blue-500" },
-  { id: "falando_escritorio", label: "Falando com Escritório", color: "bg-purple-500" },
-  { id: "sem_resposta", label: "Sem Resposta", color: "bg-orange-500" },
-  { id: "em_atendimento", label: "Em Atendimento", color: "bg-yellow-500" },
-  { id: "buscar_casos", label: "Buscar Casos no Sistema", color: "bg-cyan-500" },
-  { id: "leads_quentes", label: "Leads Quentes", color: "bg-green-500" },
+  { id: "novo_lead", label: "Novo Lead", color: "stage-novo_lead", textColor: "text-blue-600 dark:text-blue-400", bgLight: "bg-blue-50 dark:bg-blue-950/30" },
+  { id: "falando_escritorio", label: "Falando com Escritório", color: "stage-falando_escritorio", textColor: "text-purple-600 dark:text-purple-400", bgLight: "bg-purple-50 dark:bg-purple-950/30" },
+  { id: "sem_resposta", label: "Sem Resposta", color: "stage-sem_resposta", textColor: "text-orange-600 dark:text-orange-400", bgLight: "bg-orange-50 dark:bg-orange-950/30" },
+  { id: "em_atendimento", label: "Em Atendimento", color: "stage-em_atendimento", textColor: "text-yellow-600 dark:text-yellow-400", bgLight: "bg-yellow-50 dark:bg-yellow-950/30" },
+  { id: "buscar_casos", label: "Buscar Casos no Sistema", color: "stage-buscar_casos", textColor: "text-cyan-600 dark:text-cyan-400", bgLight: "bg-cyan-50 dark:bg-cyan-950/30" },
+  { id: "leads_quentes", label: "Leads Quentes", color: "stage-leads_quentes", textColor: "text-green-600 dark:text-green-400", bgLight: "bg-green-50 dark:bg-green-950/30" },
 ];
 
 const httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
@@ -507,6 +507,8 @@ function OpportunityCard({
     setIsOpen(true);
   };
 
+  const currentStage = stages[currentStageIndex];
+
   return (
     <>
       <Card
@@ -514,41 +516,50 @@ function OpportunityCard({
         onDragStart={(e) => onDragStart(e, opportunity.id)}
         onDragEnd={onDragEnd}
         onClick={handleCardClick}
-        className="cursor-pointer hover-elevate transition-all select-none"
+        className="cursor-pointer card-premium select-none group border-0"
         data-testid={`pipeline-card-${opportunity.id}`}
       >
         <CardContent className="p-4 space-y-3">
-          <div className="flex items-start gap-2">
-            <div data-drag-handle className="cursor-grab active:cursor-grabbing">
+          <div className="flex items-start gap-3">
+            <div data-drag-handle className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity">
               <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
             </div>
-            <div className="space-y-1 flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{opportunity.title}</p>
+            <div className="space-y-2 flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold text-sm leading-tight">{opportunity.title}</p>
+                {opportunity.probability !== null && opportunity.probability !== undefined && (
+                  <div className={`text-xs font-bold px-2 py-0.5 rounded-full ${currentStage?.bgLight} ${currentStage?.textColor}`}>
+                    {opportunity.probability}%
+                  </div>
+                )}
+              </div>
               {client && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Building2 className="h-3 w-3" />
-                  <span className="truncate">{client.companyName}</span>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="w-5 h-5 rounded-md bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                    <Building2 className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <span className="truncate font-medium">{client.companyName}</span>
                 </div>
               )}
             </div>
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 text-sm font-semibold text-primary">
-              <DollarSign className="h-3.5 w-3.5" />
-              {formatCurrencyShort(Number(opportunity.value || 0))}
+          
+          <div className="flex items-center justify-between pt-2 border-t border-dashed">
+            <div className="flex items-center gap-1.5">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                <DollarSign className="h-3.5 w-3.5 text-white" />
+              </div>
+              <span className="text-sm font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
+                {formatCurrencyShort(Number(opportunity.value || 0))}
+              </span>
             </div>
-            {opportunity.probability !== null && opportunity.probability !== undefined && (
-              <Badge variant="secondary" className="text-xs">
-                {opportunity.probability}%
-              </Badge>
+            {opportunity.expectedCloseDate && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full">
+                <Calendar className="h-3 w-3" />
+                {new Date(opportunity.expectedCloseDate).toLocaleDateString("pt-BR")}
+              </div>
             )}
           </div>
-          {opportunity.expectedCloseDate && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Calendar className="h-3 w-3" />
-              {new Date(opportunity.expectedCloseDate).toLocaleDateString("pt-BR")}
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -604,35 +615,47 @@ function PipelineColumn({
   isUpdating: boolean;
 }) {
   const totalValue = opportunities.reduce((acc, o) => acc + Number(o.value || 0), 0);
+  const stageData = stages.find(s => s.id === stage.id);
 
   return (
     <div
-      className="flex flex-col h-full min-w-[280px] w-[280px] flex-shrink-0"
+      className="flex flex-col h-full min-w-[300px] w-[300px] flex-shrink-0"
       onDrop={(e) => onDrop(e, stage.id)}
       onDragOver={(e) => onDragOver(e, stage.id)}
       onDragLeave={onDragLeave}
     >
-      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-t-lg border border-b-0">
-        <div className="flex items-center gap-2">
-          <div className={`h-3 w-3 rounded-full ${stage.color}`} />
-          <span className="font-medium text-sm">{stage.label}</span>
-          <Badge variant="secondary" className="text-xs">
-            {opportunities.length}
-          </Badge>
+      <div className={`relative overflow-hidden rounded-t-xl p-4 ${stage.color}`}>
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="font-bold text-sm text-white drop-shadow-sm">{stage.label}</span>
+            <div className="bg-white/20 backdrop-blur-sm px-2.5 py-0.5 rounded-full">
+              <span className="text-xs font-bold text-white">{opportunities.length}</span>
+            </div>
+          </div>
+          <span className="text-xs text-white/90 font-semibold">
+            {formatCurrencyShort(totalValue)}
+          </span>
         </div>
-        <span className="text-xs text-muted-foreground font-medium">
-          {formatCurrencyShort(totalValue)}
-        </span>
       </div>
-      <div className={`flex-1 border border-t-0 rounded-b-lg p-2 space-y-2 min-h-[200px] transition-colors duration-150 ${isDragOver ? "bg-primary/10 border-primary/50" : "bg-muted/20"}`}>
+      <div className={`flex-1 rounded-b-xl p-3 space-y-3 min-h-[200px] transition-all duration-300 border-x border-b ${
+        isDragOver 
+          ? "bg-purple-50 dark:bg-purple-950/30 border-purple-300 dark:border-purple-700 shadow-lg shadow-purple-500/20" 
+          : "bg-muted/30 border-border"
+      }`}>
         {isLoading ? (
-          <>
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </>
+          <div className="space-y-3">
+            <Skeleton className="h-28 w-full rounded-xl" />
+            <Skeleton className="h-28 w-full rounded-xl" />
+          </div>
         ) : opportunities.length === 0 ? (
-          <div className={`flex items-center justify-center h-24 text-sm transition-colors ${isDragOver ? "text-primary" : "text-muted-foreground"}`}>
-            {isDragOver ? "Solte aqui" : "Arraste oportunidades aqui"}
+          <div className={`flex flex-col items-center justify-center h-32 text-sm transition-all duration-300 rounded-xl border-2 border-dashed ${
+            isDragOver 
+              ? "border-purple-400 text-purple-600 dark:text-purple-400 bg-purple-100/50 dark:bg-purple-900/20" 
+              : "border-muted-foreground/20 text-muted-foreground"
+          }`}>
+            <Target className={`h-8 w-8 mb-2 ${isDragOver ? "animate-bounce" : "opacity-30"}`} />
+            <span className="font-medium">{isDragOver ? "Solte aqui!" : "Sem oportunidades"}</span>
           </div>
         ) : (
           opportunities.map((opp) => (
@@ -1208,19 +1231,46 @@ export default function PipelinePage() {
     createMutation.mutate(data);
   };
 
+  const totalValue = opportunities.reduce((acc, o) => acc + Number(o.value || 0), 0);
+  const totalOpps = opportunities.length;
+
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div className="h-full flex flex-col space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Pipeline</h1>
-          <p className="text-muted-foreground">
-            Visualize e gerencie seu funil de vendas
-          </p>
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl gradient-primary flex items-center justify-center shadow-lg shadow-purple-500/25">
+              <Kanban className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+                Pipeline de Vendas
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Arraste e solte para gerenciar seu funil
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-6 mr-4">
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Total em Pipeline</p>
+              <p className="text-lg font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
+                {formatCurrency(totalValue)}
+              </p>
+            </div>
+            <div className="h-10 w-px bg-border" />
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Oportunidades</p>
+              <p className="text-lg font-bold text-foreground">{totalOpps}</p>
+            </div>
+          </div>
+          
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button data-testid="button-new-opportunity-pipeline">
+              <Button className="gradient-primary border-0 shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300" data-testid="button-new-opportunity-pipeline">
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Oportunidade
               </Button>
