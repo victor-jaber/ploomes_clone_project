@@ -23,19 +23,6 @@ interface LoginPageProps {
 function HermesIllustration() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
-  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; size: number; delay: number; duration: number }>>([]);
-
-  useEffect(() => {
-    const newParticles = Array.from({ length: 20 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 6 + 2,
-      delay: Math.random() * 5,
-      duration: Math.random() * 3 + 4,
-    }));
-    setParticles(newParticles);
-  }, []);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!containerRef.current) return;
@@ -46,8 +33,8 @@ function HermesIllustration() {
   };
 
   const parallaxStyle = (depth: number) => ({
-    transform: `translate(${(mousePos.x - 0.5) * depth * 30}px, ${(mousePos.y - 0.5) * depth * 30}px)`,
-    transition: 'transform 0.3s ease-out',
+    transform: `translate(${(mousePos.x - 0.5) * depth * 40}px, ${(mousePos.y - 0.5) * depth * 40}px)`,
+    transition: 'transform 0.4s ease-out',
   });
 
   return (
@@ -58,242 +45,192 @@ function HermesIllustration() {
     >
       <style>{`
         @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(3deg); }
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-15px); }
         }
-        @keyframes floatReverse {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(20px) rotate(-3deg); }
+        @keyframes wingFloat {
+          0%, 100% { transform: rotate(-3deg) translateY(0); }
+          50% { transform: rotate(3deg) translateY(-8px); }
         }
-        @keyframes wingFlap {
-          0%, 100% { transform: scaleX(1) rotate(-5deg); }
-          50% { transform: scaleX(1.1) rotate(5deg); }
+        @keyframes wingFloatRight {
+          0%, 100% { transform: scaleX(-1) rotate(3deg) translateY(0); }
+          50% { transform: scaleX(-1) rotate(-3deg) translateY(-8px); }
         }
-        @keyframes wingFlapRight {
-          0%, 100% { transform: scaleX(-1) rotate(5deg); }
-          50% { transform: scaleX(-1.1) rotate(-5deg); }
+        @keyframes dash {
+          to { stroke-dashoffset: -1000; }
         }
-        @keyframes glow {
-          0%, 100% { filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.4)); }
-          50% { filter: drop-shadow(0 0 40px rgba(168, 85, 247, 0.8)); }
+        @keyframes nodeGlow {
+          0%, 100% { filter: drop-shadow(0 0 8px rgba(255,255,255,0.3)); transform: scale(1); }
+          50% { filter: drop-shadow(0 0 20px rgba(255,255,255,0.6)); transform: scale(1.1); }
         }
-        @keyframes particleFloat {
-          0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+        @keyframes drawLine {
+          from { stroke-dashoffset: 200; }
+          to { stroke-dashoffset: 0; }
         }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 0.6; }
-          50% { transform: scale(1.2); opacity: 1; }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes snakeMove {
-          0%, 100% { d: path("M0,0 Q10,-15 0,-30 Q-10,-45 0,-60"); }
-          50% { d: path("M0,0 Q-10,-15 0,-30 Q10,-45 0,-60"); }
-        }
-        @keyframes orbitSlow {
-          from { transform: rotate(0deg) translateX(120px) rotate(0deg); }
-          to { transform: rotate(360deg) translateX(120px) rotate(-360deg); }
-        }
-        @keyframes orbitFast {
-          from { transform: rotate(0deg) translateX(80px) rotate(0deg); }
-          to { transform: rotate(-360deg) translateX(80px) rotate(360deg); }
+        @keyframes pulseRing {
+          0% { transform: scale(0.8); opacity: 0.8; }
+          100% { transform: scale(2); opacity: 0; }
         }
       `}</style>
 
-      {particles.map((particle) => (
-        <div
-          key={particle.id}
-          className="absolute rounded-full bg-white/30"
-          style={{
-            left: `${particle.x}%`,
-            top: `${particle.y}%`,
-            width: particle.size,
-            height: particle.size,
-            animation: `particleFloat ${particle.duration}s ease-in-out ${particle.delay}s infinite`,
-          }}
-        />
-      ))}
+      <div className="absolute w-96 h-96 rounded-full bg-white/5 blur-3xl" style={parallaxStyle(-0.3)} />
+      <div className="absolute w-64 h-64 rounded-full bg-purple-300/10 blur-2xl" style={{ ...parallaxStyle(-0.5), left: '10%', top: '20%' }} />
+      <div className="absolute w-48 h-48 rounded-full bg-pink-300/10 blur-2xl" style={{ ...parallaxStyle(-0.4), right: '15%', bottom: '25%' }} />
 
-      <div 
-        className="absolute w-64 h-64 rounded-full bg-gradient-to-br from-purple-400/20 to-pink-400/20 blur-3xl"
-        style={{ 
-          ...parallaxStyle(-0.5),
-          animation: 'pulse 4s ease-in-out infinite',
-        }}
-      />
-      <div 
-        className="absolute w-48 h-48 rounded-full bg-gradient-to-br from-indigo-400/20 to-purple-400/20 blur-2xl"
-        style={{ 
-          ...parallaxStyle(-0.3),
-          animation: 'pulse 5s ease-in-out infinite 1s',
-          left: '20%',
-          top: '20%',
-        }}
-      />
+      <div className="relative z-10 flex flex-col items-center" style={parallaxStyle(0.3)}>
+        <div className="relative" style={{ animation: 'float 4s ease-in-out infinite' }}>
+          <svg viewBox="0 0 200 200" className="w-48 h-48 md:w-64 md:h-64">
+            <defs>
+              <linearGradient id="wingGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#fef3c7" />
+                <stop offset="50%" stopColor="#fcd34d" />
+                <stop offset="100%" stopColor="#f59e0b" />
+              </linearGradient>
+              <linearGradient id="helmetPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#e9d5ff" />
+                <stop offset="50%" stopColor="#c084fc" />
+                <stop offset="100%" stopColor="#9333ea" />
+              </linearGradient>
+              <filter id="softGlow">
+                <feGaussianBlur stdDeviation="2" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
 
-      <div className="absolute" style={{ animation: 'orbitSlow 20s linear infinite' }}>
-        <div className="w-4 h-4 rounded-full bg-gradient-to-br from-yellow-300 to-amber-400 shadow-lg shadow-yellow-400/50" />
-      </div>
-      <div className="absolute" style={{ animation: 'orbitFast 12s linear infinite' }}>
-        <div className="w-3 h-3 rounded-full bg-gradient-to-br from-pink-300 to-purple-400 shadow-lg shadow-purple-400/50" />
-      </div>
-
-      <div 
-        className="relative z-10"
-        style={{ 
-          animation: 'float 6s ease-in-out infinite',
-          ...parallaxStyle(0.5),
-        }}
-      >
-        <svg 
-          viewBox="0 0 300 400" 
-          className="w-72 h-96"
-          style={{ animation: 'glow 3s ease-in-out infinite' }}
-        >
-          <defs>
-            <linearGradient id="helmetGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#c084fc" />
-              <stop offset="50%" stopColor="#a855f7" />
-              <stop offset="100%" stopColor="#7c3aed" />
-            </linearGradient>
-            <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#fde68a" />
-              <stop offset="50%" stopColor="#fbbf24" />
-              <stop offset="100%" stopColor="#d97706" />
-            </linearGradient>
-            <linearGradient id="staffGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#fde68a" />
-              <stop offset="100%" stopColor="#b45309" />
-            </linearGradient>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-          </defs>
-
-          <g transform="translate(150, 100)">
-            <ellipse cx="0" cy="20" rx="45" ry="35" fill="url(#helmetGradient)" />
-            <ellipse cx="0" cy="10" rx="50" ry="25" fill="url(#helmetGradient)" />
-            <path d="M-50,10 Q-50,-20 0,-30 Q50,-20 50,10" fill="url(#helmetGradient)" />
-            
-            <ellipse cx="0" cy="25" rx="35" ry="20" fill="rgba(0,0,0,0.3)" />
-            
-            <g style={{ transformOrigin: '-50px 0', animation: 'wingFlap 0.8s ease-in-out infinite' }}>
+            <g style={{ transformOrigin: '40px 100px', animation: 'wingFloat 2s ease-in-out infinite' }}>
               <path 
-                d="M-50,0 Q-80,-30 -120,-20 Q-100,-10 -80,-15 Q-90,0 -120,10 Q-90,5 -70,0 Q-80,15 -100,30 Q-70,15 -50,10 Z" 
-                fill="url(#goldGradient)"
-                filter="url(#glow)"
+                d="M50,100 C30,85 15,70 5,55 C15,60 25,58 35,55 C25,50 10,40 0,25 C15,35 30,38 45,35 C35,28 25,15 20,0 C35,15 50,25 65,30 C55,40 50,60 50,80 Z" 
+                fill="url(#wingGold)"
+                filter="url(#softGlow)"
               />
               <path 
-                d="M-55,0 Q-75,-20 -100,-15 Q-85,-5 -70,-10 Q-75,5 -90,15 Q-70,8 -55,5 Z" 
-                fill="white" 
+                d="M50,95 C35,85 25,72 18,60 C25,62 32,60 38,58 C30,55 20,48 15,38 C25,45 35,47 45,45 C38,40 32,32 28,22 C38,32 48,38 55,42" 
+                fill="none"
+                stroke="white"
+                strokeWidth="1"
                 opacity="0.4"
               />
             </g>
-            
-            <g style={{ transformOrigin: '50px 0', animation: 'wingFlapRight 0.8s ease-in-out infinite' }}>
+
+            <g style={{ transformOrigin: '160px 100px', animation: 'wingFloatRight 2s ease-in-out infinite' }}>
               <path 
-                d="M50,0 Q80,-30 120,-20 Q100,-10 80,-15 Q90,0 120,10 Q90,5 70,0 Q80,15 100,30 Q70,15 50,10 Z" 
-                fill="url(#goldGradient)"
-                filter="url(#glow)"
+                d="M150,100 C170,85 185,70 195,55 C185,60 175,58 165,55 C175,50 190,40 200,25 C185,35 170,38 155,35 C165,28 175,15 180,0 C165,15 150,25 135,30 C145,40 150,60 150,80 Z" 
+                fill="url(#wingGold)"
+                filter="url(#softGlow)"
               />
               <path 
-                d="M55,0 Q75,-20 100,-15 Q85,-5 70,-10 Q75,5 90,15 Q70,8 55,5 Z" 
-                fill="white" 
+                d="M150,95 C165,85 175,72 182,60 C175,62 168,60 162,58 C170,55 180,48 185,38 C175,45 165,47 155,45 C162,40 168,32 172,22 C162,32 152,38 145,42" 
+                fill="none"
+                stroke="white"
+                strokeWidth="1"
                 opacity="0.4"
               />
             </g>
-            
-            <circle cx="-15" cy="20" r="3" fill="white" opacity="0.6" />
-            <ellipse cx="20" cy="5" rx="8" ry="4" fill="white" opacity="0.3" />
-          </g>
 
-          <g transform="translate(150, 330)">
-            <rect x="-6" y="-180" width="12" height="180" rx="6" fill="url(#staffGradient)" />
+            <ellipse cx="100" cy="120" rx="55" ry="45" fill="url(#helmetPurple)" />
+            <ellipse cx="100" cy="105" rx="60" ry="35" fill="url(#helmetPurple)" />
+            <path d="M40,105 Q40,60 100,50 Q160,60 160,105" fill="url(#helmetPurple)" />
             
-            <circle cx="0" cy="-180" r="20" fill="url(#goldGradient)" filter="url(#glow)" />
-            <circle cx="0" cy="-180" r="12" fill="white" opacity="0.3" />
+            <ellipse cx="100" cy="130" rx="40" ry="25" fill="rgba(0,0,0,0.4)" />
             
-            <g transform="translate(-8, -160)">
-              <path 
-                d="M0,0 C15,-20 -5,-40 10,-60 C-5,-50 5,-30 -5,-20 C5,-10 0,0 0,0" 
-                fill="none" 
-                stroke="url(#goldGradient)" 
-                strokeWidth="4"
-                strokeLinecap="round"
-                style={{ animation: 'snakeMove 2s ease-in-out infinite' }}
-              />
-              <circle cx="10" cy="-60" r="4" fill="url(#goldGradient)" />
-              <circle cx="12" cy="-62" r="1" fill="black" />
-            </g>
-            
-            <g transform="translate(8, -160) scale(-1, 1)">
-              <path 
-                d="M0,0 C15,-20 -5,-40 10,-60 C-5,-50 5,-30 -5,-20 C5,-10 0,0 0,0" 
-                fill="none" 
-                stroke="url(#goldGradient)" 
-                strokeWidth="4"
-                strokeLinecap="round"
-                style={{ animation: 'snakeMove 2s ease-in-out infinite 0.5s' }}
-              />
-              <circle cx="10" cy="-60" r="4" fill="url(#goldGradient)" />
-              <circle cx="12" cy="-62" r="1" fill="black" />
-            </g>
-            
-            <ellipse cx="0" cy="10" rx="30" ry="8" fill="rgba(0,0,0,0.2)" />
-          </g>
-        </svg>
-      </div>
+            <path d="M60,95 Q80,85 100,85 Q120,85 140,95" fill="none" stroke="white" strokeWidth="2" opacity="0.3" />
+            <circle cx="70" cy="100" r="4" fill="white" opacity="0.4" />
+            <ellipse cx="115" cy="90" rx="15" ry="6" fill="white" opacity="0.2" />
+          </svg>
 
-      <div 
-        className="absolute bottom-20 left-1/2 -translate-x-1/2 text-center"
-        style={parallaxStyle(0.2)}
-      >
-        <p className="text-white/80 text-lg font-light tracking-widest uppercase">
-          Mensageiro dos Negócios
-        </p>
-        <p className="text-white/50 text-sm mt-2">
-          Velocidade e precisão em suas vendas
-        </p>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="w-20 h-20 rounded-full border-2 border-white/20" style={{ animation: 'pulseRing 2s ease-out infinite' }} />
+          </div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="w-20 h-20 rounded-full border-2 border-white/20" style={{ animation: 'pulseRing 2s ease-out infinite 0.5s' }} />
+          </div>
+        </div>
+
+        <div className="mt-8 relative w-80" style={{ animation: 'fadeInUp 1s ease-out' }}>
+          <svg viewBox="0 0 320 100" className="w-full">
+            <circle cx="40" cy="50" r="8" fill="white" opacity="0.9" style={{ animation: 'nodeGlow 2s ease-in-out infinite' }} />
+            <circle cx="160" cy="30" r="10" fill="white" opacity="0.9" style={{ animation: 'nodeGlow 2s ease-in-out infinite 0.3s' }} />
+            <circle cx="280" cy="50" r="8" fill="white" opacity="0.9" style={{ animation: 'nodeGlow 2s ease-in-out infinite 0.6s' }} />
+            <circle cx="100" cy="70" r="6" fill="white" opacity="0.7" style={{ animation: 'nodeGlow 2s ease-in-out infinite 0.9s' }} />
+            <circle cx="220" cy="70" r="6" fill="white" opacity="0.7" style={{ animation: 'nodeGlow 2s ease-in-out infinite 1.2s' }} />
+
+            <path 
+              d="M48,50 Q100,40 152,32" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="1.5" 
+              opacity="0.4"
+              strokeDasharray="4 4"
+              style={{ animation: 'dash 20s linear infinite' }}
+            />
+            <path 
+              d="M168,32 Q220,40 272,50" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="1.5" 
+              opacity="0.4"
+              strokeDasharray="4 4"
+              style={{ animation: 'dash 20s linear infinite' }}
+            />
+            <path 
+              d="M48,54 Q70,70 94,70" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="1.5" 
+              opacity="0.3"
+              strokeDasharray="4 4"
+              style={{ animation: 'dash 25s linear infinite' }}
+            />
+            <path 
+              d="M106,70 Q160,55 214,70" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="1.5" 
+              opacity="0.3"
+              strokeDasharray="4 4"
+              style={{ animation: 'dash 25s linear infinite' }}
+            />
+            <path 
+              d="M226,70 Q250,55 272,54" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="1.5" 
+              opacity="0.3"
+              strokeDasharray="4 4"
+              style={{ animation: 'dash 25s linear infinite' }}
+            />
+          </svg>
+        </div>
+
+        <div className="mt-12 text-center" style={{ animation: 'fadeInUp 1s ease-out 0.3s backwards' }}>
+          <h2 className="text-white text-2xl md:text-3xl font-light tracking-wide">
+            Conecte. Comunique. <span className="font-semibold">Conquiste.</span>
+          </h2>
+          <p className="text-white/60 text-sm md:text-base mt-3 max-w-xs mx-auto">
+            O mensageiro moderno para seus negócios
+          </p>
+        </div>
       </div>
 
       <div className="absolute inset-0 pointer-events-none">
-        <div 
-          className="absolute w-2 h-2 rounded-full bg-white/60"
-          style={{ 
-            left: '10%', 
-            top: '30%',
-            animation: 'pulse 2s ease-in-out infinite',
-          }} 
-        />
-        <div 
-          className="absolute w-3 h-3 rounded-full bg-purple-300/60"
-          style={{ 
-            right: '15%', 
-            top: '25%',
-            animation: 'pulse 2.5s ease-in-out infinite 0.5s',
-          }} 
-        />
-        <div 
-          className="absolute w-2 h-2 rounded-full bg-pink-300/60"
-          style={{ 
-            left: '20%', 
-            bottom: '35%',
-            animation: 'pulse 3s ease-in-out infinite 1s',
-          }} 
-        />
-        <div 
-          className="absolute w-4 h-4 rounded-full bg-yellow-300/40"
-          style={{ 
-            right: '25%', 
-            bottom: '40%',
-            animation: 'pulse 2.8s ease-in-out infinite 0.3s',
-          }} 
-        />
+        {[...Array(6)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 rounded-full bg-white/40"
+            style={{
+              left: `${15 + i * 15}%`,
+              top: `${20 + (i % 3) * 25}%`,
+              animation: `float ${3 + i * 0.5}s ease-in-out infinite ${i * 0.3}s`,
+            }}
+          />
+        ))}
       </div>
     </div>
   );
