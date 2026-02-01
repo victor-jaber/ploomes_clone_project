@@ -10,6 +10,8 @@ import {
   pipelineTriggers,
   interactions,
   products,
+  clients,
+  opportunities,
   type Advogado,
   type InsertAdvogado,
   type Escritorio,
@@ -32,6 +34,10 @@ import {
   type InsertInteraction,
   type Product,
   type InsertProduct,
+  type Client,
+  type InsertClient,
+  type Opportunity,
+  type InsertOpportunity,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -111,6 +117,18 @@ export interface IStorage {
   getInteractions(leadId: string): Promise<Interaction[]>;
   createInteraction(interaction: InsertInteraction): Promise<Interaction>;
   deleteInteraction(id: string, ownerId: string): Promise<boolean>;
+
+  // Clients
+  getClients(ownerId: string): Promise<Client[]>;
+  createClient(client: InsertClient): Promise<Client>;
+  updateClient(id: string, client: Partial<InsertClient>, ownerId: string): Promise<Client | undefined>;
+  deleteClient(id: string, ownerId: string): Promise<boolean>;
+
+  // Opportunities
+  getOpportunities(ownerId: string): Promise<Opportunity[]>;
+  createOpportunity(opportunity: InsertOpportunity): Promise<Opportunity>;
+  updateOpportunity(id: string, opportunity: Partial<InsertOpportunity>, ownerId: string): Promise<Opportunity | undefined>;
+  deleteOpportunity(id: string, ownerId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -419,6 +437,54 @@ export class DatabaseStorage implements IStorage {
 
   async deleteInteraction(id: string, ownerId: string): Promise<boolean> {
     const result = await db.delete(interactions).where(and(eq(interactions.id, id), eq(interactions.ownerId, ownerId))).returning();
+    return result.length > 0;
+  }
+
+  // Clients
+  async getClients(ownerId: string): Promise<Client[]> {
+    return db.select().from(clients).where(eq(clients.ownerId, ownerId)).orderBy(desc(clients.createdAt));
+  }
+
+  async createClient(client: InsertClient): Promise<Client> {
+    const [newClient] = await db.insert(clients).values(client).returning();
+    return newClient;
+  }
+
+  async updateClient(id: string, client: Partial<InsertClient>, ownerId: string): Promise<Client | undefined> {
+    const [updated] = await db
+      .update(clients)
+      .set({ ...client, updatedAt: new Date() })
+      .where(and(eq(clients.id, id), eq(clients.ownerId, ownerId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteClient(id: string, ownerId: string): Promise<boolean> {
+    const result = await db.delete(clients).where(and(eq(clients.id, id), eq(clients.ownerId, ownerId))).returning();
+    return result.length > 0;
+  }
+
+  // Opportunities
+  async getOpportunities(ownerId: string): Promise<Opportunity[]> {
+    return db.select().from(opportunities).where(eq(opportunities.ownerId, ownerId)).orderBy(desc(opportunities.createdAt));
+  }
+
+  async createOpportunity(opportunity: InsertOpportunity): Promise<Opportunity> {
+    const [newOpportunity] = await db.insert(opportunities).values(opportunity).returning();
+    return newOpportunity;
+  }
+
+  async updateOpportunity(id: string, opportunity: Partial<InsertOpportunity>, ownerId: string): Promise<Opportunity | undefined> {
+    const [updated] = await db
+      .update(opportunities)
+      .set({ ...opportunity, updatedAt: new Date() })
+      .where(and(eq(opportunities.id, id), eq(opportunities.ownerId, ownerId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteOpportunity(id: string, ownerId: string): Promise<boolean> {
+    const result = await db.delete(opportunities).where(and(eq(opportunities.id, id), eq(opportunities.ownerId, ownerId))).returning();
     return result.length > 0;
   }
 }

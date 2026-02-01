@@ -15,6 +15,8 @@ import {
   insertProposalItemSchema,
   insertPipelineTriggerSchema,
   insertInteractionSchema,
+  insertClientSchema,
+  insertOpportunitySchema,
   type Lead,
   type Advogado,
   type Escritorio,
@@ -915,6 +917,114 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting interaction:", error);
       res.status(500).json({ message: "Failed to delete interaction" });
+    }
+  });
+
+  // Clients routes
+  app.get("/api/clients", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const clientsList = await storage.getClients(userId);
+      res.json(clientsList);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      res.status(500).json({ message: "Failed to fetch clients" });
+    }
+  });
+
+  app.post("/api/clients", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const validated = insertClientSchema.parse({ ...req.body, ownerId: userId });
+      const client = await storage.createClient(validated);
+      res.status(201).json(client);
+    } catch (error) {
+      console.error("Error creating client:", error);
+      res.status(500).json({ message: "Failed to create client" });
+    }
+  });
+
+  app.patch("/api/clients/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const client = await storage.updateClient(req.params.id, req.body, userId);
+      if (!client) {
+        res.status(404).json({ message: "Client not found" });
+        return;
+      }
+      res.json(client);
+    } catch (error) {
+      console.error("Error updating client:", error);
+      res.status(500).json({ message: "Failed to update client" });
+    }
+  });
+
+  app.delete("/api/clients/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const deleted = await storage.deleteClient(req.params.id, userId);
+      if (!deleted) {
+        res.status(404).json({ message: "Client not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      res.status(500).json({ message: "Failed to delete client" });
+    }
+  });
+
+  // Opportunities routes
+  app.get("/api/opportunities", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const opportunitiesList = await storage.getOpportunities(userId);
+      res.json(opportunitiesList);
+    } catch (error) {
+      console.error("Error fetching opportunities:", error);
+      res.status(500).json({ message: "Failed to fetch opportunities" });
+    }
+  });
+
+  app.post("/api/opportunities", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const validated = insertOpportunitySchema.parse({ ...req.body, ownerId: userId });
+      const opportunity = await storage.createOpportunity(validated);
+      res.status(201).json(opportunity);
+    } catch (error) {
+      console.error("Error creating opportunity:", error);
+      res.status(500).json({ message: "Failed to create opportunity" });
+    }
+  });
+
+  app.patch("/api/opportunities/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const opportunity = await storage.updateOpportunity(req.params.id, req.body, userId);
+      if (!opportunity) {
+        res.status(404).json({ message: "Opportunity not found" });
+        return;
+      }
+      res.json(opportunity);
+    } catch (error) {
+      console.error("Error updating opportunity:", error);
+      res.status(500).json({ message: "Failed to update opportunity" });
+    }
+  });
+
+  app.delete("/api/opportunities/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const deleted = await storage.deleteOpportunity(req.params.id, userId);
+      if (!deleted) {
+        res.status(404).json({ message: "Opportunity not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting opportunity:", error);
+      res.status(500).json({ message: "Failed to delete opportunity" });
     }
   });
 
