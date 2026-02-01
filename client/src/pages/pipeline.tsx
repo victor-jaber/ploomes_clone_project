@@ -164,7 +164,7 @@ function LeadDetailPanel({
   const leadActivities = activities.filter(a => a.leadId === lead.id);
 
   const { data: interactionsList = [], isLoading: loadingInteractions } = useQuery<Interaction[]>({
-    queryKey: ["/api/leads", lead.id, "interactions"],
+    queryKey: [`/api/leads/${lead.id}/interactions`],
   });
 
   const createInteractionMutation = useMutation({
@@ -176,7 +176,7 @@ function LeadDetailPanel({
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads", lead.id, "interactions"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/interactions`] });
       setCommentText("");
       toast({ title: "Comentário adicionado" });
     },
