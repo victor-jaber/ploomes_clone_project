@@ -117,6 +117,84 @@ function getStageColor(stageId: string, pipelineType: PipelineType) {
   return stage?.color || "bg-gray-500";
 }
 
+function InlineEditField({ 
+  value, 
+  onSave, 
+  type = "text",
+  className = "",
+  placeholder = ""
+}: { 
+  value: string; 
+  onSave: (val: string) => void;
+  type?: "text" | "number" | "currency" | "textarea";
+  className?: string;
+  placeholder?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [tempValue, setTempValue] = useState(value);
+
+  const handleBlur = () => {
+    setEditing(false);
+    if (tempValue !== value) {
+      onSave(tempValue);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && type !== "textarea") {
+      handleBlur();
+    }
+    if (e.key === "Escape") {
+      setTempValue(value);
+      setEditing(false);
+    }
+  };
+
+  if (editing) {
+    if (type === "textarea") {
+      return (
+        <Textarea
+          autoFocus
+          value={tempValue}
+          onChange={(e) => setTempValue(e.target.value)}
+          onBlur={handleBlur}
+          placeholder={placeholder}
+          className={`min-h-[60px] ${className}`}
+        />
+      );
+    }
+    return (
+      <Input
+        autoFocus
+        type={type === "currency" ? "number" : type}
+        value={tempValue}
+        onChange={(e) => setTempValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className={`h-8 ${className}`}
+        step={type === "currency" ? "0.01" : undefined}
+        placeholder={placeholder}
+      />
+    );
+  }
+
+  const displayValue = type === "currency" 
+    ? formatCurrency(Number(value) || 0)
+    : value || placeholder || "—";
+
+  return (
+    <span 
+      onClick={() => {
+        setTempValue(value);
+        setEditing(true);
+      }}
+      className={`cursor-pointer hover:bg-muted/50 px-2 py-1 rounded transition-colors inline-block min-w-[60px] ${className}`}
+    >
+      {displayValue}
+    </span>
+  );
+}
+
 function getEntityName(lead: Lead, advogados: Advogado[], escritorios: Escritorio[], reclamantes: Reclamante[]): string {
   if (lead.advogadoId) {
     const adv = advogados.find(a => a.id === lead.advogadoId);
@@ -156,19 +234,6 @@ function LeadDetailPanel({
 }) {
   const { toast } = useToast();
   const [commentText, setCommentText] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({
-    titulo: lead.titulo,
-    valor: lead.valor || "0",
-    descricao: lead.descricao || "",
-    probabilidade: lead.probabilidade?.toString() || "",
-    previsaoFechamento: lead.previsaoFechamento || "",
-    advogadoId: lead.advogadoId || "",
-    escritorioId: lead.escritorioId || "",
-    reclamanteId: lead.reclamanteId || "",
-    pipelineType: lead.pipelineType as PipelineType,
-    stage: lead.stage,
-  });
   
   const stages = PIPELINE_STAGES[pipelineType];
   const currentStageIndex = stages.findIndex(s => s.id === lead.stage);
@@ -180,31 +245,21 @@ function LeadDetailPanel({
     queryKey: [`/api/leads/${lead.id}/interactions`],
   });
 
-  const updateLeadMutation = useMutation({
-    mutationFn: async (data: Partial<typeof editData>) => {
-      return apiRequest("PATCH", `/api/leads/${lead.id}`, {
-        ...data,
-        valor: data.valor,
-        probabilidade: data.probabilidade ? parseInt(data.probabilidade) : null,
-        advogadoId: data.advogadoId || null,
-        escritorioId: data.escritorioId || null,
-        reclamanteId: data.reclamanteId || null,
-        pipelineType: data.pipelineType,
-        stage: data.stage,
-      });
+  const updateFieldMutation = useMutation({
+    mutationFn: async (data: Record<string, any>) => {
+      return apiRequest("PATCH", `/api/leads/${lead.id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
-      setIsEditing(false);
-      toast({ title: "Lead atualizado com sucesso" });
+      toast({ title: "Salvo" });
     },
     onError: () => {
       toast({ title: "Erro ao atualizar lead", variant: "destructive" });
     },
   });
 
-  const handleSaveEdit = () => {
-    updateLeadMutation.mutate(editData);
+  const handleUpdateField = (field: string, value: any) => {
+    updateFieldMutation.mutate({ [field]: value });
   };
 
   const createInteractionMutation = useMutation({
@@ -274,24 +329,6 @@ function LeadDetailPanel({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button
-              variant={isEditing ? "default" : "outline"}
-              size="sm"
-              onClick={() => isEditing ? handleSaveEdit() : setIsEditing(true)}
-              disabled={updateLeadMutation.isPending}
-              data-testid="button-edit-lead"
-            >
-              {isEditing ? (
-                <>Salvar</>
-              ) : (
-                <><Pencil className="h-4 w-4 mr-1" />Editar</>
-              )}
-            </Button>
-            {isEditing && (
-              <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
-                Cancelar
-              </Button>
-            )}
             <div className="text-right shrink-0">
               <div className="text-2xl font-bold text-primary">{formatCurrency(Number(lead.valor || 0))}</div>
               {currentStage && (
@@ -313,7 +350,7 @@ function LeadDetailPanel({
           ))}
         </div>
         
-        {nextStage && !isEditing && (
+        {nextStage && (
           <div className="flex justify-end mt-4">
             <Button 
               onClick={onAdvanceStage} 
@@ -338,119 +375,82 @@ function LeadDetailPanel({
                 <div className="space-y-3 text-sm">
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Título</Label>
-                    {isEditing ? (
-                      <Input 
-                        value={editData.titulo} 
-                        onChange={(e) => setEditData({...editData, titulo: e.target.value})}
-                        data-testid="input-edit-titulo"
-                      />
-                    ) : (
-                      <p className="font-medium">{lead.titulo}</p>
-                    )}
+                    <InlineEditField
+                      value={lead.titulo}
+                      onSave={(val) => handleUpdateField("titulo", val)}
+                      className="font-medium block"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Valor (R$)</Label>
-                    {isEditing ? (
-                      <Input 
-                        type="number"
-                        value={editData.valor} 
-                        onChange={(e) => setEditData({...editData, valor: e.target.value})}
-                        data-testid="input-edit-valor"
-                      />
-                    ) : (
-                      <p className="font-bold text-green-600">{formatCurrency(Number(lead.valor || 0))}</p>
-                    )}
+                    <InlineEditField
+                      value={lead.valor || "0"}
+                      type="currency"
+                      onSave={(val) => handleUpdateField("valor", val)}
+                      className="font-bold text-green-600 block"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Probabilidade (%)</Label>
-                    {isEditing ? (
-                      <Input 
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={editData.probabilidade} 
-                        onChange={(e) => setEditData({...editData, probabilidade: e.target.value})}
-                        placeholder="0-100"
-                        data-testid="input-edit-probabilidade"
-                      />
-                    ) : (
-                      <p>{lead.probabilidade !== null ? `${lead.probabilidade}%` : "—"}</p>
-                    )}
+                    <InlineEditField
+                      value={(lead.probabilidade || 0).toString()}
+                      type="number"
+                      onSave={(val) => handleUpdateField("probabilidade", parseInt(val) || 0)}
+                      placeholder="0-100"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Descrição</Label>
-                    {isEditing ? (
-                      <Textarea 
-                        value={editData.descricao} 
-                        onChange={(e) => setEditData({...editData, descricao: e.target.value})}
-                        placeholder="Descrição do lead..."
-                        className="min-h-[60px]"
-                        data-testid="input-edit-descricao"
-                      />
-                    ) : (
-                      <p className="text-muted-foreground">{lead.descricao || "—"}</p>
-                    )}
+                    <InlineEditField
+                      value={lead.descricao || ""}
+                      type="textarea"
+                      onSave={(val) => handleUpdateField("descricao", val)}
+                      placeholder="Clique para adicionar..."
+                      className="text-muted-foreground"
+                    />
                   </div>
-                  {isEditing ? (
-                    <>
-                      <div className="space-y-1 pt-2 border-t">
-                        <Label className="text-muted-foreground text-xs">Pipeline</Label>
-                        <Select 
-                          value={editData.pipelineType} 
-                          onValueChange={(v) => {
-                            const newPipeline = v as PipelineType;
-                            const newStages = PIPELINE_STAGES[newPipeline];
-                            setEditData({
-                              ...editData, 
-                              pipelineType: newPipeline,
-                              stage: newStages[0].id
-                            });
-                          }}
-                        >
-                          <SelectTrigger data-testid="select-pipeline">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(PIPELINE_LABELS).map(([key, { label }]) => (
-                              <SelectItem key={key} value={key}>{label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-muted-foreground text-xs">Estágio</Label>
-                        <Select 
-                          value={editData.stage} 
-                          onValueChange={(v) => setEditData({...editData, stage: v})}
-                        >
-                          <SelectTrigger data-testid="select-stage">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PIPELINE_STAGES[editData.pipelineType].map((s) => (
-                              <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex justify-between items-center pt-2 border-t">
-                        <span className="text-muted-foreground">Pipeline</span>
-                        <Badge variant="outline">{PIPELINE_LABELS[pipelineType].label}</Badge>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Estágio</span>
-                        <Badge className={`${currentStage?.color} text-white`}>{currentStage?.label}</Badge>
-                      </div>
-                      {lead.createdAt && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Criado em</span>
-                          <span>{new Date(lead.createdAt).toLocaleDateString("pt-BR")}</span>
-                        </div>
-                      )}
-                    </>
+                  <div className="space-y-1 pt-2 border-t">
+                    <Label className="text-muted-foreground text-xs">Pipeline</Label>
+                    <Select 
+                      value={lead.pipelineType} 
+                      onValueChange={(v) => {
+                        const newPipeline = v as PipelineType;
+                        const newStages = PIPELINE_STAGES[newPipeline];
+                        handleUpdateField("pipelineType", newPipeline);
+                        handleUpdateField("stage", newStages[0].id);
+                      }}
+                    >
+                      <SelectTrigger data-testid="select-pipeline">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(PIPELINE_LABELS).map(([key, { label }]) => (
+                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Estágio</Label>
+                    <Select 
+                      value={lead.stage} 
+                      onValueChange={(v) => handleUpdateField("stage", v)}
+                    >
+                      <SelectTrigger data-testid="select-stage">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stages.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {lead.createdAt && (
+                    <div className="flex justify-between items-center pt-2 border-t">
+                      <span className="text-muted-foreground">Criado em</span>
+                      <span>{new Date(lead.createdAt).toLocaleDateString("pt-BR")}</span>
+                    </div>
                   )}
                 </div>
               </Card>
@@ -460,28 +460,23 @@ function LeadDetailPanel({
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                 Advogado
               </h3>
-              <Card className="p-4">
-                {isEditing ? (
-                  <Select 
-                    value={editData.advogadoId} 
-                    onValueChange={(v) => setEditData({...editData, advogadoId: v})}
-                  >
-                    <SelectTrigger data-testid="select-advogado">
-                      <SelectValue placeholder="Selecione um advogado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Nenhum</SelectItem>
-                      {advogados.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : advogado ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Scale className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="font-medium truncate">{advogado.nome}</span>
-                    </div>
+              <Card className="p-4 space-y-3">
+                <Select 
+                  value={lead.advogadoId || ""} 
+                  onValueChange={(v) => handleUpdateField("advogadoId", v || null)}
+                >
+                  <SelectTrigger data-testid="select-advogado">
+                    <SelectValue placeholder="Selecione um advogado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {advogados.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {advogado && (
+                  <div className="space-y-2 pt-2 border-t">
                     {advogado.oab && (
                       <div className="text-xs text-muted-foreground">OAB: {advogado.oab}</div>
                     )}
@@ -498,10 +493,6 @@ function LeadDetailPanel({
                       </div>
                     )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    Nenhum advogado vinculado
-                  </p>
                 )}
               </Card>
             </div>
@@ -510,28 +501,23 @@ function LeadDetailPanel({
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                 Escritório
               </h3>
-              <Card className="p-4">
-                {isEditing ? (
-                  <Select 
-                    value={editData.escritorioId} 
-                    onValueChange={(v) => setEditData({...editData, escritorioId: v})}
-                  >
+              <Card className="p-4 space-y-3">
+                <Select 
+                  value={lead.escritorioId || ""} 
+                  onValueChange={(v) => handleUpdateField("escritorioId", v || null)}
+                >
                     <SelectTrigger data-testid="select-escritorio">
                       <SelectValue placeholder="Selecione um escritório" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Nenhum</SelectItem>
-                      {escritorios.map((e) => (
-                        <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : escritorio ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="font-medium truncate">{escritorio.nome}</span>
-                    </div>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {escritorios.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {escritorio && (
+                  <div className="space-y-2 pt-2 border-t">
                     {escritorio.cnpj && (
                       <div className="text-xs text-muted-foreground">CNPJ: {escritorio.cnpj}</div>
                     )}
@@ -548,10 +534,6 @@ function LeadDetailPanel({
                       </div>
                     )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    Nenhum escritório vinculado
-                  </p>
                 )}
               </Card>
             </div>
@@ -560,28 +542,23 @@ function LeadDetailPanel({
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                 Reclamante
               </h3>
-              <Card className="p-4">
-                {isEditing ? (
-                  <Select 
-                    value={editData.reclamanteId} 
-                    onValueChange={(v) => setEditData({...editData, reclamanteId: v})}
-                  >
-                    <SelectTrigger data-testid="select-reclamante">
-                      <SelectValue placeholder="Selecione um reclamante" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Nenhum</SelectItem>
-                      {reclamantes.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : reclamante ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="font-medium truncate">{reclamante.nome}</span>
-                    </div>
+              <Card className="p-4 space-y-3">
+                <Select 
+                  value={lead.reclamanteId || ""} 
+                  onValueChange={(v) => handleUpdateField("reclamanteId", v || null)}
+                >
+                  <SelectTrigger data-testid="select-reclamante">
+                    <SelectValue placeholder="Selecione um reclamante" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {reclamantes.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {reclamante && (
+                  <div className="space-y-2 pt-2 border-t">
                     {reclamante.cpf && (
                       <div className="text-xs text-muted-foreground">CPF: {reclamante.cpf}</div>
                     )}
@@ -595,10 +572,6 @@ function LeadDetailPanel({
                       </div>
                     )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    Nenhum reclamante vinculado
-                  </p>
                 )}
               </Card>
             </div>
