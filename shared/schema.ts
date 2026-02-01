@@ -454,3 +454,65 @@ export const PIPELINE_STAGES = {
 } as const;
 
 export type PipelineType = keyof typeof PIPELINE_STAGES;
+
+// Opportunity status enum
+export const opportunityStatusEnum = pgEnum("opportunity_status", [
+  "lead",
+  "qualified",
+  "proposal",
+  "negotiation",
+  "closed_won",
+  "closed_lost",
+  "falando_escritorio"
+]);
+
+// Clients table
+export const clients = pgTable("clients", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyName: text("company_name").notNull(),
+  tradeName: text("trade_name"),
+  cnpj: varchar("cnpj", { length: 18 }),
+  email: text("email"),
+  phone: varchar("phone", { length: 20 }),
+  website: text("website"),
+  address: text("address"),
+  city: text("city"),
+  state: varchar("state", { length: 2 }),
+  zipCode: varchar("zip_code", { length: 10 }),
+  segment: text("segment"),
+  notes: text("notes"),
+  ownerId: varchar("owner_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true, updatedAt: true });
+export type Client = typeof clients.$inferSelect;
+export type InsertClient = z.infer<typeof insertClientSchema>;
+
+// Opportunities table
+export const opportunities = pgTable("opportunities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  clientId: varchar("client_id").references(() => clients.id),
+  value: numeric("value", { precision: 12, scale: 2 }),
+  status: opportunityStatusEnum("status").default("lead"),
+  probability: integer("probability"),
+  expectedCloseDate: timestamp("expected_close_date"),
+  description: text("description"),
+  lostReason: text("lost_reason"),
+  ownerId: varchar("owner_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const opportunitiesRelations = relations(opportunities, ({ one }) => ({
+  client: one(clients, {
+    fields: [opportunities.clientId],
+    references: [clients.id],
+  }),
+}));
+
+export const insertOpportunitySchema = createInsertSchema(opportunities).omit({ id: true, createdAt: true, updatedAt: true });
+export type Opportunity = typeof opportunities.$inferSelect;
+export type InsertOpportunity = z.infer<typeof insertOpportunitySchema>;
