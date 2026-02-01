@@ -198,6 +198,7 @@ export const leads = pgTable("leads", {
   titulo: text("titulo").notNull(),
   pipelineType: pipelineTypeEnum("pipeline_type").notNull().default("advogados"),
   stage: text("stage").notNull().default("novo_lead"),
+  position: integer("position").default(0),
   
   // Referências opcionais dependendo do pipeline
   advogadoId: varchar("advogado_id").references(() => advogados.id, { onDelete: "cascade" }),

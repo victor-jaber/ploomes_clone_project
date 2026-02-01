@@ -1015,6 +1015,8 @@ function LeadCard({
   onDragStart,
   onDragEnd,
   onUpdateStage,
+  onDropOnLead,
+  isDragOver,
   isUpdating,
 }: {
   lead: Lead;
@@ -1026,6 +1028,8 @@ function LeadCard({
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDragEnd: () => void;
   onUpdateStage: (id: string, stage: string) => void;
+  onDropOnLead: (e: React.DragEvent, leadId: string) => void;
+  isDragOver: boolean;
   isUpdating: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -1046,6 +1050,11 @@ function LeadCard({
     setIsOpen(true);
   };
 
+  const handleDragOverCard = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   const currentStage = stages[currentStageIndex];
   const entityName = getEntityName(lead, advogados, escritorios, reclamantes);
 
@@ -1055,8 +1064,10 @@ function LeadCard({
         draggable
         onDragStart={(e) => onDragStart(e, lead.id)}
         onDragEnd={onDragEnd}
+        onDragOver={handleDragOverCard}
+        onDrop={(e) => onDropOnLead(e, lead.id)}
         onClick={handleCardClick}
-        className="cursor-pointer card-premium select-none group border-0"
+        className={`cursor-pointer card-premium select-none group border-0 transition-all ${isDragOver ? "ring-2 ring-primary ring-offset-1" : ""}`}
         data-testid={`pipeline-card-${lead.id}`}
       >
         <CardContent className="p-4 space-y-3">
@@ -1137,6 +1148,8 @@ function PipelineColumn({
   onDragStart,
   onDragEnd,
   onUpdateStage,
+  onDropOnLead,
+  dragOverLeadId,
   isLoading,
   isDragOver,
   isUpdating,
@@ -1154,11 +1167,16 @@ function PipelineColumn({
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDragEnd: () => void;
   onUpdateStage: (id: string, stage: string) => void;
+  onDropOnLead: (e: React.DragEvent, leadId: string, stageId: string) => void;
+  dragOverLeadId: string | null;
   isLoading: boolean;
   isDragOver: boolean;
   isUpdating: boolean;
 }) {
   const totalValue = leads.reduce((acc, l) => acc + Number(l.valor || 0), 0);
+  
+  // Sort leads by position
+  const sortedLeads = [...leads].sort((a, b) => (a.position || 0) - (b.position || 0));
 
   return (
     <div
@@ -1190,12 +1208,12 @@ function PipelineColumn({
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-24 w-full" />
             </>
-          ) : leads.length === 0 ? (
+          ) : sortedLeads.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
               Nenhum lead
             </div>
           ) : (
-            leads.map((lead) => (
+            sortedLeads.map((lead) => (
               <LeadCard
                 key={lead.id}
                 lead={lead}
@@ -1207,6 +1225,8 @@ function PipelineColumn({
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
                 onUpdateStage={onUpdateStage}
+                onDropOnLead={(e, leadId) => onDropOnLead(e, leadId, stage.id)}
+                isDragOver={dragOverLeadId === lead.id}
                 isUpdating={isUpdating}
               />
             ))
@@ -1653,6 +1673,7 @@ export default function PipelinePage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
+  const [dragOverLeadId, setDragOverLeadId] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<PipelineType>("advogados");
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1725,14 +1746,23 @@ export default function PipelinePage() {
   const stages = PIPELINE_STAGES[selectedPipeline];
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
-      return apiRequest("PATCH", `/api/leads/${id}`, { stage });
+    mutationFn: async ({ id, stage, position }: { id: string; stage?: string; position?: number }) => {
+      const data: { stage?: string; position?: number } = {};
+      if (stage !== undefined) data.stage = stage;
+      if (position !== undefined) data.position = position;
+      return apiRequest("PATCH", `/api/leads/${id}`, data);
     },
-    onMutate: async ({ id, stage }) => {
+    onMutate: async ({ id, stage, position }) => {
       await queryClient.cancelQueries({ queryKey: ["/api/leads"] });
       const previousLeads = queryClient.getQueryData<Lead[]>(["/api/leads"]);
       queryClient.setQueryData<Lead[]>(["/api/leads"], (old) =>
-        old?.map((lead) => (lead.id === id ? { ...lead, stage } : lead)) ?? []
+        old?.map((lead) => {
+          if (lead.id !== id) return lead;
+          const updates: Partial<Lead> = {};
+          if (stage !== undefined) updates.stage = stage;
+          if (position !== undefined) updates.position = position;
+          return { ...lead, ...updates };
+        }) ?? []
       );
       return { previousLeads };
     },
@@ -1796,18 +1826,70 @@ export default function PipelinePage() {
   const handleDragEnd = () => {
     setDraggedId(null);
     setDragOverStage(null);
+    setDragOverLeadId(null);
+  };
+
+  const handleDropOnLead = (e: React.DragEvent, targetLeadId: string, stageId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!draggedId || draggedId === targetLeadId) {
+      setDraggedId(null);
+      setDragOverStage(null);
+      setDragOverLeadId(null);
+      return;
+    }
+    
+    const stageLeads = filteredLeads
+      .filter(l => l.stage === stageId)
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
+    
+    const targetIndex = stageLeads.findIndex(l => l.id === targetLeadId);
+    const draggedLead = filteredLeads.find(l => l.id === draggedId);
+    
+    if (targetIndex === -1 || !draggedLead) {
+      setDraggedId(null);
+      setDragOverStage(null);
+      setDragOverLeadId(null);
+      return;
+    }
+    
+    // Calculate new position (insert above target)
+    const targetPosition = stageLeads[targetIndex].position || 0;
+    const prevPosition = targetIndex > 0 ? (stageLeads[targetIndex - 1].position || 0) : targetPosition - 1000;
+    const newPosition = Math.floor((prevPosition + targetPosition) / 2);
+    
+    // If same stage, just update position
+    if (draggedLead.stage === stageId) {
+      updateMutation.mutate({ id: draggedId, position: newPosition });
+    } else {
+      // Different stage - update stage and position
+      updateMutation.mutate({ id: draggedId, stage: stageId, position: newPosition });
+    }
+    
+    setDraggedId(null);
+    setDragOverStage(null);
+    setDragOverLeadId(null);
   };
 
   const handleDrop = (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
     if (draggedId) {
       const lead = filteredLeads.find((l) => l.id === draggedId);
-      if (lead && lead.stage !== stageId) {
-        updateMutation.mutate({ id: draggedId, stage: stageId });
+      if (lead) {
+        // Get max position in the target stage and put at the end
+        const stageLeads = filteredLeads.filter(l => l.stage === stageId);
+        const maxPosition = stageLeads.reduce((max, l) => Math.max(max, l.position || 0), 0);
+        const newPosition = maxPosition + 1000;
+        
+        if (lead.stage !== stageId) {
+          updateMutation.mutate({ id: draggedId, stage: stageId, position: newPosition });
+        }
       }
     }
     setDraggedId(null);
     setDragOverStage(null);
+    setDragOverLeadId(null);
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -2032,6 +2114,8 @@ export default function PipelinePage() {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
               onUpdateStage={(id, stage) => updateMutation.mutate({ id, stage })}
+              onDropOnLead={handleDropOnLead}
+              dragOverLeadId={dragOverLeadId}
               isLoading={isLoading}
               isDragOver={dragOverStage === stage.id}
               isUpdating={updateMutation.isPending}
