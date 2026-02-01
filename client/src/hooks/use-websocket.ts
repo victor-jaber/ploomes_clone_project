@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { queryClient } from "@/lib/queryClient";
-import type { Opportunity } from "@shared/schema";
+import type { Lead } from "@shared/schema";
 
 interface WebSocketMessage {
   type: string;
@@ -51,28 +51,28 @@ export function useWebSocket() {
         console.log("[WS]", message.payload.message);
         break;
 
-      case "opportunity_created":
-        queryClient.setQueryData<Opportunity[]>(["/api/opportunities"], (old) => {
+      case "lead_created":
+        queryClient.setQueryData<Lead[]>(["/api/leads"], (old) => {
           if (!old) return [message.payload];
-          const exists = old.some((o) => o.id === message.payload.id);
+          const exists = old.some((l) => l.id === message.payload.id);
           if (exists) return old;
           return [...old, message.payload];
         });
         break;
 
-      case "opportunity_updated":
-        queryClient.setQueryData<Opportunity[]>(["/api/opportunities"], (old) => {
+      case "lead_updated":
+        queryClient.setQueryData<Lead[]>(["/api/leads"], (old) => {
           if (!old) return old;
-          return old.map((o) =>
-            o.id === message.payload.id ? { ...o, ...message.payload } : o
+          return old.map((l) =>
+            l.id === message.payload.id ? { ...l, ...message.payload } : l
           );
         });
         break;
 
-      case "opportunity_deleted":
-        queryClient.setQueryData<Opportunity[]>(["/api/opportunities"], (old) => {
+      case "lead_deleted":
+        queryClient.setQueryData<Lead[]>(["/api/leads"], (old) => {
           if (!old) return old;
-          return old.filter((o) => o.id !== message.payload.id);
+          return old.filter((l) => l.id !== message.payload.id);
         });
         break;
 
