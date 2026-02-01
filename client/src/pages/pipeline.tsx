@@ -1510,10 +1510,7 @@ export default function PipelinePage() {
       <div className="mb-4">
         <Select value={selectedPipeline} onValueChange={(v) => setSelectedPipeline(v as PipelineType)}>
           <SelectTrigger className="w-64" data-testid="select-pipeline-type">
-            <div className="flex items-center gap-2">
-              {PIPELINE_LABELS[selectedPipeline].icon}
-              <SelectValue placeholder="Selecione o pipeline" />
-            </div>
+            <SelectValue placeholder="Selecione o pipeline" />
           </SelectTrigger>
           <SelectContent>
             {Object.entries(PIPELINE_LABELS).map(([key, { label, icon }]) => (
