@@ -188,7 +188,8 @@ export default function OpportunitiesPage() {
     );
   };
 
-  const getClientName = (clientId: string) => {
+  const getClientName = (clientId: string | null | undefined) => {
+    if (!clientId) return "-";
     return clients.find((c) => c.id === clientId)?.companyName || "-";
   };
 
@@ -229,7 +230,7 @@ export default function OpportunitiesPage() {
                 <Label htmlFor="clientId">Cliente *</Label>
                 <Select
                   name="clientId"
-                  defaultValue={editingOpportunity?.clientId}
+                  defaultValue={editingOpportunity?.clientId || undefined}
                   required
                 >
                   <SelectTrigger data-testid="select-opp-client">
