@@ -1026,6 +1026,7 @@ function LeadCard({
   onDragEnd,
   onUpdateStage,
   onDropOnLead,
+  onSelect,
   isDragOver,
   isUpdating,
 }: {
@@ -1039,10 +1040,10 @@ function LeadCard({
   onDragEnd: () => void;
   onUpdateStage: (id: string, stage: string) => void;
   onDropOnLead: (e: React.DragEvent, leadId: string) => void;
+  onSelect: (leadId: string) => void;
   isDragOver: boolean;
   isUpdating: boolean;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
   const stages = PIPELINE_STAGES[pipelineType];
   const currentStageIndex = stages.findIndex(s => s.id === lead.stage);
   const nextStage = currentStageIndex < stages.length - 1 ? stages[currentStageIndex + 1] : null;
@@ -1057,7 +1058,7 @@ function LeadCard({
     if ((e.target as HTMLElement).closest('[data-drag-handle]')) {
       return;
     }
-    setIsOpen(true);
+    onSelect(lead.id);
   };
 
   const handleDragOverCard = (e: React.DragEvent) => {
@@ -1069,7 +1070,6 @@ function LeadCard({
   const entityName = getEntityName(lead, advogados, escritorios, reclamantes);
 
   return (
-    <>
       <Card
         draggable
         onDragStart={(e) => onDragStart(e, lead.id)}
@@ -1124,24 +1124,7 @@ function LeadCard({
           </div>
         </CardContent>
       </Card>
-
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent className="w-full sm:max-w-3xl p-0 overflow-hidden">
-          <LeadDetailPanel
-            lead={lead}
-            advogados={advogados}
-            escritorios={escritorios}
-            reclamantes={reclamantes}
-            activities={activities}
-            pipelineType={pipelineType}
-            onClose={() => setIsOpen(false)}
-            onAdvanceStage={handleAdvanceStage}
-            isPending={isUpdating}
-          />
-        </SheetContent>
-      </Sheet>
-    </>
-  );
+    );
 }
 
 function PipelineColumn({
@@ -1159,6 +1142,7 @@ function PipelineColumn({
   onDragEnd,
   onUpdateStage,
   onDropOnLead,
+  onSelectLead,
   dragOverLeadId,
   isLoading,
   isDragOver,
@@ -1178,6 +1162,7 @@ function PipelineColumn({
   onDragEnd: () => void;
   onUpdateStage: (id: string, stage: string) => void;
   onDropOnLead: (e: React.DragEvent, leadId: string, stageId: string) => void;
+  onSelectLead: (leadId: string) => void;
   dragOverLeadId: string | null;
   isLoading: boolean;
   isDragOver: boolean;
@@ -1236,6 +1221,7 @@ function PipelineColumn({
                 onDragEnd={onDragEnd}
                 onUpdateStage={onUpdateStage}
                 onDropOnLead={(e, leadId) => onDropOnLead(e, leadId, stage.id)}
+                onSelect={onSelectLead}
                 isDragOver={dragOverLeadId === lead.id}
                 isUpdating={isUpdating}
               />
@@ -1685,6 +1671,7 @@ export default function PipelinePage() {
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
   const [dragOverLeadId, setDragOverLeadId] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<PipelineType>("advogados");
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDraggingScroll, setIsDraggingScroll] = useState(false);
@@ -2125,6 +2112,7 @@ export default function PipelinePage() {
               onDragEnd={handleDragEnd}
               onUpdateStage={(id, stage) => updateMutation.mutate({ id, stage })}
               onDropOnLead={handleDropOnLead}
+              onSelectLead={setSelectedLeadId}
               dragOverLeadId={dragOverLeadId}
               isLoading={isLoading}
               isDragOver={dragOverStage === stage.id}
@@ -2133,6 +2121,41 @@ export default function PipelinePage() {
           ))}
         </div>
       </div>
+
+      {/* Lead Detail Sheet - rendered at page level to prevent closure on updates */}
+      {selectedLeadId && (() => {
+        const selectedLead = leads.find(l => l.id === selectedLeadId);
+        if (!selectedLead) return null;
+        
+        const pipelineType = selectedLead.pipelineType as PipelineType;
+        const stages = PIPELINE_STAGES[pipelineType];
+        const currentStageIndex = stages.findIndex(s => s.id === selectedLead.stage);
+        const nextStage = currentStageIndex < stages.length - 1 ? stages[currentStageIndex + 1] : null;
+        
+        const handleAdvanceStage = () => {
+          if (nextStage) {
+            updateMutation.mutate({ id: selectedLeadId, stage: nextStage.id });
+          }
+        };
+        
+        return (
+          <Sheet open={true} onOpenChange={(open) => !open && setSelectedLeadId(null)}>
+            <SheetContent className="w-full sm:max-w-3xl p-0 overflow-hidden">
+              <LeadDetailPanel
+                lead={selectedLead}
+                advogados={advogados}
+                escritorios={escritorios}
+                reclamantes={reclamantes}
+                activities={activities}
+                pipelineType={pipelineType}
+                onClose={() => setSelectedLeadId(null)}
+                onAdvanceStage={handleAdvanceStage}
+                isPending={updateMutation.isPending}
+              />
+            </SheetContent>
+          </Sheet>
+        );
+      })()}
     </div>
   );
 }
