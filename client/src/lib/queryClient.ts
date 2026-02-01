@@ -22,8 +22,8 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const headers: HeadersInit = {
-    ...getAuthHeaders(),
+  const headers: Record<string, string> = {
+    ...(getAuthHeaders() as Record<string, string>),
   };
   
   if (data) {
