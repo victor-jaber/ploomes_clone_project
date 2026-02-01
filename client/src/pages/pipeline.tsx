@@ -166,6 +166,8 @@ function LeadDetailPanel({
     advogadoId: lead.advogadoId || "",
     escritorioId: lead.escritorioId || "",
     reclamanteId: lead.reclamanteId || "",
+    pipelineType: lead.pipelineType as PipelineType,
+    stage: lead.stage,
   });
   
   const stages = PIPELINE_STAGES[pipelineType];
@@ -187,6 +189,8 @@ function LeadDetailPanel({
         advogadoId: data.advogadoId || null,
         escritorioId: data.escritorioId || null,
         reclamanteId: data.reclamanteId || null,
+        pipelineType: data.pipelineType,
+        stage: data.stage,
       });
     },
     onSuccess: () => {
@@ -387,7 +391,50 @@ function LeadDetailPanel({
                       <p className="text-muted-foreground">{lead.descricao || "—"}</p>
                     )}
                   </div>
-                  {!isEditing && (
+                  {isEditing ? (
+                    <>
+                      <div className="space-y-1 pt-2 border-t">
+                        <Label className="text-muted-foreground text-xs">Pipeline</Label>
+                        <Select 
+                          value={editData.pipelineType} 
+                          onValueChange={(v) => {
+                            const newPipeline = v as PipelineType;
+                            const newStages = PIPELINE_STAGES[newPipeline];
+                            setEditData({
+                              ...editData, 
+                              pipelineType: newPipeline,
+                              stage: newStages[0].id
+                            });
+                          }}
+                        >
+                          <SelectTrigger data-testid="select-pipeline">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(PIPELINE_LABELS).map(([key, { label }]) => (
+                              <SelectItem key={key} value={key}>{label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-muted-foreground text-xs">Estágio</Label>
+                        <Select 
+                          value={editData.stage} 
+                          onValueChange={(v) => setEditData({...editData, stage: v})}
+                        >
+                          <SelectTrigger data-testid="select-stage">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PIPELINE_STAGES[editData.pipelineType].map((s) => (
+                              <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  ) : (
                     <>
                       <div className="flex justify-between items-center pt-2 border-t">
                         <span className="text-muted-foreground">Pipeline</span>
