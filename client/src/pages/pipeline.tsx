@@ -240,6 +240,12 @@ function LeadDetailPanel({
 }) {
   const { toast } = useToast();
   const [commentText, setCommentText] = useState("");
+  const [showNewAdvogado, setShowNewAdvogado] = useState(false);
+  const [showNewEscritorio, setShowNewEscritorio] = useState(false);
+  const [showNewReclamante, setShowNewReclamante] = useState(false);
+  const [newAdvogado, setNewAdvogado] = useState({ nome: "", oab: "", telefone: "", email: "", numeroCaso: "" });
+  const [newEscritorio, setNewEscritorio] = useState({ nome: "", cnpj: "", telefone: "", email: "", numeroCaso: "" });
+  const [newReclamante, setNewReclamante] = useState({ nome: "", cpf: "", telefone: "", email: "", processoNumero: "" });
   
   const stages = PIPELINE_STAGES[pipelineType];
   const currentStageIndex = stages.findIndex(s => s.id === lead.stage);
@@ -283,6 +289,57 @@ function LeadDetailPanel({
     },
     onError: () => {
       toast({ title: "Erro ao adicionar comentário", variant: "destructive" });
+    },
+  });
+
+  const createAdvogadoMutation = useMutation({
+    mutationFn: async (data: typeof newAdvogado) => {
+      return apiRequest("POST", "/api/advogados", data);
+    },
+    onSuccess: async (response) => {
+      const created = await response.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/advogados"] });
+      handleUpdateField("advogadoId", created.id);
+      setShowNewAdvogado(false);
+      setNewAdvogado({ nome: "", oab: "", telefone: "", email: "", numeroCaso: "" });
+      toast({ title: "Advogado criado e vinculado" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao criar advogado", variant: "destructive" });
+    },
+  });
+
+  const createEscritorioMutation = useMutation({
+    mutationFn: async (data: typeof newEscritorio) => {
+      return apiRequest("POST", "/api/escritorios", data);
+    },
+    onSuccess: async (response) => {
+      const created = await response.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/escritorios"] });
+      handleUpdateField("escritorioId", created.id);
+      setShowNewEscritorio(false);
+      setNewEscritorio({ nome: "", cnpj: "", telefone: "", email: "", numeroCaso: "" });
+      toast({ title: "Escritório criado e vinculado" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao criar escritório", variant: "destructive" });
+    },
+  });
+
+  const createReclamanteMutation = useMutation({
+    mutationFn: async (data: typeof newReclamante) => {
+      return apiRequest("POST", "/api/reclamantes", data);
+    },
+    onSuccess: async (response) => {
+      const created = await response.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/reclamantes"] });
+      handleUpdateField("reclamanteId", created.id);
+      setShowNewReclamante(false);
+      setNewReclamante({ nome: "", cpf: "", telefone: "", email: "", processoNumero: "" });
+      toast({ title: "Reclamante criado e vinculado" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao criar reclamante", variant: "destructive" });
     },
   });
 
@@ -463,121 +520,304 @@ function LeadDetailPanel({
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Advogado
-              </h3>
-              <Card className="p-4 space-y-3">
-                <Select 
-                  value={lead.advogadoId || "none"} 
-                  onValueChange={(v) => handleUpdateField("advogadoId", v === "none" ? null : v)}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Advogado
+                </h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 text-xs"
+                  onClick={() => setShowNewAdvogado(!showNewAdvogado)}
                 >
-                  <SelectTrigger data-testid="select-advogado">
-                    <SelectValue placeholder="Selecione um advogado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {advogados.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {advogado && (
-                  <div className="space-y-2 pt-2 border-t">
-                    {advogado.oab && (
-                      <div className="text-xs text-muted-foreground">OAB: {advogado.oab}</div>
-                    )}
-                    {advogado.telefone && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-muted-foreground">{advogado.telefone}</span>
-                      </div>
-                    )}
-                    {advogado.email && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-muted-foreground truncate">{advogado.email}</span>
-                      </div>
-                    )}
+                  <Plus className="h-3 w-3 mr-1" />
+                  Novo
+                </Button>
+              </div>
+              <Card className="p-4 space-y-3">
+                {showNewAdvogado ? (
+                  <div className="space-y-3">
+                    <Input
+                      placeholder="Nome *"
+                      value={newAdvogado.nome}
+                      onChange={(e) => setNewAdvogado({...newAdvogado, nome: e.target.value})}
+                    />
+                    <Input
+                      placeholder="OAB"
+                      value={newAdvogado.oab}
+                      onChange={(e) => setNewAdvogado({...newAdvogado, oab: e.target.value})}
+                    />
+                    <Input
+                      placeholder="Telefone"
+                      value={newAdvogado.telefone}
+                      onChange={(e) => setNewAdvogado({...newAdvogado, telefone: e.target.value})}
+                    />
+                    <Input
+                      placeholder="Email"
+                      value={newAdvogado.email}
+                      onChange={(e) => setNewAdvogado({...newAdvogado, email: e.target.value})}
+                    />
+                    <Input
+                      placeholder="Número do Caso"
+                      value={newAdvogado.numeroCaso}
+                      onChange={(e) => setNewAdvogado({...newAdvogado, numeroCaso: e.target.value})}
+                    />
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        onClick={() => createAdvogadoMutation.mutate(newAdvogado)}
+                        disabled={!newAdvogado.nome || createAdvogadoMutation.isPending}
+                      >
+                        {createAdvogadoMutation.isPending ? "Salvando..." : "Salvar"}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowNewAdvogado(false)}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    <Select 
+                      value={lead.advogadoId || "none"} 
+                      onValueChange={(v) => handleUpdateField("advogadoId", v === "none" ? null : v)}
+                    >
+                      <SelectTrigger data-testid="select-advogado">
+                        <SelectValue placeholder="Selecione um advogado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {advogados.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>{a.nome}{a.numeroCaso ? ` (${a.numeroCaso})` : ""}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {advogado && (
+                      <div className="space-y-2 pt-2 border-t">
+                        {advogado.oab && (
+                          <div className="text-xs text-muted-foreground">OAB: {advogado.oab}</div>
+                        )}
+                        {(advogado as any).numeroCaso && (
+                          <div className="text-xs text-muted-foreground">Caso: {(advogado as any).numeroCaso}</div>
+                        )}
+                        {advogado.telefone && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground">{advogado.telefone}</span>
+                          </div>
+                        )}
+                        {advogado.email && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground truncate">{advogado.email}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </Card>
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Escritório
-              </h3>
-              <Card className="p-4 space-y-3">
-                <Select 
-                  value={lead.escritorioId || "none"} 
-                  onValueChange={(v) => handleUpdateField("escritorioId", v === "none" ? null : v)}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Escritório
+                </h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 text-xs"
+                  onClick={() => setShowNewEscritorio(!showNewEscritorio)}
                 >
-                    <SelectTrigger data-testid="select-escritorio">
-                      <SelectValue placeholder="Selecione um escritório" />
-                    </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {escritorios.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {escritorio && (
-                  <div className="space-y-2 pt-2 border-t">
-                    {escritorio.cnpj && (
-                      <div className="text-xs text-muted-foreground">CNPJ: {escritorio.cnpj}</div>
-                    )}
-                    {escritorio.telefone && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-muted-foreground">{escritorio.telefone}</span>
-                      </div>
-                    )}
-                    {escritorio.email && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-muted-foreground truncate">{escritorio.email}</span>
-                      </div>
-                    )}
+                  <Plus className="h-3 w-3 mr-1" />
+                  Novo
+                </Button>
+              </div>
+              <Card className="p-4 space-y-3">
+                {showNewEscritorio ? (
+                  <div className="space-y-3">
+                    <Input
+                      placeholder="Nome *"
+                      value={newEscritorio.nome}
+                      onChange={(e) => setNewEscritorio({...newEscritorio, nome: e.target.value})}
+                    />
+                    <Input
+                      placeholder="CNPJ"
+                      value={newEscritorio.cnpj}
+                      onChange={(e) => setNewEscritorio({...newEscritorio, cnpj: e.target.value})}
+                    />
+                    <Input
+                      placeholder="Telefone"
+                      value={newEscritorio.telefone}
+                      onChange={(e) => setNewEscritorio({...newEscritorio, telefone: e.target.value})}
+                    />
+                    <Input
+                      placeholder="Email"
+                      value={newEscritorio.email}
+                      onChange={(e) => setNewEscritorio({...newEscritorio, email: e.target.value})}
+                    />
+                    <Input
+                      placeholder="Número do Caso"
+                      value={newEscritorio.numeroCaso}
+                      onChange={(e) => setNewEscritorio({...newEscritorio, numeroCaso: e.target.value})}
+                    />
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        onClick={() => createEscritorioMutation.mutate(newEscritorio)}
+                        disabled={!newEscritorio.nome || createEscritorioMutation.isPending}
+                      >
+                        {createEscritorioMutation.isPending ? "Salvando..." : "Salvar"}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowNewEscritorio(false)}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    <Select 
+                      value={lead.escritorioId || "none"} 
+                      onValueChange={(v) => handleUpdateField("escritorioId", v === "none" ? null : v)}
+                    >
+                      <SelectTrigger data-testid="select-escritorio">
+                        <SelectValue placeholder="Selecione um escritório" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {escritorios.map((e) => (
+                          <SelectItem key={e.id} value={e.id}>{e.nome}{(e as any).numeroCaso ? ` (${(e as any).numeroCaso})` : ""}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {escritorio && (
+                      <div className="space-y-2 pt-2 border-t">
+                        {escritorio.cnpj && (
+                          <div className="text-xs text-muted-foreground">CNPJ: {escritorio.cnpj}</div>
+                        )}
+                        {(escritorio as any).numeroCaso && (
+                          <div className="text-xs text-muted-foreground">Caso: {(escritorio as any).numeroCaso}</div>
+                        )}
+                        {escritorio.telefone && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground">{escritorio.telefone}</span>
+                          </div>
+                        )}
+                        {escritorio.email && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground truncate">{escritorio.email}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </Card>
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Reclamante
-              </h3>
-              <Card className="p-4 space-y-3">
-                <Select 
-                  value={lead.reclamanteId || "none"} 
-                  onValueChange={(v) => handleUpdateField("reclamanteId", v === "none" ? null : v)}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Reclamante
+                </h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 text-xs"
+                  onClick={() => setShowNewReclamante(!showNewReclamante)}
                 >
-                  <SelectTrigger data-testid="select-reclamante">
-                    <SelectValue placeholder="Selecione um reclamante" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {reclamantes.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {reclamante && (
-                  <div className="space-y-2 pt-2 border-t">
-                    {reclamante.cpf && (
-                      <div className="text-xs text-muted-foreground">CPF: {reclamante.cpf}</div>
-                    )}
-                    {reclamante.processoNumero && (
-                      <div className="text-xs text-muted-foreground">Processo: {reclamante.processoNumero}</div>
-                    )}
-                    {reclamante.telefone && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-muted-foreground">{reclamante.telefone}</span>
+                  <Plus className="h-3 w-3 mr-1" />
+                  Novo
+                </Button>
+              </div>
+              <Card className="p-4 space-y-3">
+                {showNewReclamante ? (
+                  <div className="space-y-3">
+                    <Input
+                      placeholder="Nome *"
+                      value={newReclamante.nome}
+                      onChange={(e) => setNewReclamante({...newReclamante, nome: e.target.value})}
+                    />
+                    <Input
+                      placeholder="CPF"
+                      value={newReclamante.cpf}
+                      onChange={(e) => setNewReclamante({...newReclamante, cpf: e.target.value})}
+                    />
+                    <Input
+                      placeholder="Telefone"
+                      value={newReclamante.telefone}
+                      onChange={(e) => setNewReclamante({...newReclamante, telefone: e.target.value})}
+                    />
+                    <Input
+                      placeholder="Email"
+                      value={newReclamante.email}
+                      onChange={(e) => setNewReclamante({...newReclamante, email: e.target.value})}
+                    />
+                    <Input
+                      placeholder="Número do Processo/Caso"
+                      value={newReclamante.processoNumero}
+                      onChange={(e) => setNewReclamante({...newReclamante, processoNumero: e.target.value})}
+                    />
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        onClick={() => createReclamanteMutation.mutate(newReclamante)}
+                        disabled={!newReclamante.nome || createReclamanteMutation.isPending}
+                      >
+                        {createReclamanteMutation.isPending ? "Salvando..." : "Salvar"}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowNewReclamante(false)}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Select 
+                      value={lead.reclamanteId || "none"} 
+                      onValueChange={(v) => handleUpdateField("reclamanteId", v === "none" ? null : v)}
+                    >
+                      <SelectTrigger data-testid="select-reclamante">
+                        <SelectValue placeholder="Selecione um reclamante" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {reclamantes.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>{r.nome}{r.processoNumero ? ` (${r.processoNumero})` : ""}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {reclamante && (
+                      <div className="space-y-2 pt-2 border-t">
+                        {reclamante.cpf && (
+                          <div className="text-xs text-muted-foreground">CPF: {reclamante.cpf}</div>
+                        )}
+                        {reclamante.processoNumero && (
+                          <div className="text-xs text-muted-foreground">Processo: {reclamante.processoNumero}</div>
+                        )}
+                        {reclamante.telefone && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground">{reclamante.telefone}</span>
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
+                  </>
                 )}
               </Card>
             </div>
