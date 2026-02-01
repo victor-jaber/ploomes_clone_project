@@ -50,7 +50,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
@@ -1508,16 +1507,26 @@ export default function PipelinePage() {
         </div>
       </div>
 
-      <Tabs value={selectedPipeline} onValueChange={(v) => setSelectedPipeline(v as PipelineType)}>
-        <TabsList className="grid w-full grid-cols-5">
-          {Object.entries(PIPELINE_LABELS).map(([key, { label, icon }]) => (
-            <TabsTrigger key={key} value={key} className="flex items-center gap-2" data-testid={`tab-pipeline-${key}`}>
-              {icon}
-              <span className="hidden sm:inline">{label}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <div className="mb-4">
+        <Select value={selectedPipeline} onValueChange={(v) => setSelectedPipeline(v as PipelineType)}>
+          <SelectTrigger className="w-64" data-testid="select-pipeline-type">
+            <div className="flex items-center gap-2">
+              {PIPELINE_LABELS[selectedPipeline].icon}
+              <SelectValue placeholder="Selecione o pipeline" />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(PIPELINE_LABELS).map(([key, { label, icon }]) => (
+              <SelectItem key={key} value={key} data-testid={`option-pipeline-${key}`}>
+                <div className="flex items-center gap-2">
+                  {icon}
+                  <span>{label}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <div 
         ref={scrollContainerRef}
