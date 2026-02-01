@@ -440,7 +440,7 @@ export const PIPELINE_STAGES = {
   triagem: [
     { id: "novo_caso", label: "Novo Caso", color: "bg-blue-500" },
     { id: "prioridade", label: "Prioridade", color: "bg-purple-500" },
-    { id: "triagem", label: "Triagem", color: "bg-cyan-500" },
+    { id: "triagem", label: "Triagem", color: "bg-teal-600" },
     { id: "acompanhar", label: "Acompanhar", color: "bg-yellow-500" },
     { id: "discutir", label: "Discutir", color: "bg-orange-500" },
     { id: "qualificar", label: "Qualificar", color: "bg-green-500" },
