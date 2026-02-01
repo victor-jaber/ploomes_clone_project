@@ -52,24 +52,24 @@ class WebSocketManager {
     });
   }
 
-  broadcastOpportunityUpdate(opportunity: any) {
+  broadcastLeadUpdate(lead: any) {
     this.broadcast({
-      type: "opportunity_updated",
-      payload: opportunity,
+      type: "lead_updated",
+      payload: lead,
     });
   }
 
-  broadcastOpportunityCreated(opportunity: any) {
+  broadcastLeadCreated(lead: any) {
     this.broadcast({
-      type: "opportunity_created",
-      payload: opportunity,
+      type: "lead_created",
+      payload: lead,
     });
   }
 
-  broadcastOpportunityDeleted(opportunityId: string) {
+  broadcastLeadDeleted(leadId: string) {
     this.broadcast({
-      type: "opportunity_deleted",
-      payload: { id: opportunityId },
+      type: "lead_deleted",
+      payload: { id: leadId },
     });
   }
 }
