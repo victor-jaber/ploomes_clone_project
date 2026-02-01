@@ -261,12 +261,22 @@ function LeadDetailPanel({
     mutationFn: async (data: Record<string, any>) => {
       return apiRequest("PATCH", `/api/leads/${lead.id}`, data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
-      toast({ title: "Salvo" });
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/leads"] });
+      const previousLeads = queryClient.getQueryData<Lead[]>(["/api/leads"]);
+      queryClient.setQueryData<Lead[]>(["/api/leads"], (old) =>
+        old?.map((l) => (l.id === lead.id ? { ...l, ...data } : l)) ?? []
+      );
+      return { previousLeads };
     },
-    onError: () => {
+    onError: (err, variables, context) => {
+      if (context?.previousLeads) {
+        queryClient.setQueryData(["/api/leads"], context.previousLeads);
+      }
       toast({ title: "Erro ao atualizar lead", variant: "destructive" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
     },
   });
 
