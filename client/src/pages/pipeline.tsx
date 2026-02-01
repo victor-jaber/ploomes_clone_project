@@ -270,7 +270,51 @@ function LeadDetailPanel({
       <div className="flex-1 flex overflow-hidden">
         <div className="w-80 border-r bg-muted/10 overflow-y-auto">
           <div className="p-4 space-y-6">
-            {advogado && (
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Dados Básicos
+              </h3>
+              <Card className="p-4">
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Título</span>
+                    <span className="font-medium text-right max-w-[60%] truncate">{lead.titulo}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Valor</span>
+                    <span className="font-bold text-green-600">{formatCurrency(Number(lead.valor || 0))}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Pipeline</span>
+                    <Badge variant="outline">{PIPELINE_LABELS[pipelineType].label}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Estágio</span>
+                    <Badge className={`${currentStage?.color} text-white`}>{currentStage?.label}</Badge>
+                  </div>
+                  {lead.probabilidade !== null && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Probabilidade</span>
+                      <Badge variant="secondary">{lead.probabilidade}%</Badge>
+                    </div>
+                  )}
+                  {lead.previsaoFechamento && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Previsão</span>
+                      <span className="font-medium">{new Date(lead.previsaoFechamento).toLocaleDateString("pt-BR")}</span>
+                    </div>
+                  )}
+                  {lead.createdAt && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Criado em</span>
+                      <span>{new Date(lead.createdAt).toLocaleDateString("pt-BR")}</span>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </div>
+
+            {advogado ? (
               <div>
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   Advogado
@@ -299,9 +343,20 @@ function LeadDetailPanel({
                   </div>
                 </Card>
               </div>
+            ) : pipelineType === "advogados" && (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Advogado
+                </h3>
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    Nenhum advogado vinculado
+                  </p>
+                </Card>
+              </div>
             )}
 
-            {escritorio && (
+            {escritorio ? (
               <div>
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   Escritório
@@ -330,9 +385,20 @@ function LeadDetailPanel({
                   </div>
                 </Card>
               </div>
+            ) : pipelineType === "escritorios" && (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Escritório
+                </h3>
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    Nenhum escritório vinculado
+                  </p>
+                </Card>
+              </div>
             )}
 
-            {reclamante && (
+            {reclamante ? (
               <div>
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   Reclamante
@@ -358,35 +424,65 @@ function LeadDetailPanel({
                   </div>
                 </Card>
               </div>
+            ) : pipelineType === "reclamantes" && (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Reclamante
+                </h3>
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    Nenhum reclamante vinculado
+                  </p>
+                </Card>
+              </div>
             )}
 
-            <div>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Detalhes do Lead
-              </h3>
-              <Card className="p-4">
-                <div className="space-y-3 text-sm">
-                  {lead.probabilidade !== null && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Probabilidade</span>
-                      <Badge variant="secondary">{lead.probabilidade}%</Badge>
-                    </div>
-                  )}
-                  {lead.previsaoFechamento && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Previsão</span>
-                      <span className="font-medium">{new Date(lead.previsaoFechamento).toLocaleDateString("pt-BR")}</span>
-                    </div>
-                  )}
-                  {lead.descricao && (
-                    <div className="pt-2 border-t">
-                      <span className="text-muted-foreground text-xs block mb-1">Descrição</span>
-                      <p className="text-sm whitespace-pre-wrap">{lead.descricao}</p>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            </div>
+            {lead.descricao && (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Descrição
+                </h3>
+                <Card className="p-4">
+                  <p className="text-sm whitespace-pre-wrap">{lead.descricao}</p>
+                </Card>
+              </div>
+            )}
+
+            {(lead.valorFechamento || lead.percentualComissao || lead.formaPagamento || lead.observacoesFinanceiras) && (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Informações Financeiras
+                </h3>
+                <Card className="p-4">
+                  <div className="space-y-3 text-sm">
+                    {lead.valorFechamento && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Valor Fechamento</span>
+                        <span className="font-bold text-green-600">{formatCurrency(Number(lead.valorFechamento))}</span>
+                      </div>
+                    )}
+                    {lead.percentualComissao && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Comissão</span>
+                        <span>{lead.percentualComissao}%</span>
+                      </div>
+                    )}
+                    {lead.formaPagamento && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Forma de Pagamento</span>
+                        <span>{lead.formaPagamento}</span>
+                      </div>
+                    )}
+                    {lead.observacoesFinanceiras && (
+                      <div className="pt-2 border-t">
+                        <span className="text-muted-foreground text-xs block mb-1">Observações</span>
+                        <p className="text-sm whitespace-pre-wrap">{lead.observacoesFinanceiras}</p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
           </div>
         </div>
 
