@@ -20,52 +20,61 @@ interface LoginPageProps {
   onLogin: (user: { id: string; name: string; email: string }, token: string) => void;
 }
 
-function HermesIllustration() {
+function LoginIllustration() {
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden px-12">
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 0.8; }
-        }
-      `}</style>
-
-      <div className="absolute top-20 right-20 w-32 h-32 rounded-full bg-white/10 blur-2xl" />
-      <div className="absolute bottom-32 left-16 w-40 h-40 rounded-full bg-white/5 blur-3xl" />
-
-      <div className="text-center z-10" style={{ animation: 'float 6s ease-in-out infinite' }}>
-        <div className="text-8xl md:text-9xl font-bold text-white/90 tracking-tight">
-          H
-        </div>
-        <div className="mt-4 text-white/70 text-xl tracking-[0.4em] uppercase font-light">
-          Hermes
-        </div>
-      </div>
-
-      <div className="absolute bottom-20 text-center z-10">
-        <p className="text-white/50 text-sm tracking-wider">
-          Velocidade e conexão para seus negócios
-        </p>
-      </div>
-
-      <div className="absolute inset-0 pointer-events-none">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="absolute w-2 h-2 rounded-full bg-white/30"
-            style={{
-              left: `${25 + i * 25}%`,
-              top: `${30 + i * 15}%`,
-              animation: `pulse ${3 + i}s ease-in-out infinite ${i * 0.5}s`,
-            }}
-          />
-        ))}
-      </div>
-    </div>
+    <svg viewBox="0 0 500 400" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="380" cy="320" rx="100" ry="30" fill="white" fillOpacity="0.1" />
+      
+      <g opacity="0.3">
+        <ellipse cx="100" cy="80" rx="60" ry="25" fill="white" />
+        <ellipse cx="80" cy="75" rx="40" ry="18" fill="white" />
+        <ellipse cx="130" cy="85" rx="35" ry="15" fill="white" />
+      </g>
+      <g opacity="0.25">
+        <ellipse cx="420" cy="120" rx="55" ry="22" fill="white" />
+        <ellipse cx="400" cy="115" rx="35" ry="15" fill="white" />
+        <ellipse cx="450" cy="125" rx="30" ry="12" fill="white" />
+      </g>
+      <g opacity="0.2">
+        <ellipse cx="80" cy="280" rx="50" ry="20" fill="white" />
+        <ellipse cx="60" cy="275" rx="30" ry="12" fill="white" />
+        <ellipse cx="110" cy="285" rx="25" ry="10" fill="white" />
+      </g>
+      
+      <rect x="180" y="80" width="140" height="240" rx="20" fill="white" fillOpacity="0.95" />
+      <rect x="190" y="100" width="120" height="200" rx="12" fill="url(#screenGradient)" />
+      
+      <circle cx="250" cy="200" r="45" fill="white" fillOpacity="0.2" stroke="white" strokeWidth="3" />
+      <circle cx="250" cy="200" r="30" fill="white" fillOpacity="0.1" />
+      <path d="M235 200 L245 210 L265 190" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      
+      <circle cx="250" cy="200" r="55" fill="none" stroke="white" strokeWidth="2" strokeDasharray="8 6" opacity="0.5">
+        <animateTransform attributeName="transform" type="rotate" from="0 250 200" to="360 250 200" dur="20s" repeatCount="indefinite" />
+      </circle>
+      
+      <g transform="translate(380, 180)">
+        <rect x="-25" y="-25" width="50" height="50" rx="10" fill="white" fillOpacity="0.9" />
+        <circle cx="0" cy="-5" r="8" fill="none" stroke="#6366f1" strokeWidth="2.5" />
+        <rect x="-3" y="5" width="6" height="12" rx="2" fill="#6366f1" />
+      </g>
+      
+      <g transform="translate(120, 160)">
+        <circle cx="0" cy="0" r="25" fill="white" fillOpacity="0.9" />
+        <path d="M-8 0 L-2 6 L10 -6" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+      
+      <circle cx="320" cy="100" r="8" fill="white" fillOpacity="0.6" />
+      <circle cx="150" cy="220" r="6" fill="white" fillOpacity="0.5" />
+      <circle cx="400" cy="260" r="10" fill="white" fillOpacity="0.4" />
+      <circle cx="100" cy="140" r="5" fill="white" fillOpacity="0.5" />
+      
+      <defs>
+        <linearGradient id="screenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#818cf8" />
+          <stop offset="100%" stopColor="#6366f1" />
+        </linearGradient>
+      </defs>
+    </svg>
   );
 }
 
@@ -193,8 +202,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </div>
       </div>
 
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 items-center justify-center relative overflow-hidden">
-        <HermesIllustration />
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600 items-center justify-center p-12 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-white/20 rounded-full blur-xl" />
+          <div className="absolute bottom-32 right-20 w-40 h-40 bg-white/15 rounded-full blur-2xl" />
+          <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-white/10 rounded-full blur-xl" />
+        </div>
+        
+        <div className="relative w-full max-w-lg">
+          <LoginIllustration />
+        </div>
       </div>
     </div>
   );
