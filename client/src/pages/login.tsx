@@ -33,7 +33,7 @@ function HermesIllustration() {
   };
 
   const parallaxStyle = (depth: number) => ({
-    transform: `translate(${(mousePos.x - 0.5) * depth * 50}px, ${(mousePos.y - 0.5) * depth * 50}px)`,
+    transform: `translate(${(mousePos.x - 0.5) * depth * 40}px, ${(mousePos.y - 0.5) * depth * 40}px)`,
     transition: 'transform 0.3s ease-out',
   });
 
@@ -44,168 +44,166 @@ function HermesIllustration() {
       className="relative w-full h-full flex items-center justify-center overflow-hidden"
     >
       <style>{`
-        @keyframes hermesFly {
+        @keyframes wingFloat {
           0%, 100% { transform: translateY(0) rotate(-2deg); }
-          50% { transform: translateY(-20px) rotate(2deg); }
+          50% { transform: translateY(-15px) rotate(2deg); }
         }
-        @keyframes wingFlutter {
-          0%, 100% { transform: rotate(-5deg) scaleY(1); }
-          25% { transform: rotate(10deg) scaleY(0.9); }
-          50% { transform: rotate(-5deg) scaleY(1); }
-          75% { transform: rotate(10deg) scaleY(0.9); }
-        }
-        @keyframes capeFlow {
-          0%, 100% { d: path("M0,0 Q20,30 10,60 Q0,80 -15,100"); }
-          50% { d: path("M0,0 Q30,25 15,55 Q5,85 -10,100"); }
+        @keyframes featherWave {
+          0%, 100% { transform: rotate(0deg); }
+          50% { transform: rotate(3deg); }
         }
         @keyframes glowPulse {
-          0%, 100% { filter: drop-shadow(0 0 20px rgba(251,191,36,0.4)); }
-          50% { filter: drop-shadow(0 0 40px rgba(251,191,36,0.8)); }
+          0%, 100% { filter: drop-shadow(0 0 30px rgba(251,191,36,0.3)) drop-shadow(0 0 60px rgba(168,85,247,0.2)); }
+          50% { filter: drop-shadow(0 0 50px rgba(251,191,36,0.5)) drop-shadow(0 0 80px rgba(168,85,247,0.3)); }
         }
-        @keyframes starTwinkle {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.5); }
+        @keyframes shimmer {
+          0% { opacity: 0.3; }
+          50% { opacity: 0.8; }
+          100% { opacity: 0.3; }
         }
-        @keyframes trailFade {
-          0% { opacity: 0.6; transform: translateX(0); }
-          100% { opacity: 0; transform: translateX(-100px); }
+        @keyframes particleRise {
+          0% { transform: translateY(0) translateX(0) scale(1); opacity: 0.8; }
+          100% { transform: translateY(-200px) translateX(30px) scale(0); opacity: 0; }
         }
       `}</style>
 
-      <div className="absolute inset-0">
-        {[...Array(30)].map((_, i) => (
+      <div className="absolute w-[600px] h-[600px] rounded-full bg-gradient-to-br from-amber-400/20 via-yellow-300/10 to-transparent blur-3xl" style={{ ...parallaxStyle(-0.3), top: '-10%', right: '-10%' }} />
+      <div className="absolute w-96 h-96 rounded-full bg-purple-500/15 blur-3xl" style={{ ...parallaxStyle(-0.4), bottom: '5%', left: '5%' }} />
+      <div className="absolute w-64 h-64 rounded-full bg-pink-500/10 blur-2xl" style={{ ...parallaxStyle(-0.2), top: '40%', left: '20%' }} />
+
+      <div className="absolute inset-0 pointer-events-none">
+        {[...Array(12)].map((_, i) => (
           <div
             key={i}
-            className="absolute rounded-full bg-white"
+            className="absolute w-1 h-1 rounded-full bg-amber-300/60"
             style={{
-              width: Math.random() * 3 + 1,
-              height: Math.random() * 3 + 1,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animation: `starTwinkle ${2 + Math.random() * 3}s ease-in-out infinite ${Math.random() * 2}s`,
+              left: `${40 + Math.random() * 30}%`,
+              bottom: `${10 + Math.random() * 30}%`,
+              animation: `particleRise ${4 + Math.random() * 3}s ease-out infinite ${Math.random() * 3}s`,
             }}
           />
         ))}
       </div>
 
-      <div className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-br from-amber-500/20 to-transparent blur-3xl" style={{ ...parallaxStyle(-0.5), top: '10%', right: '0%' }} />
-      <div className="absolute w-96 h-96 rounded-full bg-purple-500/10 blur-3xl" style={{ ...parallaxStyle(-0.3), bottom: '10%', left: '10%' }} />
-
       <div 
         className="relative z-10"
         style={{ 
-          ...parallaxStyle(0.4),
-          animation: 'hermesFly 4s ease-in-out infinite',
+          ...parallaxStyle(0.5),
+          animation: 'wingFloat 5s ease-in-out infinite',
         }}
       >
-        <svg viewBox="0 0 400 500" className="w-80 h-[400px] md:w-96 md:h-[480px]" style={{ animation: 'glowPulse 3s ease-in-out infinite' }}>
+        <svg 
+          viewBox="0 0 500 400" 
+          className="w-[420px] h-[340px] md:w-[500px] md:h-[400px]"
+          style={{ animation: 'glowPulse 4s ease-in-out infinite' }}
+        >
           <defs>
-            <linearGradient id="skinGold" x1="0%" y1="0%" x2="100%" y2="100%">
+            <linearGradient id="wingBase" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#fef3c7" />
-              <stop offset="50%" stopColor="#fcd34d" />
-              <stop offset="100%" stopColor="#d97706" />
-            </linearGradient>
-            <linearGradient id="tunicWhite" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ffffff" />
-              <stop offset="100%" stopColor="#e5e7eb" />
-            </linearGradient>
-            <linearGradient id="capeRed" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#c084fc" />
-              <stop offset="100%" stopColor="#7c3aed" />
-            </linearGradient>
-            <linearGradient id="staffGold" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#fef3c7" />
-              <stop offset="50%" stopColor="#fbbf24" />
+              <stop offset="30%" stopColor="#fcd34d" />
+              <stop offset="60%" stopColor="#f59e0b" />
               <stop offset="100%" stopColor="#b45309" />
             </linearGradient>
-            <filter id="glow">
+            <linearGradient id="wingHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+              <stop offset="50%" stopColor="#fef3c7" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.2" />
+            </linearGradient>
+            <linearGradient id="wingEdge" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#78350f" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#451a03" stopOpacity="0.6" />
+            </linearGradient>
+            <linearGradient id="featherGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#fef9c3" />
+              <stop offset="40%" stopColor="#fde047" />
+              <stop offset="100%" stopColor="#ca8a04" />
+            </linearGradient>
+            <filter id="softShadow">
+              <feDropShadow dx="5" dy="8" stdDeviation="8" floodColor="#78350f" floodOpacity="0.3"/>
+            </filter>
+            <filter id="innerGlow">
               <feGaussianBlur stdDeviation="2" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
             </filter>
           </defs>
 
-          <g opacity="0.3">
-            <ellipse cx="120" cy="200" rx="40" ry="15" fill="url(#skinGold)" style={{ animation: 'trailFade 1s ease-out infinite' }} />
-            <ellipse cx="80" cy="220" rx="30" ry="10" fill="url(#skinGold)" style={{ animation: 'trailFade 1s ease-out infinite 0.2s' }} />
-            <ellipse cx="50" cy="240" rx="20" ry="8" fill="url(#skinGold)" style={{ animation: 'trailFade 1s ease-out infinite 0.4s' }} />
-          </g>
+          <g transform="translate(100, 200)" filter="url(#softShadow)">
+            <path 
+              d="M0,0 
+                 C30,-20 80,-60 150,-90
+                 C200,-110 280,-130 380,-120
+                 C340,-100 300,-85 260,-75
+                 C220,-65 180,-60 150,-50
+                 C180,-45 230,-35 290,-20
+                 C340,-8 380,5 400,20
+                 C350,15 300,8 250,5
+                 C200,2 160,5 130,15
+                 C160,25 200,40 250,55
+                 C290,68 330,80 360,95
+                 C310,88 260,78 210,70
+                 C160,62 120,60 90,65
+                 C110,78 140,95 175,115
+                 C205,132 235,148 260,165
+                 C220,155 175,140 135,125
+                 C95,110 60,100 35,95
+                 C45,105 60,120 80,140
+                 C95,155 110,170 120,185
+                 C90,175 60,160 35,145
+                 C15,132 0,120 -10,110
+                 L0,0 Z"
+              fill="url(#wingBase)"
+            />
 
-          <g transform="translate(80, 50)">
-            <line x1="30" y1="40" x2="0" y2="0" stroke="url(#staffGold)" strokeWidth="6" strokeLinecap="round" filter="url(#glow)" />
-            
-            <g transform="translate(0, 0)">
-              <circle cx="0" cy="-5" r="8" fill="url(#staffGold)" filter="url(#glow)" />
-              <g style={{ transformOrigin: '0 -5px', animation: 'wingFlutter 0.6s ease-in-out infinite' }}>
-                <path d="M-8,-5 C-20,-15 -30,-10 -35,0 C-25,-5 -15,-8 -8,-5" fill="url(#staffGold)" filter="url(#glow)" />
-                <path d="M-8,-8 C-18,-20 -28,-18 -32,-10 C-22,-12 -15,-12 -8,-8" fill="url(#staffGold)" filter="url(#glow)" />
-              </g>
-              <g style={{ transformOrigin: '0 -5px', animation: 'wingFlutter 0.6s ease-in-out infinite' }}>
-                <path d="M8,-5 C20,-15 30,-10 35,0 C25,-5 15,-8 8,-5" fill="url(#staffGold)" filter="url(#glow)" />
-                <path d="M8,-8 C18,-20 28,-18 32,-10 C22,-12 15,-12 8,-8" fill="url(#staffGold)" filter="url(#glow)" />
-              </g>
-              <path d="M-3,5 Q-8,15 -5,25 Q0,20 5,25 Q8,15 3,5" fill="url(#staffGold)" strokeWidth="2" />
-              <path d="M-5,25 Q-10,35 -6,45 Q0,38 6,45 Q10,35 5,25" fill="url(#staffGold)" strokeWidth="2" />
+            <g style={{ animation: 'featherWave 3s ease-in-out infinite' }}>
+              <path d="M150,-90 C200,-108 270,-125 370,-115" fill="none" stroke="url(#wingHighlight)" strokeWidth="12" strokeLinecap="round" opacity="0.7" />
             </g>
-          </g>
+            <g style={{ animation: 'featherWave 3s ease-in-out infinite 0.3s' }}>
+              <path d="M130,-50 C180,-42 240,-30 380,15" fill="none" stroke="url(#wingHighlight)" strokeWidth="10" strokeLinecap="round" opacity="0.6" />
+            </g>
+            <g style={{ animation: 'featherWave 3s ease-in-out infinite 0.6s' }}>
+              <path d="M90,65 C140,72 200,82 350,92" fill="none" stroke="url(#wingHighlight)" strokeWidth="8" strokeLinecap="round" opacity="0.5" />
+            </g>
+            <g style={{ animation: 'featherWave 3s ease-in-out infinite 0.9s' }}>
+              <path d="M35,95 C70,108 120,130 255,162" fill="none" stroke="url(#wingHighlight)" strokeWidth="6" strokeLinecap="round" opacity="0.4" />
+            </g>
 
-          <g transform="translate(200, 120)">
-            <ellipse cx="0" cy="0" rx="28" ry="32" fill="url(#skinGold)" />
-            <ellipse cx="-8" cy="-5" rx="4" ry="5" fill="#78350f" opacity="0.6" />
-            <ellipse cx="8" cy="-5" rx="4" ry="5" fill="#78350f" opacity="0.6" />
-            <path d="M-5,8 Q0,12 5,8" fill="none" stroke="#78350f" strokeWidth="2" opacity="0.5" />
-            
-            <path d="M-30,-20 Q-35,-40 -20,-50 Q0,-55 20,-50 Q35,-40 30,-20" fill="url(#skinGold)" />
-            <path d="M-25,-35 Q-10,-45 0,-45 Q10,-45 25,-35" fill="#92400e" opacity="0.3" />
-            
-            <g style={{ transformOrigin: '-30px -30px', animation: 'wingFlutter 0.5s ease-in-out infinite' }}>
-              <path d="M-28,-25 C-50,-40 -70,-35 -80,-20 C-65,-30 -50,-32 -35,-25" fill="url(#staffGold)" filter="url(#glow)" />
-              <path d="M-30,-30 C-55,-50 -75,-45 -85,-30 C-70,-40 -52,-42 -35,-32" fill="url(#staffGold)" filter="url(#glow)" />
-              <path d="M-32,-35 C-55,-58 -78,-55 -90,-42 C-73,-50 -55,-52 -38,-40" fill="url(#staffGold)" filter="url(#glow)" />
-            </g>
-            <g style={{ transformOrigin: '30px -30px', animation: 'wingFlutter 0.5s ease-in-out infinite 0.1s' }}>
-              <path d="M28,-25 C50,-40 70,-35 80,-20 C65,-30 50,-32 35,-25" fill="url(#staffGold)" filter="url(#glow)" />
-              <path d="M30,-30 C55,-50 75,-45 85,-30 C70,-40 52,-42 35,-32" fill="url(#staffGold)" filter="url(#glow)" />
-              <path d="M32,-35 C55,-58 78,-55 90,-42 C73,-50 55,-52 38,-40" fill="url(#staffGold)" filter="url(#glow)" />
-            </g>
-          </g>
+            <path 
+              d="M0,0 C30,-18 75,-55 145,-85"
+              fill="none" stroke="url(#wingEdge)" strokeWidth="3"
+            />
+            <path 
+              d="M0,0 C25,30 45,70 80,130"
+              fill="none" stroke="url(#wingEdge)" strokeWidth="2" opacity="0.5"
+            />
 
-          <g transform="translate(200, 200)">
-            <path d="M-25,0 L-30,60 L30,60 L25,0 Z" fill="url(#tunicWhite)" />
-            <path d="M-30,60 L-35,90 L0,85 L35,90 L30,60 Z" fill="url(#tunicWhite)" />
-            <path d="M-22,0 L-40,-10 L-60,30 L-45,35 L-30,10 Z" fill="url(#skinGold)" />
-            <path d="M22,0 L50,20 L70,-20 L55,-30 L35,-5 Z" fill="url(#skinGold)" />
-            
-            <path d="M-35,90 Q-50,130 -40,150" fill="none" stroke="url(#capeRed)" strokeWidth="30" strokeLinecap="round" />
-            
-            <path d="M30,60 Q60,90 40,140 Q30,170 50,200" fill="none" stroke="url(#capeRed)" strokeWidth="35" strokeLinecap="round" opacity="0.9" />
-          </g>
+            {[...Array(8)].map((_, i) => (
+              <ellipse
+                key={i}
+                cx={80 + i * 35}
+                cy={-60 + i * 25 + Math.sin(i) * 10}
+                rx="3"
+                ry="2"
+                fill="white"
+                opacity="0.6"
+                style={{ animation: `shimmer ${2 + i * 0.3}s ease-in-out infinite ${i * 0.2}s` }}
+              />
+            ))}
 
-          <g transform="translate(160, 340)">
-            <path d="M0,0 L-15,60 L-25,120" fill="none" stroke="url(#skinGold)" strokeWidth="20" strokeLinecap="round" />
-            <ellipse cx="-30" cy="130" rx="18" ry="10" fill="url(#skinGold)" transform="rotate(-20, -30, 130)" />
-            <g transform="translate(-45, 120) rotate(-30)" style={{ animation: 'wingFlutter 0.4s ease-in-out infinite' }}>
-              <path d="M0,0 C-15,-8 -25,-5 -30,5 C-20,0 -10,-2 0,0" fill="url(#staffGold)" filter="url(#glow)" />
-              <path d="M0,-3 C-12,-12 -22,-10 -28,0 C-18,-5 -10,-6 0,-3" fill="url(#staffGold)" filter="url(#glow)" />
-            </g>
-          </g>
-
-          <g transform="translate(240, 300)">
-            <path d="M0,0 L30,50 L50,110" fill="none" stroke="url(#skinGold)" strokeWidth="18" strokeLinecap="round" />
-            <ellipse cx="55" cy="120" rx="16" ry="10" fill="url(#skinGold)" transform="rotate(30, 55, 120)" />
-            <g transform="translate(70, 115) rotate(20)" style={{ animation: 'wingFlutter 0.4s ease-in-out infinite 0.2s' }}>
-              <path d="M0,0 C15,-8 25,-5 30,5 C20,0 10,-2 0,0" fill="url(#staffGold)" filter="url(#glow)" />
-              <path d="M0,-3 C12,-12 22,-10 28,0 C18,-5 10,-6 0,-3" fill="url(#staffGold)" filter="url(#glow)" />
-            </g>
+            <ellipse cx="0" cy="0" rx="25" ry="35" fill="url(#wingBase)" />
+            <ellipse cx="-5" cy="-5" rx="12" ry="18" fill="url(#wingHighlight)" opacity="0.5" />
           </g>
         </svg>
       </div>
 
-      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 text-center z-20" style={parallaxStyle(0.2)}>
-        <h2 className="text-white text-xl md:text-2xl font-light tracking-widest uppercase">
-          Mensageiro dos Deuses
+      <div className="absolute bottom-20 left-1/2 -translate-x-1/2 text-center z-20" style={parallaxStyle(0.2)}>
+        <h2 className="text-white text-2xl md:text-3xl font-extralight tracking-[0.3em] uppercase">
+          Hermes
         </h2>
-        <p className="text-white/60 text-sm mt-2">
-          Velocidade e precisão para seus negócios
+        <p className="text-white/50 text-sm mt-3 tracking-wider">
+          Velocidade e conexão para seus negócios
         </p>
       </div>
     </div>
