@@ -4,33 +4,37 @@ import { storage } from "./storage";
 import { isAuthenticated, registerAuthRoutes, AuthRequest } from "./auth";
 import { wsManager } from "./websocket";
 import {
-  insertClientSchema,
+  insertAdvogadoSchema,
+  insertEscritorioSchema,
+  insertAdvogadoEscritorioSchema,
+  insertReclamanteSchema,
+  insertLeadSchema,
   insertProductSchema,
-  insertOpportunitySchema,
   insertActivitySchema,
   insertProposalSchema,
-  insertContactSchema,
   insertProposalItemSchema,
   insertPipelineTriggerSchema,
   insertInteractionSchema,
-  type Opportunity,
-  type Client,
+  type Lead,
+  type Advogado,
+  type Escritorio,
+  type Reclamante,
 } from "@shared/schema";
 
 // Helper function to fire webhook triggers asynchronously
 async function fireWebhookTriggers(
   ownerId: string,
-  fromStatus: string | null,
-  toStatus: string,
-  opportunity: Opportunity,
-  client?: Client
+  pipelineType: string,
+  fromStage: string | null,
+  toStage: string,
+  lead: Lead,
+  entity?: Advogado | Escritorio | Reclamante
 ) {
   try {
-    const triggers = await storage.getMatchingTriggers(ownerId, fromStatus, toStatus);
+    const triggers = await storage.getMatchingTriggers(ownerId, pipelineType, fromStage, toStage);
     
     for (const trigger of triggers) {
       try {
-        // Parse headers
         let headers: Record<string, string> = { "Content-Type": "application/json" };
         if (trigger.headers) {
           try {
@@ -40,46 +44,34 @@ async function fireWebhookTriggers(
           }
         }
         
-        // Build request body from template
         let body: string | undefined;
         if (trigger.bodyTemplate) {
           body = trigger.bodyTemplate
-            .replace(/\{\{opportunity\.id\}\}/g, opportunity.id)
-            .replace(/\{\{opportunity\.title\}\}/g, opportunity.title)
-            .replace(/\{\{opportunity\.value\}\}/g, String(opportunity.value || 0))
-            .replace(/\{\{opportunity\.status\}\}/g, opportunity.status || "")
-            .replace(/\{\{opportunity\.probability\}\}/g, String(opportunity.probability || 0))
-            .replace(/\{\{opportunity\.description\}\}/g, opportunity.description || "")
-            .replace(/\{\{fromStatus\}\}/g, fromStatus || "")
-            .replace(/\{\{toStatus\}\}/g, toStatus)
-            .replace(/\{\{client\.id\}\}/g, client?.id || "")
-            .replace(/\{\{client\.companyName\}\}/g, client?.companyName || "")
-            .replace(/\{\{client\.email\}\}/g, client?.email || "")
-            .replace(/\{\{client\.phone\}\}/g, client?.phone || "");
+            .replace(/\{\{lead\.id\}\}/g, lead.id)
+            .replace(/\{\{lead\.titulo\}\}/g, lead.titulo)
+            .replace(/\{\{lead\.valor\}\}/g, String(lead.valor || 0))
+            .replace(/\{\{lead\.stage\}\}/g, lead.stage || "")
+            .replace(/\{\{lead\.pipelineType\}\}/g, lead.pipelineType || "")
+            .replace(/\{\{fromStage\}\}/g, fromStage || "")
+            .replace(/\{\{toStage\}\}/g, toStage);
         } else {
-          // Default body
           body = JSON.stringify({
-            event: "opportunity_status_changed",
-            fromStatus,
-            toStatus,
-            opportunity: {
-              id: opportunity.id,
-              title: opportunity.title,
-              value: opportunity.value,
-              status: opportunity.status,
-              probability: opportunity.probability,
+            event: "lead_stage_changed",
+            pipelineType,
+            fromStage,
+            toStage,
+            lead: {
+              id: lead.id,
+              titulo: lead.titulo,
+              valor: lead.valor,
+              stage: lead.stage,
+              pipelineType: lead.pipelineType,
             },
-            client: client ? {
-              id: client.id,
-              companyName: client.companyName,
-              email: client.email,
-              phone: client.phone,
-            } : null,
+            entity: entity ? { id: (entity as any).id, nome: (entity as any).nome } : null,
             timestamp: new Date().toISOString(),
           });
         }
         
-        // Make the HTTP request
         const fetchOptions: RequestInit = {
           method: trigger.httpMethod || "POST",
           headers,
@@ -107,166 +99,387 @@ export async function registerRoutes(
   wsManager.initialize(httpServer);
   registerAuthRoutes(app);
 
-  // Clients
-  app.get("/api/clients", isAuthenticated, async (req: Request, res: Response) => {
+  // Advogados
+  app.get("/api/advogados", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const clients = await storage.getClients(userId);
-      res.json(clients);
+      const advogados = await storage.getAdvogados(userId);
+      res.json(advogados);
     } catch (error) {
-      console.error("Error fetching clients:", error);
-      res.status(500).json({ message: "Failed to fetch clients" });
+      console.error("Error fetching advogados:", error);
+      res.status(500).json({ message: "Failed to fetch advogados" });
     }
   });
 
-  app.get("/api/clients/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/advogados/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const client = await storage.getClient(req.params.id, userId);
-      if (!client) {
-        res.status(404).json({ message: "Client not found" });
+      const advogado = await storage.getAdvogado(req.params.id, userId);
+      if (!advogado) {
+        res.status(404).json({ message: "Advogado not found" });
         return;
       }
-      res.json(client);
+      res.json(advogado);
     } catch (error) {
-      console.error("Error fetching client:", error);
-      res.status(500).json({ message: "Failed to fetch client" });
+      console.error("Error fetching advogado:", error);
+      res.status(500).json({ message: "Failed to fetch advogado" });
     }
   });
 
-  app.post("/api/clients", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/advogados", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertClientSchema.safeParse({ ...req.body, ownerId: userId });
+      const parsed = insertAdvogadoSchema.safeParse({ ...req.body, ownerId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
-      const client = await storage.createClient(parsed.data);
-      res.status(201).json(client);
+      const advogado = await storage.createAdvogado(parsed.data);
+      res.status(201).json(advogado);
     } catch (error) {
-      console.error("Error creating client:", error);
-      res.status(500).json({ message: "Failed to create client" });
+      console.error("Error creating advogado:", error);
+      res.status(500).json({ message: "Failed to create advogado" });
     }
   });
 
-  app.patch("/api/clients/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.patch("/api/advogados/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertClientSchema.partial().safeParse(req.body);
+      const partial = insertAdvogadoSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const client = await storage.updateClient(req.params.id, userId, partial.data);
-      if (!client) {
-        res.status(404).json({ message: "Client not found" });
+      const advogado = await storage.updateAdvogado(req.params.id, userId, partial.data);
+      if (!advogado) {
+        res.status(404).json({ message: "Advogado not found" });
         return;
       }
-      res.json(client);
+      res.json(advogado);
     } catch (error) {
-      console.error("Error updating client:", error);
-      res.status(500).json({ message: "Failed to update client" });
+      console.error("Error updating advogado:", error);
+      res.status(500).json({ message: "Failed to update advogado" });
     }
   });
 
-  app.delete("/api/clients/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.delete("/api/advogados/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteClient(req.params.id, userId);
+      const deleted = await storage.deleteAdvogado(req.params.id, userId);
       if (!deleted) {
-        res.status(404).json({ message: "Client not found" });
+        res.status(404).json({ message: "Advogado not found" });
         return;
       }
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting client:", error);
-      res.status(500).json({ message: "Failed to delete client" });
+      console.error("Error deleting advogado:", error);
+      res.status(500).json({ message: "Failed to delete advogado" });
     }
   });
 
-  // Contacts (verify client ownership)
-  app.get("/api/clients/:clientId/contacts", isAuthenticated, async (req: Request, res: Response) => {
+  // Escritórios
+  app.get("/api/escritorios", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const client = await storage.getClient(req.params.clientId, userId);
-      if (!client) {
-        res.status(404).json({ message: "Client not found" });
+      const escritorios = await storage.getEscritorios(userId);
+      res.json(escritorios);
+    } catch (error) {
+      console.error("Error fetching escritorios:", error);
+      res.status(500).json({ message: "Failed to fetch escritorios" });
+    }
+  });
+
+  app.get("/api/escritorios/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const escritorio = await storage.getEscritorio(req.params.id, userId);
+      if (!escritorio) {
+        res.status(404).json({ message: "Escritório not found" });
         return;
       }
-      const contacts = await storage.getContacts(req.params.clientId);
-      res.json(contacts);
+      res.json(escritorio);
     } catch (error) {
-      console.error("Error fetching contacts:", error);
-      res.status(500).json({ message: "Failed to fetch contacts" });
+      console.error("Error fetching escritorio:", error);
+      res.status(500).json({ message: "Failed to fetch escritorio" });
     }
   });
 
-  app.post("/api/contacts", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/escritorios", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertContactSchema.safeParse(req.body);
+      const parsed = insertEscritorioSchema.safeParse({ ...req.body, ownerId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
-      const client = await storage.getClient(parsed.data.clientId, userId);
-      if (!client) {
-        res.status(404).json({ message: "Client not found" });
-        return;
-      }
-      const contact = await storage.createContact(parsed.data);
-      res.status(201).json(contact);
+      const escritorio = await storage.createEscritorio(parsed.data);
+      res.status(201).json(escritorio);
     } catch (error) {
-      console.error("Error creating contact:", error);
-      res.status(500).json({ message: "Failed to create contact" });
+      console.error("Error creating escritorio:", error);
+      res.status(500).json({ message: "Failed to create escritorio" });
     }
   });
 
-  app.patch("/api/contacts/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.patch("/api/escritorios/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const existingContact = await storage.getContact(req.params.id);
-      if (!existingContact) {
-        res.status(404).json({ message: "Contact not found" });
-        return;
-      }
-      const client = await storage.getClient(existingContact.clientId, userId);
-      if (!client) {
-        res.status(404).json({ message: "Contact not found" });
-        return;
-      }
-      const partial = insertContactSchema.partial().safeParse(req.body);
+      const partial = insertEscritorioSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const contact = await storage.updateContact(req.params.id, partial.data);
-      res.json(contact);
+      const escritorio = await storage.updateEscritorio(req.params.id, userId, partial.data);
+      if (!escritorio) {
+        res.status(404).json({ message: "Escritório not found" });
+        return;
+      }
+      res.json(escritorio);
     } catch (error) {
-      console.error("Error updating contact:", error);
-      res.status(500).json({ message: "Failed to update contact" });
+      console.error("Error updating escritorio:", error);
+      res.status(500).json({ message: "Failed to update escritorio" });
     }
   });
 
-  app.delete("/api/contacts/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.delete("/api/escritorios/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const existingContact = await storage.getContact(req.params.id);
-      if (!existingContact) {
-        res.status(404).json({ message: "Contact not found" });
+      const deleted = await storage.deleteEscritorio(req.params.id, userId);
+      if (!deleted) {
+        res.status(404).json({ message: "Escritório not found" });
         return;
       }
-      const client = await storage.getClient(existingContact.clientId, userId);
-      if (!client) {
-        res.status(404).json({ message: "Contact not found" });
-        return;
-      }
-      await storage.deleteContact(req.params.id);
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting contact:", error);
-      res.status(500).json({ message: "Failed to delete contact" });
+      console.error("Error deleting escritorio:", error);
+      res.status(500).json({ message: "Failed to delete escritorio" });
+    }
+  });
+
+  // Advogado-Escritório relationship
+  app.get("/api/advogados/:advogadoId/escritorios", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const relations = await storage.getAdvogadoEscritorios(req.params.advogadoId);
+      res.json(relations);
+    } catch (error) {
+      console.error("Error fetching advogado escritorios:", error);
+      res.status(500).json({ message: "Failed to fetch relationships" });
+    }
+  });
+
+  app.get("/api/escritorios/:escritorioId/advogados", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const relations = await storage.getEscritorioAdvogados(req.params.escritorioId);
+      res.json(relations);
+    } catch (error) {
+      console.error("Error fetching escritorio advogados:", error);
+      res.status(500).json({ message: "Failed to fetch relationships" });
+    }
+  });
+
+  app.post("/api/advogado-escritorios", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const parsed = insertAdvogadoEscritorioSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const relation = await storage.createAdvogadoEscritorio(parsed.data);
+      res.status(201).json(relation);
+    } catch (error) {
+      console.error("Error creating advogado-escritorio relation:", error);
+      res.status(500).json({ message: "Failed to create relationship" });
+    }
+  });
+
+  app.delete("/api/advogado-escritorios/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const deleted = await storage.deleteAdvogadoEscritorio(req.params.id);
+      if (!deleted) {
+        res.status(404).json({ message: "Relationship not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting advogado-escritorio relation:", error);
+      res.status(500).json({ message: "Failed to delete relationship" });
+    }
+  });
+
+  // Reclamantes
+  app.get("/api/reclamantes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const reclamantes = await storage.getReclamantes(userId);
+      res.json(reclamantes);
+    } catch (error) {
+      console.error("Error fetching reclamantes:", error);
+      res.status(500).json({ message: "Failed to fetch reclamantes" });
+    }
+  });
+
+  app.get("/api/reclamantes/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const reclamante = await storage.getReclamante(req.params.id, userId);
+      if (!reclamante) {
+        res.status(404).json({ message: "Reclamante not found" });
+        return;
+      }
+      res.json(reclamante);
+    } catch (error) {
+      console.error("Error fetching reclamante:", error);
+      res.status(500).json({ message: "Failed to fetch reclamante" });
+    }
+  });
+
+  app.post("/api/reclamantes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const parsed = insertReclamanteSchema.safeParse({ ...req.body, ownerId: userId });
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const reclamante = await storage.createReclamante(parsed.data);
+      res.status(201).json(reclamante);
+    } catch (error) {
+      console.error("Error creating reclamante:", error);
+      res.status(500).json({ message: "Failed to create reclamante" });
+    }
+  });
+
+  app.patch("/api/reclamantes/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const partial = insertReclamanteSchema.partial().safeParse(req.body);
+      if (!partial.success) {
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
+      }
+      const reclamante = await storage.updateReclamante(req.params.id, userId, partial.data);
+      if (!reclamante) {
+        res.status(404).json({ message: "Reclamante not found" });
+        return;
+      }
+      res.json(reclamante);
+    } catch (error) {
+      console.error("Error updating reclamante:", error);
+      res.status(500).json({ message: "Failed to update reclamante" });
+    }
+  });
+
+  app.delete("/api/reclamantes/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const deleted = await storage.deleteReclamante(req.params.id, userId);
+      if (!deleted) {
+        res.status(404).json({ message: "Reclamante not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting reclamante:", error);
+      res.status(500).json({ message: "Failed to delete reclamante" });
+    }
+  });
+
+  // Leads
+  app.get("/api/leads", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const pipelineType = req.query.pipelineType as string | undefined;
+      const leads = await storage.getLeads(userId, pipelineType);
+      res.json(leads);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      res.status(500).json({ message: "Failed to fetch leads" });
+    }
+  });
+
+  app.get("/api/leads/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const lead = await storage.getLead(req.params.id, userId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      res.json(lead);
+    } catch (error) {
+      console.error("Error fetching lead:", error);
+      res.status(500).json({ message: "Failed to fetch lead" });
+    }
+  });
+
+  app.post("/api/leads", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const parsed = insertLeadSchema.safeParse({ ...req.body, ownerId: userId, vendedorId: userId });
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const lead = await storage.createLead(parsed.data);
+      wsManager.broadcastLeadCreated(lead);
+      res.status(201).json(lead);
+    } catch (error) {
+      console.error("Error creating lead:", error);
+      res.status(500).json({ message: "Failed to create lead" });
+    }
+  });
+
+  app.patch("/api/leads/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const partial = insertLeadSchema.partial().safeParse(req.body);
+      if (!partial.success) {
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
+      }
+      
+      const currentLead = await storage.getLead(req.params.id, userId);
+      if (!currentLead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      
+      const fromStage = currentLead.stage;
+      const toStage = partial.data.stage;
+      
+      const lead = await storage.updateLead(req.params.id, userId, partial.data);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      
+      // Fire triggers if stage changed
+      if (toStage && fromStage !== toStage) {
+        setImmediate(() => {
+          fireWebhookTriggers(userId, lead.pipelineType, fromStage, toStage, lead);
+        });
+      }
+      
+      wsManager.broadcastLeadUpdate(lead);
+      res.json(lead);
+    } catch (error) {
+      console.error("Error updating lead:", error);
+      res.status(500).json({ message: "Failed to update lead" });
+    }
+  });
+
+  app.delete("/api/leads/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const deleted = await storage.deleteLead(req.params.id, userId);
+      if (!deleted) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      wsManager.broadcastLeadDeleted(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting lead:", error);
+      res.status(500).json({ message: "Failed to delete lead" });
     }
   });
 
@@ -345,108 +558,6 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting product:", error);
       res.status(500).json({ message: "Failed to delete product" });
-    }
-  });
-
-  // Opportunities
-  app.get("/api/opportunities", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const opportunities = await storage.getOpportunities(userId);
-      res.json(opportunities);
-    } catch (error) {
-      console.error("Error fetching opportunities:", error);
-      res.status(500).json({ message: "Failed to fetch opportunities" });
-    }
-  });
-
-  app.get("/api/opportunities/:id", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const opportunity = await storage.getOpportunity(req.params.id, userId);
-      if (!opportunity) {
-        res.status(404).json({ message: "Opportunity not found" });
-        return;
-      }
-      res.json(opportunity);
-    } catch (error) {
-      console.error("Error fetching opportunity:", error);
-      res.status(500).json({ message: "Failed to fetch opportunity" });
-    }
-  });
-
-  app.post("/api/opportunities", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const parsed = insertOpportunitySchema.safeParse({ ...req.body, ownerId: userId });
-      if (!parsed.success) {
-        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
-        return;
-      }
-      const opportunity = await storage.createOpportunity(parsed.data);
-      wsManager.broadcastOpportunityCreated(opportunity);
-      res.status(201).json(opportunity);
-    } catch (error) {
-      console.error("Error creating opportunity:", error);
-      res.status(500).json({ message: "Failed to create opportunity" });
-    }
-  });
-
-  app.patch("/api/opportunities/:id", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const partial = insertOpportunitySchema.partial().safeParse(req.body);
-      if (!partial.success) {
-        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
-        return;
-      }
-      
-      // Get the current opportunity to check for status change
-      const currentOpportunity = await storage.getOpportunity(req.params.id, userId);
-      if (!currentOpportunity) {
-        res.status(404).json({ message: "Opportunity not found" });
-        return;
-      }
-      
-      const fromStatus = currentOpportunity.status;
-      const toStatus = partial.data.status;
-      
-      const opportunity = await storage.updateOpportunity(req.params.id, userId, partial.data);
-      if (!opportunity) {
-        res.status(404).json({ message: "Opportunity not found" });
-        return;
-      }
-      
-      // Fire triggers if status changed (non-blocking)
-      if (toStatus && fromStatus !== toStatus) {
-        const client = await storage.getClient(opportunity.clientId, userId);
-        // Use setImmediate to ensure webhook firing doesn't block the response
-        setImmediate(() => {
-          fireWebhookTriggers(userId, fromStatus, toStatus, opportunity, client || undefined);
-        });
-      }
-      
-      wsManager.broadcastOpportunityUpdate(opportunity);
-      res.json(opportunity);
-    } catch (error) {
-      console.error("Error updating opportunity:", error);
-      res.status(500).json({ message: "Failed to update opportunity" });
-    }
-  });
-
-  app.delete("/api/opportunities/:id", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteOpportunity(req.params.id, userId);
-      if (!deleted) {
-        res.status(404).json({ message: "Opportunity not found" });
-        return;
-      }
-      wsManager.broadcastOpportunityDeleted(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting opportunity:", error);
-      res.status(500).json({ message: "Failed to delete opportunity" });
     }
   });
 
@@ -606,7 +717,7 @@ export async function registerRoutes(
     }
   });
 
-  // Proposal Items (verify proposal ownership)
+  // Proposal Items
   app.get("/api/proposals/:proposalId/items", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
@@ -703,21 +814,6 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/pipeline-triggers/:id", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const trigger = await storage.getPipelineTrigger(req.params.id, userId);
-      if (!trigger) {
-        res.status(404).json({ message: "Pipeline trigger not found" });
-        return;
-      }
-      res.json(trigger);
-    } catch (error) {
-      console.error("Error fetching pipeline trigger:", error);
-      res.status(500).json({ message: "Failed to fetch pipeline trigger" });
-    }
-  });
-
   app.post("/api/pipeline-triggers", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
@@ -769,17 +865,17 @@ export async function registerRoutes(
     }
   });
 
-  // Interactions (comments, files, etc.)
-  app.get("/api/opportunities/:opportunityId/interactions", isAuthenticated, async (req: Request, res: Response) => {
+  // Interactions
+  app.get("/api/leads/:leadId/interactions", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const opportunity = await storage.getOpportunity(req.params.opportunityId, userId);
-      if (!opportunity) {
-        res.status(404).json({ message: "Opportunity not found" });
+      const lead = await storage.getLead(req.params.leadId, userId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
         return;
       }
-      const interactionsList = await storage.getInteractions(req.params.opportunityId);
-      res.json(interactionsList);
+      const interactions = await storage.getInteractions(req.params.leadId);
+      res.json(interactions);
     } catch (error) {
       console.error("Error fetching interactions:", error);
       res.status(500).json({ message: "Failed to fetch interactions" });
@@ -789,14 +885,14 @@ export async function registerRoutes(
   app.post("/api/interactions", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertInteractionSchema.safeParse({ ...req.body, ownerId: userId });
+      const parsed = insertInteractionSchema.safeParse({ ...req.body, ownerId: userId, vendedorId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
-      const opportunity = await storage.getOpportunity(parsed.data.opportunityId, userId);
-      if (!opportunity) {
-        res.status(404).json({ message: "Opportunity not found" });
+      const lead = await storage.getLead(parsed.data.leadId, userId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
         return;
       }
       const interaction = await storage.createInteraction(parsed.data);
