@@ -468,14 +468,14 @@ function LeadDetailPanel({
               </h3>
               <Card className="p-4 space-y-3">
                 <Select 
-                  value={lead.advogadoId || ""} 
-                  onValueChange={(v) => handleUpdateField("advogadoId", v || null)}
+                  value={lead.advogadoId || "none"} 
+                  onValueChange={(v) => handleUpdateField("advogadoId", v === "none" ? null : v)}
                 >
                   <SelectTrigger data-testid="select-advogado">
                     <SelectValue placeholder="Selecione um advogado" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {advogados.map((a) => (
                       <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
                     ))}
@@ -509,14 +509,14 @@ function LeadDetailPanel({
               </h3>
               <Card className="p-4 space-y-3">
                 <Select 
-                  value={lead.escritorioId || ""} 
-                  onValueChange={(v) => handleUpdateField("escritorioId", v || null)}
+                  value={lead.escritorioId || "none"} 
+                  onValueChange={(v) => handleUpdateField("escritorioId", v === "none" ? null : v)}
                 >
                     <SelectTrigger data-testid="select-escritorio">
                       <SelectValue placeholder="Selecione um escritório" />
                     </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {escritorios.map((e) => (
                       <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
                     ))}
@@ -550,14 +550,14 @@ function LeadDetailPanel({
               </h3>
               <Card className="p-4 space-y-3">
                 <Select 
-                  value={lead.reclamanteId || ""} 
-                  onValueChange={(v) => handleUpdateField("reclamanteId", v || null)}
+                  value={lead.reclamanteId || "none"} 
+                  onValueChange={(v) => handleUpdateField("reclamanteId", v === "none" ? null : v)}
                 >
                   <SelectTrigger data-testid="select-reclamante">
                     <SelectValue placeholder="Selecione um reclamante" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {reclamantes.map((r) => (
                       <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
                     ))}
@@ -1062,7 +1062,7 @@ function TriggerForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">Qualquer</SelectItem>
+                    <SelectItem value="all">Qualquer</SelectItem>
                     {stages.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
                     ))}
