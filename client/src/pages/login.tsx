@@ -33,8 +33,8 @@ function HermesIllustration() {
   };
 
   const parallaxStyle = (depth: number) => ({
-    transform: `translate(${(mousePos.x - 0.5) * depth * 40}px, ${(mousePos.y - 0.5) * depth * 40}px)`,
-    transition: 'transform 0.4s ease-out',
+    transform: `translate(${(mousePos.x - 0.5) * depth * 50}px, ${(mousePos.y - 0.5) * depth * 50}px)`,
+    transition: 'transform 0.3s ease-out',
   });
 
   return (
@@ -44,193 +44,169 @@ function HermesIllustration() {
       className="relative w-full h-full flex items-center justify-center overflow-hidden"
     >
       <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-15px); }
+        @keyframes hermesFly {
+          0%, 100% { transform: translateY(0) rotate(-2deg); }
+          50% { transform: translateY(-20px) rotate(2deg); }
         }
-        @keyframes wingFloat {
-          0%, 100% { transform: rotate(-3deg) translateY(0); }
-          50% { transform: rotate(3deg) translateY(-8px); }
+        @keyframes wingFlutter {
+          0%, 100% { transform: rotate(-5deg) scaleY(1); }
+          25% { transform: rotate(10deg) scaleY(0.9); }
+          50% { transform: rotate(-5deg) scaleY(1); }
+          75% { transform: rotate(10deg) scaleY(0.9); }
         }
-        @keyframes wingFloatRight {
-          0%, 100% { transform: scaleX(-1) rotate(3deg) translateY(0); }
-          50% { transform: scaleX(-1) rotate(-3deg) translateY(-8px); }
+        @keyframes capeFlow {
+          0%, 100% { d: path("M0,0 Q20,30 10,60 Q0,80 -15,100"); }
+          50% { d: path("M0,0 Q30,25 15,55 Q5,85 -10,100"); }
         }
-        @keyframes dash {
-          to { stroke-dashoffset: -1000; }
+        @keyframes glowPulse {
+          0%, 100% { filter: drop-shadow(0 0 20px rgba(251,191,36,0.4)); }
+          50% { filter: drop-shadow(0 0 40px rgba(251,191,36,0.8)); }
         }
-        @keyframes nodeGlow {
-          0%, 100% { filter: drop-shadow(0 0 8px rgba(255,255,255,0.3)); transform: scale(1); }
-          50% { filter: drop-shadow(0 0 20px rgba(255,255,255,0.6)); transform: scale(1.1); }
+        @keyframes starTwinkle {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.5); }
         }
-        @keyframes drawLine {
-          from { stroke-dashoffset: 200; }
-          to { stroke-dashoffset: 0; }
-        }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes pulseRing {
-          0% { transform: scale(0.8); opacity: 0.8; }
-          100% { transform: scale(2); opacity: 0; }
+        @keyframes trailFade {
+          0% { opacity: 0.6; transform: translateX(0); }
+          100% { opacity: 0; transform: translateX(-100px); }
         }
       `}</style>
 
-      <div className="absolute w-96 h-96 rounded-full bg-white/5 blur-3xl" style={parallaxStyle(-0.3)} />
-      <div className="absolute w-64 h-64 rounded-full bg-purple-300/10 blur-2xl" style={{ ...parallaxStyle(-0.5), left: '10%', top: '20%' }} />
-      <div className="absolute w-48 h-48 rounded-full bg-pink-300/10 blur-2xl" style={{ ...parallaxStyle(-0.4), right: '15%', bottom: '25%' }} />
-
-      <div className="relative z-10 flex flex-col items-center" style={parallaxStyle(0.3)}>
-        <div className="relative" style={{ animation: 'float 4s ease-in-out infinite' }}>
-          <svg viewBox="0 0 200 200" className="w-48 h-48 md:w-64 md:h-64">
-            <defs>
-              <linearGradient id="wingGold" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#fef3c7" />
-                <stop offset="50%" stopColor="#fcd34d" />
-                <stop offset="100%" stopColor="#f59e0b" />
-              </linearGradient>
-              <linearGradient id="helmetPurple" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#e9d5ff" />
-                <stop offset="50%" stopColor="#c084fc" />
-                <stop offset="100%" stopColor="#9333ea" />
-              </linearGradient>
-              <filter id="softGlow">
-                <feGaussianBlur stdDeviation="2" result="blur"/>
-                <feMerge>
-                  <feMergeNode in="blur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-
-            <g style={{ transformOrigin: '40px 100px', animation: 'wingFloat 2s ease-in-out infinite' }}>
-              <path 
-                d="M50,100 C30,85 15,70 5,55 C15,60 25,58 35,55 C25,50 10,40 0,25 C15,35 30,38 45,35 C35,28 25,15 20,0 C35,15 50,25 65,30 C55,40 50,60 50,80 Z" 
-                fill="url(#wingGold)"
-                filter="url(#softGlow)"
-              />
-              <path 
-                d="M50,95 C35,85 25,72 18,60 C25,62 32,60 38,58 C30,55 20,48 15,38 C25,45 35,47 45,45 C38,40 32,32 28,22 C38,32 48,38 55,42" 
-                fill="none"
-                stroke="white"
-                strokeWidth="1"
-                opacity="0.4"
-              />
-            </g>
-
-            <g style={{ transformOrigin: '160px 100px', animation: 'wingFloatRight 2s ease-in-out infinite' }}>
-              <path 
-                d="M150,100 C170,85 185,70 195,55 C185,60 175,58 165,55 C175,50 190,40 200,25 C185,35 170,38 155,35 C165,28 175,15 180,0 C165,15 150,25 135,30 C145,40 150,60 150,80 Z" 
-                fill="url(#wingGold)"
-                filter="url(#softGlow)"
-              />
-              <path 
-                d="M150,95 C165,85 175,72 182,60 C175,62 168,60 162,58 C170,55 180,48 185,38 C175,45 165,47 155,45 C162,40 168,32 172,22 C162,32 152,38 145,42" 
-                fill="none"
-                stroke="white"
-                strokeWidth="1"
-                opacity="0.4"
-              />
-            </g>
-
-            <ellipse cx="100" cy="120" rx="55" ry="45" fill="url(#helmetPurple)" />
-            <ellipse cx="100" cy="105" rx="60" ry="35" fill="url(#helmetPurple)" />
-            <path d="M40,105 Q40,60 100,50 Q160,60 160,105" fill="url(#helmetPurple)" />
-            
-            <ellipse cx="100" cy="130" rx="40" ry="25" fill="rgba(0,0,0,0.4)" />
-            
-            <path d="M60,95 Q80,85 100,85 Q120,85 140,95" fill="none" stroke="white" strokeWidth="2" opacity="0.3" />
-            <circle cx="70" cy="100" r="4" fill="white" opacity="0.4" />
-            <ellipse cx="115" cy="90" rx="15" ry="6" fill="white" opacity="0.2" />
-          </svg>
-
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div className="w-20 h-20 rounded-full border-2 border-white/20" style={{ animation: 'pulseRing 2s ease-out infinite' }} />
-          </div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div className="w-20 h-20 rounded-full border-2 border-white/20" style={{ animation: 'pulseRing 2s ease-out infinite 0.5s' }} />
-          </div>
-        </div>
-
-        <div className="mt-8 relative w-80" style={{ animation: 'fadeInUp 1s ease-out' }}>
-          <svg viewBox="0 0 320 100" className="w-full">
-            <circle cx="40" cy="50" r="8" fill="white" opacity="0.9" style={{ animation: 'nodeGlow 2s ease-in-out infinite' }} />
-            <circle cx="160" cy="30" r="10" fill="white" opacity="0.9" style={{ animation: 'nodeGlow 2s ease-in-out infinite 0.3s' }} />
-            <circle cx="280" cy="50" r="8" fill="white" opacity="0.9" style={{ animation: 'nodeGlow 2s ease-in-out infinite 0.6s' }} />
-            <circle cx="100" cy="70" r="6" fill="white" opacity="0.7" style={{ animation: 'nodeGlow 2s ease-in-out infinite 0.9s' }} />
-            <circle cx="220" cy="70" r="6" fill="white" opacity="0.7" style={{ animation: 'nodeGlow 2s ease-in-out infinite 1.2s' }} />
-
-            <path 
-              d="M48,50 Q100,40 152,32" 
-              fill="none" 
-              stroke="white" 
-              strokeWidth="1.5" 
-              opacity="0.4"
-              strokeDasharray="4 4"
-              style={{ animation: 'dash 20s linear infinite' }}
-            />
-            <path 
-              d="M168,32 Q220,40 272,50" 
-              fill="none" 
-              stroke="white" 
-              strokeWidth="1.5" 
-              opacity="0.4"
-              strokeDasharray="4 4"
-              style={{ animation: 'dash 20s linear infinite' }}
-            />
-            <path 
-              d="M48,54 Q70,70 94,70" 
-              fill="none" 
-              stroke="white" 
-              strokeWidth="1.5" 
-              opacity="0.3"
-              strokeDasharray="4 4"
-              style={{ animation: 'dash 25s linear infinite' }}
-            />
-            <path 
-              d="M106,70 Q160,55 214,70" 
-              fill="none" 
-              stroke="white" 
-              strokeWidth="1.5" 
-              opacity="0.3"
-              strokeDasharray="4 4"
-              style={{ animation: 'dash 25s linear infinite' }}
-            />
-            <path 
-              d="M226,70 Q250,55 272,54" 
-              fill="none" 
-              stroke="white" 
-              strokeWidth="1.5" 
-              opacity="0.3"
-              strokeDasharray="4 4"
-              style={{ animation: 'dash 25s linear infinite' }}
-            />
-          </svg>
-        </div>
-
-        <div className="mt-12 text-center" style={{ animation: 'fadeInUp 1s ease-out 0.3s backwards' }}>
-          <h2 className="text-white text-2xl md:text-3xl font-light tracking-wide">
-            Conecte. Comunique. <span className="font-semibold">Conquiste.</span>
-          </h2>
-          <p className="text-white/60 text-sm md:text-base mt-3 max-w-xs mx-auto">
-            O mensageiro moderno para seus negócios
-          </p>
-        </div>
-      </div>
-
-      <div className="absolute inset-0 pointer-events-none">
-        {[...Array(6)].map((_, i) => (
+      <div className="absolute inset-0">
+        {[...Array(30)].map((_, i) => (
           <div
             key={i}
-            className="absolute w-1 h-1 rounded-full bg-white/40"
+            className="absolute rounded-full bg-white"
             style={{
-              left: `${15 + i * 15}%`,
-              top: `${20 + (i % 3) * 25}%`,
-              animation: `float ${3 + i * 0.5}s ease-in-out infinite ${i * 0.3}s`,
+              width: Math.random() * 3 + 1,
+              height: Math.random() * 3 + 1,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animation: `starTwinkle ${2 + Math.random() * 3}s ease-in-out infinite ${Math.random() * 2}s`,
             }}
           />
         ))}
+      </div>
+
+      <div className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-br from-amber-500/20 to-transparent blur-3xl" style={{ ...parallaxStyle(-0.5), top: '10%', right: '0%' }} />
+      <div className="absolute w-96 h-96 rounded-full bg-purple-500/10 blur-3xl" style={{ ...parallaxStyle(-0.3), bottom: '10%', left: '10%' }} />
+
+      <div 
+        className="relative z-10"
+        style={{ 
+          ...parallaxStyle(0.4),
+          animation: 'hermesFly 4s ease-in-out infinite',
+        }}
+      >
+        <svg viewBox="0 0 400 500" className="w-80 h-[400px] md:w-96 md:h-[480px]" style={{ animation: 'glowPulse 3s ease-in-out infinite' }}>
+          <defs>
+            <linearGradient id="skinGold" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#fef3c7" />
+              <stop offset="50%" stopColor="#fcd34d" />
+              <stop offset="100%" stopColor="#d97706" />
+            </linearGradient>
+            <linearGradient id="tunicWhite" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="100%" stopColor="#e5e7eb" />
+            </linearGradient>
+            <linearGradient id="capeRed" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#c084fc" />
+              <stop offset="100%" stopColor="#7c3aed" />
+            </linearGradient>
+            <linearGradient id="staffGold" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#fef3c7" />
+              <stop offset="50%" stopColor="#fbbf24" />
+              <stop offset="100%" stopColor="#b45309" />
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <g opacity="0.3">
+            <ellipse cx="120" cy="200" rx="40" ry="15" fill="url(#skinGold)" style={{ animation: 'trailFade 1s ease-out infinite' }} />
+            <ellipse cx="80" cy="220" rx="30" ry="10" fill="url(#skinGold)" style={{ animation: 'trailFade 1s ease-out infinite 0.2s' }} />
+            <ellipse cx="50" cy="240" rx="20" ry="8" fill="url(#skinGold)" style={{ animation: 'trailFade 1s ease-out infinite 0.4s' }} />
+          </g>
+
+          <g transform="translate(80, 50)">
+            <line x1="30" y1="40" x2="0" y2="0" stroke="url(#staffGold)" strokeWidth="6" strokeLinecap="round" filter="url(#glow)" />
+            
+            <g transform="translate(0, 0)">
+              <circle cx="0" cy="-5" r="8" fill="url(#staffGold)" filter="url(#glow)" />
+              <g style={{ transformOrigin: '0 -5px', animation: 'wingFlutter 0.6s ease-in-out infinite' }}>
+                <path d="M-8,-5 C-20,-15 -30,-10 -35,0 C-25,-5 -15,-8 -8,-5" fill="url(#staffGold)" filter="url(#glow)" />
+                <path d="M-8,-8 C-18,-20 -28,-18 -32,-10 C-22,-12 -15,-12 -8,-8" fill="url(#staffGold)" filter="url(#glow)" />
+              </g>
+              <g style={{ transformOrigin: '0 -5px', animation: 'wingFlutter 0.6s ease-in-out infinite' }}>
+                <path d="M8,-5 C20,-15 30,-10 35,0 C25,-5 15,-8 8,-5" fill="url(#staffGold)" filter="url(#glow)" />
+                <path d="M8,-8 C18,-20 28,-18 32,-10 C22,-12 15,-12 8,-8" fill="url(#staffGold)" filter="url(#glow)" />
+              </g>
+              <path d="M-3,5 Q-8,15 -5,25 Q0,20 5,25 Q8,15 3,5" fill="url(#staffGold)" strokeWidth="2" />
+              <path d="M-5,25 Q-10,35 -6,45 Q0,38 6,45 Q10,35 5,25" fill="url(#staffGold)" strokeWidth="2" />
+            </g>
+          </g>
+
+          <g transform="translate(200, 120)">
+            <ellipse cx="0" cy="0" rx="28" ry="32" fill="url(#skinGold)" />
+            <ellipse cx="-8" cy="-5" rx="4" ry="5" fill="#78350f" opacity="0.6" />
+            <ellipse cx="8" cy="-5" rx="4" ry="5" fill="#78350f" opacity="0.6" />
+            <path d="M-5,8 Q0,12 5,8" fill="none" stroke="#78350f" strokeWidth="2" opacity="0.5" />
+            
+            <path d="M-30,-20 Q-35,-40 -20,-50 Q0,-55 20,-50 Q35,-40 30,-20" fill="url(#skinGold)" />
+            <path d="M-25,-35 Q-10,-45 0,-45 Q10,-45 25,-35" fill="#92400e" opacity="0.3" />
+            
+            <g style={{ transformOrigin: '-30px -30px', animation: 'wingFlutter 0.5s ease-in-out infinite' }}>
+              <path d="M-28,-25 C-50,-40 -70,-35 -80,-20 C-65,-30 -50,-32 -35,-25" fill="url(#staffGold)" filter="url(#glow)" />
+              <path d="M-30,-30 C-55,-50 -75,-45 -85,-30 C-70,-40 -52,-42 -35,-32" fill="url(#staffGold)" filter="url(#glow)" />
+              <path d="M-32,-35 C-55,-58 -78,-55 -90,-42 C-73,-50 -55,-52 -38,-40" fill="url(#staffGold)" filter="url(#glow)" />
+            </g>
+            <g style={{ transformOrigin: '30px -30px', animation: 'wingFlutter 0.5s ease-in-out infinite 0.1s' }}>
+              <path d="M28,-25 C50,-40 70,-35 80,-20 C65,-30 50,-32 35,-25" fill="url(#staffGold)" filter="url(#glow)" />
+              <path d="M30,-30 C55,-50 75,-45 85,-30 C70,-40 52,-42 35,-32" fill="url(#staffGold)" filter="url(#glow)" />
+              <path d="M32,-35 C55,-58 78,-55 90,-42 C73,-50 55,-52 38,-40" fill="url(#staffGold)" filter="url(#glow)" />
+            </g>
+          </g>
+
+          <g transform="translate(200, 200)">
+            <path d="M-25,0 L-30,60 L30,60 L25,0 Z" fill="url(#tunicWhite)" />
+            <path d="M-30,60 L-35,90 L0,85 L35,90 L30,60 Z" fill="url(#tunicWhite)" />
+            <path d="M-22,0 L-40,-10 L-60,30 L-45,35 L-30,10 Z" fill="url(#skinGold)" />
+            <path d="M22,0 L50,20 L70,-20 L55,-30 L35,-5 Z" fill="url(#skinGold)" />
+            
+            <path d="M-35,90 Q-50,130 -40,150" fill="none" stroke="url(#capeRed)" strokeWidth="30" strokeLinecap="round" />
+            
+            <path d="M30,60 Q60,90 40,140 Q30,170 50,200" fill="none" stroke="url(#capeRed)" strokeWidth="35" strokeLinecap="round" opacity="0.9" />
+          </g>
+
+          <g transform="translate(160, 340)">
+            <path d="M0,0 L-15,60 L-25,120" fill="none" stroke="url(#skinGold)" strokeWidth="20" strokeLinecap="round" />
+            <ellipse cx="-30" cy="130" rx="18" ry="10" fill="url(#skinGold)" transform="rotate(-20, -30, 130)" />
+            <g transform="translate(-45, 120) rotate(-30)" style={{ animation: 'wingFlutter 0.4s ease-in-out infinite' }}>
+              <path d="M0,0 C-15,-8 -25,-5 -30,5 C-20,0 -10,-2 0,0" fill="url(#staffGold)" filter="url(#glow)" />
+              <path d="M0,-3 C-12,-12 -22,-10 -28,0 C-18,-5 -10,-6 0,-3" fill="url(#staffGold)" filter="url(#glow)" />
+            </g>
+          </g>
+
+          <g transform="translate(240, 300)">
+            <path d="M0,0 L30,50 L50,110" fill="none" stroke="url(#skinGold)" strokeWidth="18" strokeLinecap="round" />
+            <ellipse cx="55" cy="120" rx="16" ry="10" fill="url(#skinGold)" transform="rotate(30, 55, 120)" />
+            <g transform="translate(70, 115) rotate(20)" style={{ animation: 'wingFlutter 0.4s ease-in-out infinite 0.2s' }}>
+              <path d="M0,0 C15,-8 25,-5 30,5 C20,0 10,-2 0,0" fill="url(#staffGold)" filter="url(#glow)" />
+              <path d="M0,-3 C12,-12 22,-10 28,0 C18,-5 10,-6 0,-3" fill="url(#staffGold)" filter="url(#glow)" />
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 text-center z-20" style={parallaxStyle(0.2)}>
+        <h2 className="text-white text-xl md:text-2xl font-light tracking-widest uppercase">
+          Mensageiro dos Deuses
+        </h2>
+        <p className="text-white/60 text-sm mt-2">
+          Velocidade e precisão para seus negócios
+        </p>
       </div>
     </div>
   );
