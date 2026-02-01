@@ -133,6 +133,12 @@ function InlineEditField({
   const [editing, setEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value);
 
+  useEffect(() => {
+    if (!editing) {
+      setTempValue(value);
+    }
+  }, [value, editing]);
+
   const handleBlur = () => {
     setEditing(false);
     if (tempValue !== value) {
