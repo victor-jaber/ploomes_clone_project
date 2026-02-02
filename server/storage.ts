@@ -130,6 +130,12 @@ export interface IStorage {
   createOpportunity(opportunity: InsertOpportunity): Promise<Opportunity>;
   updateOpportunity(id: string, opportunity: Partial<InsertOpportunity>, ownerId: string): Promise<Opportunity | undefined>;
   deleteOpportunity(id: string, ownerId: string): Promise<boolean>;
+
+  // Users
+  getUsers(): Promise<{ id: string; name: string; email: string; createdAt: Date | null }[]>;
+  getUserByEmail(email: string): Promise<{ id: string; name: string; email: string } | undefined>;
+  createUser(user: { name: string; email: string; password: string }): Promise<{ id: string; name: string; email: string; createdAt: Date | null }>;
+  deleteUser(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -505,6 +511,41 @@ export class DatabaseStorage implements IStorage {
 
   async deleteOpportunity(id: string, ownerId: string): Promise<boolean> {
     const result = await db.delete(opportunities).where(and(eq(opportunities.id, id), eq(opportunities.ownerId, ownerId))).returning();
+    return result.length > 0;
+  }
+
+  // Users
+  async getUsers(): Promise<{ id: string; name: string; email: string; createdAt: Date | null }[]> {
+    const result = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      createdAt: users.createdAt,
+    }).from(users).orderBy(desc(users.createdAt));
+    return result;
+  }
+
+  async getUserByEmail(email: string): Promise<{ id: string; name: string; email: string } | undefined> {
+    const [user] = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+    }).from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(user: { name: string; email: string; password: string }): Promise<{ id: string; name: string; email: string; createdAt: Date | null }> {
+    const [newUser] = await db.insert(users).values(user).returning({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      createdAt: users.createdAt,
+    });
+    return newUser;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id)).returning();
     return result.length > 0;
   }
 }

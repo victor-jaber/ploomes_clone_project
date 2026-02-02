@@ -8,6 +8,7 @@ import {
   Package,
   FileText,
   LogOut,
+  UserCog,
 } from "lucide-react";
 import { HermesLogo } from "@/components/hermes-logo";
 import {
@@ -38,6 +39,7 @@ const menuItems = [
   { title: "Atividades", url: "/atividades", icon: CalendarCheck },
   { title: "Produtos", url: "/produtos", icon: Package },
   { title: "Propostas", url: "/propostas", icon: FileText },
+  { title: "Usuários", url: "/usuarios", icon: UserCog },
 ];
 
 export function AppSidebar({ user, onLogout }: AppSidebarProps) {

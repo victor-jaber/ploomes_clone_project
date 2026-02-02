@@ -993,9 +993,15 @@ function LeadDetailPanel({
           <div className="p-4 border-t bg-muted/20">
             <div className="flex gap-2">
               <Textarea
-                placeholder="Digite um comentário..."
+                placeholder="Digite um comentário... (Enter para enviar)"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendComment();
+                  }
+                }}
                 className="min-h-[80px] resize-none"
                 data-testid="input-comment"
               />
