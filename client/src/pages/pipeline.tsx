@@ -1673,6 +1673,11 @@ export default function PipelinePage() {
   const [selectedPipeline, setSelectedPipeline] = useState<PipelineType>("advogados");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   
+  // Inline entity creation states
+  const [showInlineCreate, setShowInlineCreate] = useState(false);
+  const [selectedEntityId, setSelectedEntityId] = useState<string>("");
+  const [newEntityData, setNewEntityData] = useState({ nome: "", oab: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+  
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDraggingScroll, setIsDraggingScroll] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -1785,6 +1790,9 @@ export default function PipelinePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       setIsDialogOpen(false);
+      setSelectedEntityId("");
+      setShowInlineCreate(false);
+      setNewEntityData({ nome: "", oab: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
       toast({
         title: "Sucesso",
         description: "Lead criado com sucesso",
@@ -1798,6 +1806,87 @@ export default function PipelinePage() {
       });
     },
   });
+
+  const createInlineAdvogadoMutation = useMutation({
+    mutationFn: async (data: { nome: string; oab: string; telefone: string; email: string; numeroCaso: string }) => {
+      const response = await apiRequest("POST", "/api/advogados", data);
+      return response.json();
+    },
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/advogados"] });
+      setSelectedEntityId(created.id);
+      setShowInlineCreate(false);
+      setNewEntityData({ nome: "", oab: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+      toast({ title: "Advogado criado" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao criar advogado", variant: "destructive" });
+    },
+  });
+
+  const createInlineEscritorioMutation = useMutation({
+    mutationFn: async (data: { nome: string; cnpj: string; telefone: string; email: string; numeroCaso: string }) => {
+      const response = await apiRequest("POST", "/api/escritorios", data);
+      return response.json();
+    },
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/escritorios"] });
+      setSelectedEntityId(created.id);
+      setShowInlineCreate(false);
+      setNewEntityData({ nome: "", oab: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+      toast({ title: "Escritório criado" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao criar escritório", variant: "destructive" });
+    },
+  });
+
+  const createInlineReclamanteMutation = useMutation({
+    mutationFn: async (data: { nome: string; cpf: string; telefone: string; email: string; processoNumero: string }) => {
+      const response = await apiRequest("POST", "/api/reclamantes", data);
+      return response.json();
+    },
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reclamantes"] });
+      setSelectedEntityId(created.id);
+      setShowInlineCreate(false);
+      setNewEntityData({ nome: "", oab: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+      toast({ title: "Reclamante criado" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao criar reclamante", variant: "destructive" });
+    },
+  });
+
+  const handleCreateInlineEntity = () => {
+    if (selectedPipeline === "advogados") {
+      createInlineAdvogadoMutation.mutate({
+        nome: newEntityData.nome,
+        oab: newEntityData.oab,
+        telefone: newEntityData.telefone,
+        email: newEntityData.email,
+        numeroCaso: newEntityData.numeroCaso,
+      });
+    } else if (selectedPipeline === "escritorios") {
+      createInlineEscritorioMutation.mutate({
+        nome: newEntityData.nome,
+        cnpj: newEntityData.cnpj,
+        telefone: newEntityData.telefone,
+        email: newEntityData.email,
+        numeroCaso: newEntityData.numeroCaso,
+      });
+    } else if (selectedPipeline === "reclamantes") {
+      createInlineReclamanteMutation.mutate({
+        nome: newEntityData.nome,
+        cpf: newEntityData.cpf,
+        telefone: newEntityData.telefone,
+        email: newEntityData.email,
+        processoNumero: newEntityData.processoNumero,
+      });
+    }
+  };
+
+  const isCreatingEntity = createInlineAdvogadoMutation.isPending || createInlineEscritorioMutation.isPending || createInlineReclamanteMutation.isPending;
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     setDraggedId(id);
@@ -1892,7 +1981,6 @@ export default function PipelinePage() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const entityId = formData.get("entityId") as string;
     
     const data: Partial<InsertLead> = {
       titulo: formData.get("titulo") as string,
@@ -1903,14 +1991,14 @@ export default function PipelinePage() {
       descricao: formData.get("descricao") as string || "",
     };
 
-    // Only set entity ID if a valid ID was selected
-    if (entityId && entityId.trim()) {
+    // Only set entity ID if a valid ID was selected (using controlled state)
+    if (selectedEntityId && selectedEntityId.trim()) {
       if (selectedPipeline === "advogados") {
-        data.advogadoId = entityId;
+        data.advogadoId = selectedEntityId;
       } else if (selectedPipeline === "escritorios") {
-        data.escritorioId = entityId;
+        data.escritorioId = selectedEntityId;
       } else if (selectedPipeline === "reclamantes") {
-        data.reclamanteId = entityId;
+        data.reclamanteId = selectedEntityId;
       }
     }
 
@@ -1992,21 +2080,118 @@ export default function PipelinePage() {
                     data-testid="input-lead-titulo"
                   />
                 </div>
-                {entityOptions.length > 0 && (
+                {(selectedPipeline === "advogados" || selectedPipeline === "escritorios" || selectedPipeline === "reclamantes") && (
                   <div className="space-y-2">
-                    <Label htmlFor="entityId">{pipelineInfo.label.slice(0, -1)}</Label>
-                    <Select name="entityId">
-                      <SelectTrigger data-testid="select-lead-entity">
-                        <SelectValue placeholder={`Selecione um ${pipelineInfo.label.slice(0, -1).toLowerCase()}`} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {entityOptions.map((entity) => (
-                          <SelectItem key={entity.id} value={entity.id}>
-                            {entity.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center justify-between">
+                      <Label>{pipelineInfo.label.slice(0, -1)}</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowInlineCreate(!showInlineCreate)}
+                        data-testid="button-toggle-inline-create"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        {showInlineCreate ? "Cancelar" : `Novo ${pipelineInfo.label.slice(0, -1)}`}
+                      </Button>
+                    </div>
+                    
+                    {showInlineCreate ? (
+                      <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
+                        <Input
+                          placeholder="Nome"
+                          value={newEntityData.nome}
+                          onChange={(e) => setNewEntityData({ ...newEntityData, nome: e.target.value })}
+                          data-testid="input-inline-nome"
+                        />
+                        {selectedPipeline === "advogados" && (
+                          <>
+                            <Input
+                              placeholder="OAB"
+                              value={newEntityData.oab}
+                              onChange={(e) => setNewEntityData({ ...newEntityData, oab: e.target.value })}
+                              data-testid="input-inline-oab"
+                            />
+                            <Input
+                              placeholder="Nº do Caso"
+                              value={newEntityData.numeroCaso}
+                              onChange={(e) => setNewEntityData({ ...newEntityData, numeroCaso: e.target.value })}
+                              data-testid="input-inline-numero-caso"
+                            />
+                          </>
+                        )}
+                        {selectedPipeline === "escritorios" && (
+                          <>
+                            <Input
+                              placeholder="CNPJ"
+                              value={newEntityData.cnpj}
+                              onChange={(e) => setNewEntityData({ ...newEntityData, cnpj: e.target.value })}
+                              data-testid="input-inline-cnpj"
+                            />
+                            <Input
+                              placeholder="Nº do Caso"
+                              value={newEntityData.numeroCaso}
+                              onChange={(e) => setNewEntityData({ ...newEntityData, numeroCaso: e.target.value })}
+                              data-testid="input-inline-numero-caso"
+                            />
+                          </>
+                        )}
+                        {selectedPipeline === "reclamantes" && (
+                          <>
+                            <Input
+                              placeholder="CPF"
+                              value={newEntityData.cpf}
+                              onChange={(e) => setNewEntityData({ ...newEntityData, cpf: e.target.value })}
+                              data-testid="input-inline-cpf"
+                            />
+                            <Input
+                              placeholder="Nº do Processo"
+                              value={newEntityData.processoNumero}
+                              onChange={(e) => setNewEntityData({ ...newEntityData, processoNumero: e.target.value })}
+                              data-testid="input-inline-processo"
+                            />
+                          </>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            placeholder="Telefone"
+                            value={newEntityData.telefone}
+                            onChange={(e) => setNewEntityData({ ...newEntityData, telefone: e.target.value })}
+                            data-testid="input-inline-telefone"
+                          />
+                          <Input
+                            placeholder="Email"
+                            type="email"
+                            value={newEntityData.email}
+                            onChange={(e) => setNewEntityData({ ...newEntityData, email: e.target.value })}
+                            data-testid="input-inline-email"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full"
+                          onClick={handleCreateInlineEntity}
+                          disabled={!newEntityData.nome || isCreatingEntity}
+                          data-testid="button-save-inline-entity"
+                        >
+                          {isCreatingEntity ? "Criando..." : `Criar ${pipelineInfo.label.slice(0, -1)}`}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Select value={selectedEntityId} onValueChange={setSelectedEntityId}>
+                        <SelectTrigger data-testid="select-lead-entity">
+                          <SelectValue placeholder={`Selecione um ${pipelineInfo.label.slice(0, -1).toLowerCase()}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {entityOptions.map((entity) => (
+                            <SelectItem key={entity.id} value={entity.id}>
+                              {entity.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
