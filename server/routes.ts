@@ -887,6 +887,7 @@ export async function registerRoutes(
   app.post("/api/interactions", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
+      const userName = (req as AuthRequest).user!.name;
       const parsed = insertInteractionSchema.safeParse({ ...req.body, ownerId: userId, vendedorId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
@@ -898,7 +899,9 @@ export async function registerRoutes(
         return;
       }
       const interaction = await storage.createInteraction(parsed.data);
-      res.status(201).json(interaction);
+      const interactionWithName = { ...interaction, vendedorName: userName };
+      wsManager.broadcastInteractionCreated(interactionWithName);
+      res.status(201).json(interactionWithName);
     } catch (error) {
       console.error("Error creating interaction:", error);
       res.status(500).json({ message: "Failed to create interaction" });

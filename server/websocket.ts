@@ -72,6 +72,13 @@ class WebSocketManager {
       payload: { id: leadId },
     });
   }
+
+  broadcastInteractionCreated(interaction: any) {
+    this.broadcast({
+      type: "interaction_created",
+      payload: interaction,
+    });
+  }
 }
 
 export const wsManager = new WebSocketManager();

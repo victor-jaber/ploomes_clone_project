@@ -12,6 +12,7 @@ import {
   products,
   clients,
   opportunities,
+  users,
   type Advogado,
   type InsertAdvogado,
   type Escritorio,
@@ -114,7 +115,7 @@ export interface IStorage {
   getMatchingTriggers(ownerId: string, pipelineType: string, fromStage: string | null, toStage: string): Promise<PipelineTrigger[]>;
 
   // Interactions
-  getInteractions(leadId: string): Promise<Interaction[]>;
+  getInteractions(leadId: string): Promise<(Interaction & { vendedorName?: string | null })[]>;
   createInteraction(interaction: InsertInteraction): Promise<Interaction>;
   deleteInteraction(id: string, ownerId: string): Promise<boolean>;
 
@@ -426,8 +427,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Interactions
-  async getInteractions(leadId: string): Promise<Interaction[]> {
-    return db.select().from(interactions).where(eq(interactions.leadId, leadId)).orderBy(desc(interactions.createdAt));
+  async getInteractions(leadId: string): Promise<(Interaction & { vendedorName?: string | null })[]> {
+    const result = await db
+      .select({
+        id: interactions.id,
+        leadId: interactions.leadId,
+        vendedorId: interactions.vendedorId,
+        ownerId: interactions.ownerId,
+        type: interactions.type,
+        content: interactions.content,
+        createdAt: interactions.createdAt,
+        fileName: interactions.fileName,
+        fileUrl: interactions.fileUrl,
+        fileType: interactions.fileType,
+        metadata: interactions.metadata,
+        vendedorName: users.name,
+      })
+      .from(interactions)
+      .leftJoin(users, eq(interactions.vendedorId, users.id))
+      .where(eq(interactions.leadId, leadId))
+      .orderBy(desc(interactions.createdAt));
+    return result;
   }
 
   async createInteraction(interaction: InsertInteraction): Promise<Interaction> {

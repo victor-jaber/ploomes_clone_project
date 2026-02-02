@@ -910,13 +910,18 @@ function LeadDetailPanel({
                 </div>
               ) : (
                 <>
-                  {interactionsList.map((interaction) => (
+                  {interactionsList.map((interaction: any) => (
                     <div key={interaction.id} className="flex gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         {getInteractionIcon(interaction.type)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          {interaction.vendedorName && (
+                            <span className="text-xs font-semibold text-foreground">
+                              {interaction.vendedorName}
+                            </span>
+                          )}
                           <Badge variant="outline" className="text-xs">
                             {getInteractionLabel(interaction.type)}
                           </Badge>
