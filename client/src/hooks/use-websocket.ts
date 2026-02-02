@@ -76,6 +76,18 @@ export function useWebSocket() {
         });
         break;
 
+      case "interaction_created":
+        const interactionLeadId = message.payload.leadId;
+        if (interactionLeadId) {
+          queryClient.setQueryData<any[]>([`/api/leads/${interactionLeadId}/interactions`], (old) => {
+            if (!old) return [message.payload];
+            const exists = old.some((i) => i.id === message.payload.id);
+            if (exists) return old;
+            return [message.payload, ...old];
+          });
+        }
+        break;
+
       default:
         console.log("[WS] Unknown message type:", message.type);
     }
