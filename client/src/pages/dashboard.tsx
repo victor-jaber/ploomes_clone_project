@@ -1,15 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
 import {
   Users,
   Target,
   DollarSign,
   TrendingUp,
-  CalendarCheck,
-  FileText,
+  Scale,
+  Building2,
+  User,
+  Kanban,
   ArrowUpRight,
   ArrowDownRight,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Activity,
+  BarChart3,
+  PieChart as PieChartIcon,
+  Calendar,
+  MessageSquare,
 } from "lucide-react";
 import {
   AreaChart,
@@ -24,19 +38,19 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from "recharts";
-import type { Client, Opportunity, Activity, Proposal } from "@shared/schema";
+import type { Lead, Advogado, Escritorio, Reclamante, Activity as ActivityType } from "@shared/schema";
 
-const COLORS = ["#3b82f6", "#8b5cf6", "#f97316", "#10b981", "#ef4444", "#6b7280"];
+const PIPELINE_COLORS = {
+  advogados: "#8b5cf6",
+  escritorios: "#3b82f6", 
+  reclamantes: "#10b981",
+  triagem: "#f97316",
+  fechamento: "#ef4444",
+};
 
-const pipelineData = [
-  { name: "Lead", value: 0, color: "#3b82f6" },
-  { name: "Qualificado", value: 0, color: "#8b5cf6" },
-  { name: "Proposta", value: 0, color: "#f97316" },
-  { name: "Negociação", value: 0, color: "#eab308" },
-  { name: "Ganho", value: 0, color: "#10b981" },
-  { name: "Perdido", value: 0, color: "#ef4444" },
-];
+const STAGE_COLORS = ["#8b5cf6", "#a78bfa", "#c4b5fd", "#ddd6fe", "#10b981"];
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -47,329 +61,641 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function formatCurrencyShort(value: number) {
+  if (value >= 1000000) {
+    return `R$ ${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `R$ ${(value / 1000).toFixed(0)}k`;
+  }
+  return formatCurrency(value);
+}
+
 function StatCard({
   title,
   value,
+  subtitle,
   change,
   changeType,
   icon: Icon,
+  iconColor,
   isLoading,
 }: {
   title: string;
   value: string | number;
+  subtitle?: string;
   change?: string;
-  changeType?: "positive" | "negative";
+  changeType?: "positive" | "negative" | "neutral";
   icon: React.ElementType;
+  iconColor?: string;
   isLoading?: boolean;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
+    <Card className="card-premium overflow-hidden">
+      <CardContent className="p-6">
         {isLoading ? (
-          <Skeleton className="h-8 w-24" />
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-3 w-16" />
+          </div>
         ) : (
-          <>
-            <div className="text-2xl font-bold">{value}</div>
-            {change && (
-              <p className={`text-xs flex items-center gap-1 mt-1 ${
-                changeType === "positive" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-              }`}>
-                {changeType === "positive" ? (
-                  <ArrowUpRight className="h-3 w-3" />
-                ) : (
-                  <ArrowDownRight className="h-3 w-3" />
-                )}
-                {change}
-              </p>
-            )}
-          </>
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">{title}</p>
+              <p className="text-2xl font-bold">{value}</p>
+              {subtitle && (
+                <p className="text-xs text-muted-foreground">{subtitle}</p>
+              )}
+              {change && (
+                <div className={`flex items-center gap-1 text-xs font-medium ${
+                  changeType === "positive" ? "text-green-600 dark:text-green-400" : 
+                  changeType === "negative" ? "text-red-600 dark:text-red-400" : 
+                  "text-muted-foreground"
+                }`}>
+                  {changeType === "positive" && <ArrowUpRight className="h-3 w-3" />}
+                  {changeType === "negative" && <ArrowDownRight className="h-3 w-3" />}
+                  {change}
+                </div>
+              )}
+            </div>
+            <div className={`p-3 rounded-xl ${iconColor || "bg-primary/10"}`}>
+              <Icon className={`h-5 w-5 ${iconColor ? "text-white" : "text-primary"}`} />
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
   );
 }
 
+const PIPELINE_STAGES: Record<string, { id: string; label: string }[]> = {
+  advogados: [
+    { id: "novo_lead", label: "Novo Lead" },
+    { id: "contato_inicial", label: "Contato Inicial" },
+    { id: "negociando", label: "Negociando" },
+    { id: "aguardando_docs", label: "Aguardando Docs" },
+    { id: "qualificado", label: "Qualificado" },
+  ],
+  escritorios: [
+    { id: "novo_lead", label: "Novo Lead" },
+    { id: "contato_inicial", label: "Contato Inicial" },
+    { id: "reuniao_agendada", label: "Reunião Agendada" },
+    { id: "proposta_enviada", label: "Proposta Enviada" },
+    { id: "qualificado", label: "Qualificado" },
+  ],
+  reclamantes: [
+    { id: "novo_lead", label: "Novo Lead" },
+    { id: "contato_inicial", label: "Contato Inicial" },
+    { id: "coletando_dados", label: "Coletando Dados" },
+    { id: "aguardando_docs", label: "Aguardando Docs" },
+    { id: "qualificado", label: "Qualificado" },
+  ],
+  triagem: [
+    { id: "novo_caso", label: "Novo Caso" },
+    { id: "prioridade", label: "Prioridade" },
+    { id: "triagem", label: "Triagem" },
+    { id: "acompanhar", label: "Acompanhar" },
+    { id: "qualificar", label: "Qualificar" },
+  ],
+  fechamento: [
+    { id: "analise_financeira", label: "Análise Financeira" },
+    { id: "negociacao_valores", label: "Negociação" },
+    { id: "contrato", label: "Contrato" },
+    { id: "assinatura", label: "Assinatura" },
+    { id: "fechado", label: "Fechado" },
+  ],
+};
+
 export default function DashboardPage() {
-  const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
-    queryKey: ["/api/clients"],
+  const { data: leads = [], isLoading: leadsLoading } = useQuery<Lead[]>({
+    queryKey: ["/api/leads"],
   });
 
-  const { data: opportunities = [], isLoading: opportunitiesLoading } = useQuery<Opportunity[]>({
-    queryKey: ["/api/opportunities"],
+  const { data: advogados = [], isLoading: advogadosLoading } = useQuery<Advogado[]>({
+    queryKey: ["/api/advogados"],
   });
 
-  const { data: activities = [], isLoading: activitiesLoading } = useQuery<Activity[]>({
+  const { data: escritorios = [], isLoading: escritoriosLoading } = useQuery<Escritorio[]>({
+    queryKey: ["/api/escritorios"],
+  });
+
+  const { data: reclamantes = [], isLoading: reclamantesLoading } = useQuery<Reclamante[]>({
+    queryKey: ["/api/reclamantes"],
+  });
+
+  const { data: activities = [], isLoading: activitiesLoading } = useQuery<ActivityType[]>({
     queryKey: ["/api/activities"],
   });
 
-  const { data: proposals = [], isLoading: proposalsLoading } = useQuery<Proposal[]>({
-    queryKey: ["/api/proposals"],
-  });
+  const isLoading = leadsLoading || advogadosLoading || escritoriosLoading || reclamantesLoading;
 
-  const isLoading = clientsLoading || opportunitiesLoading || activitiesLoading || proposalsLoading;
+  const totalLeads = leads.length;
+  const totalValue = leads.reduce((acc, l) => acc + Number(l.valor || 0), 0);
+  
+  const leadsByPipeline = {
+    advogados: leads.filter(l => l.pipelineType === "advogados"),
+    escritorios: leads.filter(l => l.pipelineType === "escritorios"),
+    reclamantes: leads.filter(l => l.pipelineType === "reclamantes"),
+    triagem: leads.filter(l => l.pipelineType === "triagem"),
+    fechamento: leads.filter(l => l.pipelineType === "fechamento"),
+  };
 
-  const totalPipelineValue = opportunities
-    .filter((o) => !["closed_won", "closed_lost"].includes(o.status || ""))
-    .reduce((acc, o) => acc + Number(o.value || 0), 0);
+  const qualifiedLeads = leads.filter(l => 
+    l.stage === "qualificado" || l.stage === "qualificar" || l.stage === "fechado"
+  ).length;
 
-  const wonValue = opportunities
-    .filter((o) => o.status === "closed_won")
-    .reduce((acc, o) => acc + Number(o.value || 0), 0);
+  const conversionRate = totalLeads > 0 ? Math.round((qualifiedLeads / totalLeads) * 100) : 0;
 
-  const pendingActivities = activities.filter((a) => a.status === "pending").length;
+  const pipelineDistribution = [
+    { name: "Advogados", value: leadsByPipeline.advogados.length, color: PIPELINE_COLORS.advogados },
+    { name: "Escritórios", value: leadsByPipeline.escritorios.length, color: PIPELINE_COLORS.escritorios },
+    { name: "Reclamantes", value: leadsByPipeline.reclamantes.length, color: PIPELINE_COLORS.reclamantes },
+    { name: "Triagem", value: leadsByPipeline.triagem.length, color: PIPELINE_COLORS.triagem },
+    { name: "Fechamento", value: leadsByPipeline.fechamento.length, color: PIPELINE_COLORS.fechamento },
+  ].filter(p => p.value > 0);
 
-  const pipelineStats = pipelineData.map((stage) => {
-    const statusMap: Record<string, string> = {
-      "Lead": "lead",
-      "Qualificado": "qualified",
-      "Proposta": "proposal",
-      "Negociação": "negotiation",
-      "Ganho": "closed_won",
-      "Perdido": "closed_lost",
-    };
-    const count = opportunities.filter((o) => o.status === statusMap[stage.name]).length;
-    return { ...stage, value: count };
-  });
+  const getStageData = (pipelineType: string) => {
+    const stages = PIPELINE_STAGES[pipelineType] || [];
+    const pipelineLeads = leads.filter(l => l.pipelineType === pipelineType);
+    return stages.map((stage, index) => ({
+      name: stage.label,
+      value: pipelineLeads.filter(l => l.stage === stage.id).length,
+      color: STAGE_COLORS[index % STAGE_COLORS.length],
+    }));
+  };
 
-  const monthlyData = [
-    { name: "Jan", value: 45000 },
-    { name: "Fev", value: 52000 },
-    { name: "Mar", value: 48000 },
-    { name: "Abr", value: 61000 },
-    { name: "Mai", value: 55000 },
-    { name: "Jun", value: 67000 },
-  ];
+  const advogadosStageData = getStageData("advogados");
 
-  const recentOpportunities = opportunities
+  const recentLeads = [...leads]
     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
     .slice(0, 5);
 
-  const upcomingActivities = activities
-    .filter((a) => a.status === "pending" && a.dueDate)
-    .sort((a, b) => new Date(a.dueDate || 0).getTime() - new Date(b.dueDate || 0).getTime())
-    .slice(0, 5);
+  const pendingActivities = activities.filter(a => a.status === "pending").length;
+  const completedActivities = activities.filter(a => a.status === "completed").length;
 
-  const statusLabels: Record<string, string> = {
-    lead: "Lead",
-    qualified: "Qualificado",
-    proposal: "Proposta",
-    negotiation: "Negociação",
-    closed_won: "Ganho",
-    closed_lost: "Perdido",
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - i));
+    return date;
+  });
+
+  const weeklyData = last7Days.map(date => {
+    const dayLeads = leads.filter(l => {
+      const leadDate = new Date(l.createdAt || 0);
+      return leadDate.toDateString() === date.toDateString();
+    });
+    return {
+      name: date.toLocaleDateString("pt-BR", { weekday: "short" }),
+      leads: dayLeads.length,
+      valor: dayLeads.reduce((acc, l) => acc + Number(l.valor || 0), 0),
+    };
+  });
+
+  const pipelineLabels: Record<string, string> = {
+    advogados: "Advogados",
+    escritorios: "Escritórios",
+    reclamantes: "Reclamantes",
+    triagem: "Triagem",
+    fechamento: "Fechamento",
   };
 
-  const activityTypeLabels: Record<string, string> = {
-    call: "Ligação",
-    email: "E-mail",
-    meeting: "Reunião",
-    task: "Tarefa",
-    note: "Nota",
+  const getEntityName = (lead: Lead) => {
+    if (lead.advogadoId) {
+      const adv = advogados.find(a => a.id === lead.advogadoId);
+      return adv?.nome || "Advogado";
+    }
+    if (lead.escritorioId) {
+      const esc = escritorios.find(e => e.id === lead.escritorioId);
+      return esc?.nome || "Escritório";
+    }
+    if (lead.reclamanteId) {
+      const rec = reclamantes.find(r => r.id === lead.reclamanteId);
+      return rec?.nome || "Reclamante";
+    }
+    return "-";
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Visão geral do seu pipeline de vendas
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Dashboard
+          </h1>
+          <p className="text-muted-foreground">
+            Visão geral do seu CRM de aquisição de casos
+          </p>
+        </div>
+        <Badge variant="outline" className="gap-1">
+          <Clock className="h-3 w-3" />
+          Atualizado agora
+        </Badge>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Clientes Ativos"
-          value={clients.length}
-          change="+12% este mês"
-          changeType="positive"
-          icon={Users}
-          isLoading={clientsLoading}
-        />
-        <StatCard
-          title="Oportunidades Abertas"
-          value={opportunities.filter((o) => !["closed_won", "closed_lost"].includes(o.status || "")).length}
-          change="+8% este mês"
-          changeType="positive"
-          icon={Target}
-          isLoading={opportunitiesLoading}
+          title="Total de Leads"
+          value={totalLeads}
+          subtitle={`${qualifiedLeads} qualificados`}
+          change={`${conversionRate}% taxa de conversão`}
+          changeType={conversionRate >= 20 ? "positive" : conversionRate >= 10 ? "neutral" : "negative"}
+          icon={Kanban}
+          iconColor="bg-gradient-to-br from-purple-500 to-pink-500"
+          isLoading={isLoading}
         />
         <StatCard
           title="Valor em Pipeline"
-          value={formatCurrency(totalPipelineValue)}
-          change="+23% este mês"
-          changeType="positive"
+          value={formatCurrencyShort(totalValue)}
+          subtitle="Soma de todos os leads"
           icon={DollarSign}
-          isLoading={opportunitiesLoading}
+          iconColor="bg-gradient-to-br from-green-500 to-emerald-500"
+          isLoading={isLoading}
         />
         <StatCard
-          title="Vendas Fechadas"
-          value={formatCurrency(wonValue)}
-          change="+15% este mês"
-          changeType="positive"
-          icon={TrendingUp}
-          isLoading={opportunitiesLoading}
+          title="Advogados"
+          value={advogados.length}
+          subtitle={`${leadsByPipeline.advogados.length} leads ativos`}
+          icon={Scale}
+          iconColor="bg-gradient-to-br from-violet-500 to-purple-500"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Escritórios"
+          value={escritorios.length}
+          subtitle={`${leadsByPipeline.escritorios.length} leads ativos`}
+          icon={Building2}
+          iconColor="bg-gradient-to-br from-blue-500 to-cyan-500"
+          isLoading={isLoading}
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-medium">Pipeline de Vendas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-[300px] w-full" />
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={pipelineStats}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="name" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                    {pipelineStats.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Reclamantes"
+          value={reclamantes.length}
+          subtitle={`${leadsByPipeline.reclamantes.length} leads ativos`}
+          icon={User}
+          iconColor="bg-gradient-to-br from-teal-500 to-green-500"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Em Triagem"
+          value={leadsByPipeline.triagem.length}
+          subtitle="Casos em análise"
+          icon={Target}
+          iconColor="bg-gradient-to-br from-orange-500 to-amber-500"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Em Fechamento"
+          value={leadsByPipeline.fechamento.length}
+          subtitle="Prontos para fechar"
+          icon={TrendingUp}
+          iconColor="bg-gradient-to-br from-red-500 to-rose-500"
+          isLoading={isLoading}
+        />
+        <StatCard
+          title="Atividades"
+          value={activities.length}
+          subtitle={`${pendingActivities} pendentes`}
+          change={completedActivities > 0 ? `${completedActivities} concluídas` : undefined}
+          changeType="positive"
+          icon={Activity}
+          iconColor="bg-gradient-to-br from-indigo-500 to-blue-500"
+          isLoading={activitiesLoading}
+        />
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-medium">Evolução Mensal</CardTitle>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="card-premium lg:col-span-2">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">Leads por Dia</CardTitle>
+                <CardDescription>Últimos 7 dias</CardDescription>
+              </div>
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <Skeleton className="h-[300px] w-full" />
+              <Skeleton className="h-[250px] w-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={monthlyData}>
+              <ResponsiveContainer width="100%" height={250}>
+                <AreaChart data={weeklyData}>
                   <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="name" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `R$${v/1000}k`} />
+                  <XAxis 
+                    dataKey="name" 
+                    className="text-xs" 
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} 
+                  />
+                  <YAxis 
+                    className="text-xs" 
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} 
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
                     }}
-                    formatter={(value: number) => [formatCurrency(value), "Valor"]}
+                    formatter={(value: number, name: string) => [
+                      name === "leads" ? `${value} leads` : formatCurrency(value),
+                      name === "leads" ? "Leads" : "Valor"
+                    ]}
                   />
                   <Area
                     type="monotone"
-                    dataKey="value"
-                    stroke="hsl(var(--primary))"
+                    dataKey="leads"
+                    stroke="#8b5cf6"
                     strokeWidth={2}
                     fillOpacity={1}
-                    fill="url(#colorValue)"
+                    fill="url(#colorLeads)"
                   />
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
-      </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base font-medium">Oportunidades Recentes</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+        <Card className="card-premium">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">Distribuição</CardTitle>
+                <CardDescription>Por tipo de pipeline</CardDescription>
+              </div>
+              <PieChartIcon className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
+              <Skeleton className="h-[250px] w-full" />
+            ) : pipelineDistribution.length === 0 ? (
+              <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                Nenhum lead cadastrado
               </div>
-            ) : recentOpportunities.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Nenhuma oportunidade cadastrada
-              </p>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={pipelineDistribution}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {pipelineDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                    }}
+                    formatter={(value: number) => [`${value} leads`, ""]}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36}
+                    formatter={(value) => <span className="text-xs">{value}</span>}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="card-premium">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">Funil de Advogados</CardTitle>
+                <CardDescription>Leads por estágio</CardDescription>
+              </div>
+              <Scale className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-[200px] w-full" />
             ) : (
               <div className="space-y-4">
-                {recentOpportunities.map((opp) => (
-                  <div
-                    key={opp.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    data-testid={`opportunity-item-${opp.id}`}
-                  >
-                    <div className="space-y-1">
-                      <p className="font-medium text-sm">{opp.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {statusLabels[opp.status || "lead"]}
-                      </p>
+                {advogadosStageData.map((stage, index) => (
+                  <div key={stage.name} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{stage.name}</span>
+                      <span className="font-medium">{stage.value}</span>
                     </div>
-                    <p className="font-semibold text-sm">
-                      {formatCurrency(Number(opp.value || 0))}
-                    </p>
+                    <Progress 
+                      value={leadsByPipeline.advogados.length > 0 
+                        ? (stage.value / leadsByPipeline.advogados.length) * 100 
+                        : 0
+                      } 
+                      className="h-2"
+                    />
                   </div>
                 ))}
+                {advogadosStageData.every(s => s.value === 0) && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhum lead de advogado
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base font-medium">Próximas Atividades</CardTitle>
-            <CalendarCheck className="h-4 w-4 text-muted-foreground" />
+        <Card className="card-premium">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">Leads Recentes</CardTitle>
+                <CardDescription>Últimos leads criados</CardDescription>
+              </div>
+              <Kanban className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
+                  <Skeleton key={i} className="h-14 w-full" />
                 ))}
               </div>
-            ) : upcomingActivities.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Nenhuma atividade pendente
-              </p>
+            ) : recentLeads.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <Kanban className="h-8 w-8 mb-2 opacity-50" />
+                <p className="text-sm">Nenhum lead cadastrado</p>
+              </div>
             ) : (
-              <div className="space-y-4">
-                {upcomingActivities.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    data-testid={`activity-item-${activity.id}`}
-                  >
-                    <div className="space-y-1">
-                      <p className="font-medium text-sm">{activity.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {activityTypeLabels[activity.type]}
-                      </p>
+              <ScrollArea className="h-[220px] pr-4">
+                <div className="space-y-3">
+                  {recentLeads.map((lead) => (
+                    <div
+                      key={lead.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-xs">
+                            {lead.titulo?.charAt(0)?.toUpperCase() || "L"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{lead.titulo}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {getEntityName(lead)} • {pipelineLabels[lead.pipelineType || "advogados"]}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-semibold text-sm text-green-600 dark:text-green-400">
+                          {formatCurrency(Number(lead.valor || 0))}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {lead.createdAt && new Date(lead.createdAt).toLocaleDateString("pt-BR", { 
+                            day: "2-digit", 
+                            month: "short" 
+                          })}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {activity.dueDate
-                        ? new Date(activity.dueDate).toLocaleDateString("pt-BR")
-                        : "-"}
-                    </p>
-                  </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="card-premium">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold">Métricas Rápidas</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <span className="text-sm">Qualificados</span>
+              </div>
+              <span className="font-bold text-green-600">{qualifiedLeads}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/10">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-yellow-600" />
+                <span className="text-sm">Em Andamento</span>
+              </div>
+              <span className="font-bold text-yellow-600">{totalLeads - qualifiedLeads}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-purple-500/10">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-purple-600" />
+                <span className="text-sm">Ticket Médio</span>
+              </div>
+              <span className="font-bold text-purple-600">
+                {totalLeads > 0 ? formatCurrencyShort(totalValue / totalLeads) : "R$ 0"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="card-premium">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold">Atividades Pendentes</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {activitiesLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
                 ))}
+              </div>
+            ) : pendingActivities === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <CheckCircle2 className="h-8 w-8 mb-2 opacity-50" />
+                <p className="text-sm">Nenhuma atividade pendente</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activities
+                  .filter(a => a.status === "pending")
+                  .slice(0, 4)
+                  .map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-center gap-3 p-2 rounded-lg bg-muted/30"
+                    >
+                      <div className="h-8 w-8 rounded-full bg-orange-500/10 flex items-center justify-center">
+                        <AlertCircle className="h-4 w-4 text-orange-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{activity.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {activity.dueDate 
+                            ? new Date(activity.dueDate).toLocaleDateString("pt-BR")
+                            : "Sem prazo"}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        <Card className="card-premium">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold">Resumo</CardTitle>
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10">
+              <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                {totalLeads}
+              </p>
+              <p className="text-sm text-muted-foreground">Leads no sistema</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="text-center p-3 rounded-lg bg-muted/30">
+                <p className="text-xl font-bold">{advogados.length}</p>
+                <p className="text-xs text-muted-foreground">Advogados</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/30">
+                <p className="text-xl font-bold">{escritorios.length}</p>
+                <p className="text-xs text-muted-foreground">Escritórios</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/30">
+                <p className="text-xl font-bold">{reclamantes.length}</p>
+                <p className="text-xs text-muted-foreground">Reclamantes</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-muted/30">
+                <p className="text-xl font-bold">{activities.length}</p>
+                <p className="text-xs text-muted-foreground">Atividades</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
