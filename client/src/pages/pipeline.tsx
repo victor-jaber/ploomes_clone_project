@@ -23,6 +23,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -1027,6 +1034,7 @@ function LeadCard({
   onUpdateStage,
   onDropOnLead,
   onSelect,
+  onDelete,
   isDragOver,
   isUpdating,
 }: {
@@ -1041,6 +1049,7 @@ function LeadCard({
   onUpdateStage: (id: string, stage: string) => void;
   onDropOnLead: (e: React.DragEvent, leadId: string) => void;
   onSelect: (leadId: string) => void;
+  onDelete: (id: string) => void;
   isDragOver: boolean;
   isUpdating: boolean;
 }) {
@@ -1068,63 +1077,96 @@ function LeadCard({
 
   const currentStage = stages[currentStageIndex];
   const entityName = getEntityName(lead, advogados, escritorios, reclamantes);
+  const prevStage = currentStageIndex > 0 ? stages[currentStageIndex - 1] : null;
 
   return (
-      <Card
-        draggable
-        onDragStart={(e) => onDragStart(e, lead.id)}
-        onDragEnd={onDragEnd}
-        onDragOver={handleDragOverCard}
-        onDrop={(e) => onDropOnLead(e, lead.id)}
-        onClick={handleCardClick}
-        className={`cursor-pointer card-premium select-none group border-0 transition-all ${isDragOver ? "ring-2 ring-primary ring-offset-1" : ""}`}
-        data-testid={`pipeline-card-${lead.id}`}
-      >
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-start gap-3">
-            <div data-drag-handle className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity">
-              <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-            </div>
-            <div className="space-y-2 flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-semibold text-sm leading-tight">{lead.titulo}</p>
-                {lead.probabilidade !== null && lead.probabilidade !== undefined && (
-                  <div className={`text-xs font-bold px-2 py-0.5 rounded-full ${currentStage?.color} text-white`}>
-                    {lead.probabilidade}%
-                  </div>
-                )}
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <Card
+          draggable
+          onDragStart={(e) => onDragStart(e, lead.id)}
+          onDragEnd={onDragEnd}
+          onDragOver={handleDragOverCard}
+          onDrop={(e) => onDropOnLead(e, lead.id)}
+          onClick={handleCardClick}
+          className={`cursor-pointer card-premium select-none group border-0 transition-all ${isDragOver ? "ring-2 ring-primary ring-offset-1" : ""}`}
+          data-testid={`pipeline-card-${lead.id}`}
+        >
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div data-drag-handle className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity">
+                <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <div className="w-5 h-5 rounded-md bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                  {pipelineType === "advogados" && <Scale className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
-                  {pipelineType === "escritorios" && <Building2 className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
-                  {pipelineType === "reclamantes" && <User className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
-                  {pipelineType === "triagem" && <FileSearch className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
-                  {pipelineType === "fechamento" && <Handshake className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
+              <div className="space-y-2 flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold text-sm leading-tight">{lead.titulo}</p>
+                  {lead.probabilidade !== null && lead.probabilidade !== undefined && (
+                    <div className={`text-xs font-bold px-2 py-0.5 rounded-full ${currentStage?.color} text-white`}>
+                      {lead.probabilidade}%
+                    </div>
+                  )}
                 </div>
-                <span className="truncate font-medium">{entityName}</span>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="w-5 h-5 rounded-md bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                    {pipelineType === "advogados" && <Scale className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
+                    {pipelineType === "escritorios" && <Building2 className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
+                    {pipelineType === "reclamantes" && <User className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
+                    {pipelineType === "triagem" && <FileSearch className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
+                    {pipelineType === "fechamento" && <Handshake className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
+                  </div>
+                  <span className="truncate font-medium">{entityName}</span>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="flex items-center justify-between pt-2 border-t border-dashed">
-            <div className="flex items-center gap-1.5">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                <DollarSign className="h-3.5 w-3.5 text-white" />
+            
+            <div className="flex items-center justify-between pt-2 border-t border-dashed">
+              <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                  <DollarSign className="h-3.5 w-3.5 text-white" />
+                </div>
+                <span className="text-sm font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
+                  {formatCurrencyShort(Number(lead.valor || 0))}
+                </span>
               </div>
-              <span className="text-sm font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
-                {formatCurrencyShort(Number(lead.valor || 0))}
-              </span>
+              {lead.previsaoFechamento && (
+                <Badge variant="outline" className="text-xs">
+                  {new Date(lead.previsaoFechamento).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                </Badge>
+              )}
             </div>
-            {lead.previsaoFechamento && (
-              <Badge variant="outline" className="text-xs">
-                {new Date(lead.previsaoFechamento).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-              </Badge>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
+          </CardContent>
+        </Card>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48" data-testid={`context-menu-${lead.id}`}>
+        <ContextMenuItem onClick={() => onSelect(lead.id)} data-testid="context-menu-view">
+          <FileText className="h-4 w-4 mr-2" />
+          Ver detalhes
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        {prevStage && (
+          <ContextMenuItem onClick={() => onUpdateStage(lead.id, prevStage.id)} data-testid="context-menu-prev-stage">
+            <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
+            Voltar para {prevStage.label}
+          </ContextMenuItem>
+        )}
+        {nextStage && (
+          <ContextMenuItem onClick={handleAdvanceStage} data-testid="context-menu-next-stage">
+            <ArrowRight className="h-4 w-4 mr-2" />
+            Avançar para {nextStage.label}
+          </ContextMenuItem>
+        )}
+        {(prevStage || nextStage) && <ContextMenuSeparator />}
+        <ContextMenuItem 
+          onClick={() => onDelete(lead.id)} 
+          className="text-destructive focus:text-destructive"
+          data-testid="context-menu-delete"
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Excluir lead
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
 }
 
 function PipelineColumn({
@@ -1143,6 +1185,7 @@ function PipelineColumn({
   onUpdateStage,
   onDropOnLead,
   onSelectLead,
+  onDeleteLead,
   dragOverLeadId,
   isLoading,
   isDragOver,
@@ -1163,6 +1206,7 @@ function PipelineColumn({
   onUpdateStage: (id: string, stage: string) => void;
   onDropOnLead: (e: React.DragEvent, leadId: string, stageId: string) => void;
   onSelectLead: (leadId: string) => void;
+  onDeleteLead: (id: string) => void;
   dragOverLeadId: string | null;
   isLoading: boolean;
   isDragOver: boolean;
@@ -1222,6 +1266,7 @@ function PipelineColumn({
                 onUpdateStage={onUpdateStage}
                 onDropOnLead={(e, leadId) => onDropOnLead(e, leadId, stage.id)}
                 onSelect={onSelectLead}
+                onDelete={onDeleteLead}
                 isDragOver={dragOverLeadId === lead.id}
                 isUpdating={isUpdating}
               />
@@ -1807,6 +1852,20 @@ export default function PipelinePage() {
     },
   });
 
+  const deleteLeadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/leads/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      setSelectedLeadId(null);
+      toast({ title: "Lead excluído com sucesso" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao excluir lead", variant: "destructive" });
+    },
+  });
+
   const createInlineAdvogadoMutation = useMutation({
     mutationFn: async (data: { nome: string; oab: string; telefone: string; email: string; numeroCaso: string }) => {
       const response = await apiRequest("POST", "/api/advogados", data);
@@ -2301,6 +2360,7 @@ export default function PipelinePage() {
               onUpdateStage={(id, stage) => updateMutation.mutate({ id, stage })}
               onDropOnLead={handleDropOnLead}
               onSelectLead={setSelectedLeadId}
+              onDeleteLead={(id) => deleteLeadMutation.mutate(id)}
               dragOverLeadId={dragOverLeadId}
               isLoading={isLoading}
               isDragOver={dragOverStage === stage.id}
