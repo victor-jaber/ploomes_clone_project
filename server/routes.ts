@@ -1031,5 +1031,52 @@ export async function registerRoutes(
     }
   });
 
+  // Users management
+  app.get("/api/users", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const usersList = await storage.getUsers();
+      res.json(usersList);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post("/api/users", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { name, email, password } = req.body;
+      if (!name || !email || !password) {
+        res.status(400).json({ message: "Name, email and password are required" });
+        return;
+      }
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        res.status(400).json({ message: "Email already in use" });
+        return;
+      }
+      const bcrypt = require("bcrypt");
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const newUser = await storage.createUser({ name, email, password: hashedPassword });
+      res.status(201).json({ id: newUser.id, name: newUser.name, email: newUser.email, createdAt: newUser.createdAt });
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  app.delete("/api/users/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const deleted = await storage.deleteUser(req.params.id);
+      if (!deleted) {
+        res.status(404).json({ message: "User not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   return httpServer;
 }

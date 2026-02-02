@@ -20,6 +20,7 @@ import OpportunitiesPage from "@/pages/opportunities";
 import ActivitiesPage from "@/pages/activities";
 import ProductsPage from "@/pages/products";
 import ProposalsPage from "@/pages/proposals";
+import UsersPage from "@/pages/users";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedRouter() {
@@ -32,6 +33,7 @@ function AuthenticatedRouter() {
       <Route path="/atividades" component={ActivitiesPage} />
       <Route path="/produtos" component={ProductsPage} />
       <Route path="/propostas" component={ProposalsPage} />
+      <Route path="/usuarios" component={UsersPage} />
       <Route component={NotFound} />
     </Switch>
   );
