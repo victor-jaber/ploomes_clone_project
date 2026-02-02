@@ -1898,17 +1898,20 @@ export default function PipelinePage() {
       titulo: formData.get("titulo") as string,
       pipelineType: selectedPipeline,
       stage: stages[0].id,
-      valor: formData.get("valor") as string,
+      valor: formData.get("valor") as string || "0",
       probabilidade: parseInt(formData.get("probabilidade") as string) || 0,
-      descricao: formData.get("descricao") as string,
+      descricao: formData.get("descricao") as string || "",
     };
 
-    if (selectedPipeline === "advogados") {
-      data.advogadoId = entityId;
-    } else if (selectedPipeline === "escritorios") {
-      data.escritorioId = entityId;
-    } else if (selectedPipeline === "reclamantes") {
-      data.reclamanteId = entityId;
+    // Only set entity ID if a valid ID was selected
+    if (entityId && entityId.trim()) {
+      if (selectedPipeline === "advogados") {
+        data.advogadoId = entityId;
+      } else if (selectedPipeline === "escritorios") {
+        data.escritorioId = entityId;
+      } else if (selectedPipeline === "reclamantes") {
+        data.reclamanteId = entityId;
+      }
     }
 
     createMutation.mutate(data);
