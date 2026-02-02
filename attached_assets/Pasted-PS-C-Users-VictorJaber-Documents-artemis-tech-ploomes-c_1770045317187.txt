@@ -1,0 +1,65 @@
+PS C:\Users\VictorJaber\Documents\artemis-tech\ploomes_clone_project> npm run db:push               
+
+> rest-express@1.0.0 db:push
+> drizzle-kit push
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'C:\Users\VictorJaber\Documents\artemis-tech\ploomes_clone_project\drizzle.config.ts'
+Using 'pg' driver for database querying
+[✓] Pulling schema from database...
++ advogado_escritorios table will be created
++ advogados table will be created
++ escritorios table will be created
++ leads table will be created
++ reclamantes table will be created
+--- all table conflicts resolved ---
+
+
++ lead_id column will be created
+
++ vendedor_id column will be created
+--- all columns conflicts in interactions table resolved ---
+
+
++ lead_id column will be created
+--- all columns conflicts in proposals table resolved ---
+
+
++ pipeline_type column will be created
+
++ from_stage column will be created
+
++ to_stage column will be created
+--- all columns conflicts in pipeline_triggers table resolved ---
+
+
++ lead_id column will be created
+--- all columns conflicts in activities table resolved ---
+
+error: cannot drop type opportunity_status because other objects depend on it
+    at C:\Users\VictorJaber\Documents\artemis-tech\ploomes_clone_project\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.query (C:\Users\VictorJaber\Documents\artemis-tech\ploomes_clone_project\node_modules\drizzle-kit\bin.cjs:80622:26)
+    at async pgPush (C:\Users\VictorJaber\Documents\artemis-tech\ploomes_clone_project\node_modules\drizzle-kit\bin.cjs:84432:13)
+    at async Object.handler (C:\Users\VictorJaber\Documents\artemis-tech\ploomes_clone_project\node_modules\drizzle-kit\bin.cjs:93871:9)
+    at async run (C:\Users\VictorJaber\Documents\artemis-tech\ploomes_clone_project\node_modules\drizzle-kit\bin.cjs:93117:7) {
+  length: 360,
+  severity: 'ERROR',
+  code: '2BP01',
+  detail: 'column to_status of table pipeline_triggers depends on type opportunity_status\n' +
+    'column from_status of table pipeline_triggers depends on type opportunity_status',
+  hint: 'Use DROP ... CASCADE to drop the dependent objects too.',
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'dependency.c',
+  line: '1148',
+  routine: 'reportDependentObjects'
+}
+PS C:\Users\VictorJaber\Documents\artemis-tech\ploomes_clone_project> 
