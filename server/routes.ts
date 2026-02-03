@@ -100,11 +100,10 @@ export async function registerRoutes(
   wsManager.initialize(httpServer);
   registerAuthRoutes(app);
 
-  // Todos Advogados Infos
+  // Todos Advogados Infos - Dados compartilhados entre todos os usuários
   app.get("/api/todos-advogados-infos", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const infos = await storage.getTodosAdvogadosInfos(userId);
+      const infos = await storage.getTodosAdvogadosInfos();
       res.json(infos);
     } catch (error) {
       console.error("Error fetching todos advogados infos:", error);
@@ -114,8 +113,8 @@ export async function registerRoutes(
 
   app.get("/api/todos-advogados-infos/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const info = await storage.getTodosAdvogadosInfo(req.params.id, userId);
+      const id = parseInt(req.params.id as string, 10);
+      const info = await storage.getTodosAdvogadosInfo(id);
       if (!info) {
         res.status(404).json({ message: "Todos advogados info not found" });
         return;
@@ -145,13 +144,13 @@ export async function registerRoutes(
 
   app.patch("/api/todos-advogados-infos/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
+      const id = parseInt(req.params.id as string, 10);
       const partial = insertTodosAdvogadosInfosSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const info = await storage.updateTodosAdvogadosInfo(req.params.id, userId, partial.data);
+      const info = await storage.updateTodosAdvogadosInfo(id, partial.data);
       if (!info) {
         res.status(404).json({ message: "Todos advogados info not found" });
         return;
@@ -165,8 +164,8 @@ export async function registerRoutes(
 
   app.delete("/api/todos-advogados-infos/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteTodosAdvogadosInfo(req.params.id, userId);
+      const id = parseInt(req.params.id as string, 10);
+      const deleted = await storage.deleteTodosAdvogadosInfo(id);
       if (!deleted) {
         res.status(404).json({ message: "Todos advogados info not found" });
         return;
