@@ -62,7 +62,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   Plus, GripVertical, Building2, DollarSign, Webhook, Trash2, Pencil, Settings2,
   Phone, Mail, MessageSquare, ArrowRight, Clock, CheckCircle2,
-  Send, Paperclip, FileText, Kanban, User, Scale, Users, FileSearch, Handshake, MapPin, RefreshCw
+  Send, Paperclip, FileText, Kanban, User, Scale, Users, FileSearch, Handshake, MapPin, RefreshCw,
+  Minimize2, Maximize2
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Lead, TodosAdvogadosInfos, Escritorio, Reclamante, PipelineTrigger, Activity, Interaction, InsertLead } from "@shared/schema";
@@ -1237,6 +1238,8 @@ function PipelineColumn({
   isLoading,
   isDragOver,
   isUpdating,
+  isMinimized,
+  onToggleMinimize,
 }: {
   stage: { id: string; label: string; color: string };
   leads: Lead[];
@@ -1258,15 +1261,53 @@ function PipelineColumn({
   isLoading: boolean;
   isDragOver: boolean;
   isUpdating: boolean;
+  isMinimized: boolean;
+  onToggleMinimize: () => void;
 }) {
   const totalValue = leads.reduce((acc, l) => acc + Number(l.valor || 0), 0);
   
   // Sort leads by position
   const sortedLeads = [...leads].sort((a, b) => (a.position || 0) - (b.position || 0));
 
+  if (isMinimized) {
+    return (
+      <div
+        className={`flex flex-col w-14 shrink-0 rounded-xl transition-all duration-300 ${
+          isDragOver ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
+        }`}
+        onDrop={(e) => onDrop(e, stage.id)}
+        onDragOver={(e) => onDragOver(e, stage.id)}
+        onDragLeave={onDragLeave}
+      >
+        <div className={`rounded-t-xl px-2 py-3 ${stage.color} flex flex-col items-center gap-2`}>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 text-white hover:bg-white/20"
+            onClick={onToggleMinimize}
+            data-testid={`button-expand-column-${stage.id}`}
+          >
+            <Maximize2 className="h-3 w-3" />
+          </Button>
+          <Badge variant="secondary" className="bg-white/20 text-white border-0 text-xs">
+            {leads.length}
+          </Badge>
+        </div>
+        <div className="flex-1 bg-muted/30 rounded-b-xl flex items-center justify-center py-4">
+          <span 
+            className="text-xs font-medium text-muted-foreground"
+            style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+          >
+            {stage.label}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`flex flex-col w-80 shrink-0 rounded-xl transition-all duration-200 ${
+      className={`flex flex-col w-80 shrink-0 rounded-xl transition-all duration-300 ${
         isDragOver ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
       }`}
       onDrop={(e) => onDrop(e, stage.id)}
@@ -1281,6 +1322,15 @@ function PipelineColumn({
               {leads.length}
             </Badge>
           </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 text-white hover:bg-white/20"
+            onClick={onToggleMinimize}
+            data-testid={`button-minimize-column-${stage.id}`}
+          >
+            <Minimize2 className="h-3 w-3" />
+          </Button>
         </div>
         <div className="text-white/80 text-xs mt-1">
           {formatCurrencyShort(totalValue)}
@@ -1764,6 +1814,19 @@ export default function PipelinePage() {
   const [dragOverLeadId, setDragOverLeadId] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<PipelineType>("advogados");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [minimizedColumns, setMinimizedColumns] = useState<Set<string>>(new Set());
+  
+  const toggleColumnMinimize = useCallback((stageId: string) => {
+    setMinimizedColumns(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(stageId)) {
+        newSet.delete(stageId);
+      } else {
+        newSet.add(stageId);
+      }
+      return newSet;
+    });
+  }, []);
   
   // Inline entity creation states
   const [showInlineCreate, setShowInlineCreate] = useState(false);
@@ -2430,6 +2493,8 @@ export default function PipelinePage() {
               isLoading={isLoading}
               isDragOver={dragOverStage === stage.id}
               isUpdating={updateMutation.isPending}
+              isMinimized={minimizedColumns.has(stage.id)}
+              onToggleMinimize={() => toggleColumnMinimize(stage.id)}
             />
           ))}
         </div>
