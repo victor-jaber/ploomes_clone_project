@@ -139,6 +139,7 @@ export const todosAdvogadosInfos = pgTable("todos_advogados_infos", {
   numero: text("numero"),
   complemento: text("complemento"),
   observacoes: text("observacoes"),
+  enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
   ownerId: varchar("owner_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
