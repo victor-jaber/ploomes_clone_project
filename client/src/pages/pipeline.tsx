@@ -62,7 +62,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   Plus, GripVertical, Building2, DollarSign, Webhook, Trash2, Pencil, Settings2,
   Phone, Mail, MessageSquare, ArrowRight, Clock, CheckCircle2,
-  Send, Paperclip, FileText, Kanban, User, Scale, Users, FileSearch, Handshake, MapPin
+  Send, Paperclip, FileText, Kanban, User, Scale, Users, FileSearch, Handshake, MapPin, RefreshCw
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Lead, TodosAdvogadosInfos, Escritorio, Reclamante, PipelineTrigger, Activity, Interaction, InsertLead } from "@shared/schema";
@@ -1913,6 +1913,28 @@ export default function PipelinePage() {
     },
   });
 
+  const syncAdvogadosMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/sync-advogados-to-leads");
+      return response.json();
+    },
+    onSuccess: (data: { synced: number; skipped: number }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
+      toast({
+        title: "Sincronização concluída",
+        description: `${data.synced} advogados sincronizados para o pipeline`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro na sincronização",
+        description: "Não foi possível sincronizar os advogados",
+        variant: "destructive",
+      });
+    },
+  });
+
   const createInlineAdvogadoMutation = useMutation({
     mutationFn: async (data: { nome: string; cnj: string; cpf: string; telefone: string; email: string }) => {
       const response = await apiRequest("POST", "/api/todos-advogados-infos", data);
@@ -2163,6 +2185,18 @@ export default function PipelinePage() {
               <p className="text-lg font-bold text-foreground">{totalLeads}</p>
             </div>
           </div>
+          
+          {selectedPipeline === "advogados" && (
+            <Button
+              variant="outline"
+              onClick={() => syncAdvogadosMutation.mutate()}
+              disabled={syncAdvogadosMutation.isPending}
+              data-testid="button-sync-advogados"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncAdvogadosMutation.isPending ? "animate-spin" : ""}`} />
+              {syncAdvogadosMutation.isPending ? "Sincronizando..." : "Sincronizar Advogados"}
+            </Button>
+          )}
           
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
