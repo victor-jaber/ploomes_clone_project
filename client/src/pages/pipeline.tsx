@@ -62,7 +62,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   Plus, GripVertical, Building2, DollarSign, Webhook, Trash2, Pencil, Settings2,
   Phone, Mail, MessageSquare, ArrowRight, Clock, CheckCircle2,
-  Send, Paperclip, FileText, Kanban, User, Scale, Users, FileSearch, Handshake
+  Send, Paperclip, FileText, Kanban, User, Scale, Users, FileSearch, Handshake, MapPin
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Lead, TodosAdvogadosInfos, Escritorio, Reclamante, PipelineTrigger, Activity, Interaction, InsertLead } from "@shared/schema";
@@ -1089,6 +1089,9 @@ function LeadCard({
   const currentStage = stages[currentStageIndex];
   const entityName = getEntityName(lead, todosAdvogadosInfos, escritorios, reclamantes);
   const prevStage = currentStageIndex > 0 ? stages[currentStageIndex - 1] : null;
+  const linkedAdvogado = lead.todosAdvogadosInfosId 
+    ? todosAdvogadosInfos.find(a => a.id === lead.todosAdvogadosInfosId)
+    : null;
 
   return (
     <ContextMenu>
@@ -1129,6 +1132,39 @@ function LeadCard({
                 </div>
               </div>
             </div>
+
+            {pipelineType === "advogados" && linkedAdvogado && (
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                {linkedAdvogado.email && (
+                  <div className="flex items-center gap-1 min-w-0">
+                    <Mail className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{linkedAdvogado.email}</span>
+                  </div>
+                )}
+                {(linkedAdvogado.celular || linkedAdvogado.telefone) && (
+                  <div className="flex items-center gap-1 min-w-0">
+                    <Phone className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{linkedAdvogado.celular || linkedAdvogado.telefone}</span>
+                  </div>
+                )}
+                {linkedAdvogado.cnj && (
+                  <div className="flex items-center gap-1 min-w-0">
+                    <FileText className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{linkedAdvogado.cnj}</span>
+                  </div>
+                )}
+                {(linkedAdvogado.estado || linkedAdvogado.municipio) && (
+                  <div className="flex items-center gap-1 min-w-0">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    <span className="truncate">
+                      {linkedAdvogado.municipio && linkedAdvogado.estado 
+                        ? `${linkedAdvogado.municipio}/${linkedAdvogado.estado}`
+                        : linkedAdvogado.municipio || linkedAdvogado.estado}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
             
             <div className="flex items-center justify-between pt-2 border-t border-dashed">
               <div className="flex items-center gap-1.5">
