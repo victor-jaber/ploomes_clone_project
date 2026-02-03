@@ -43,7 +43,7 @@ def fetch_processo_details(cnj, max_retries=3):
     """Consulta a API externa para obter detalhes do processo pelo CNJ."""
     for attempt in range(max_retries):
         try:
-            params = {"numero_cnj": cnj}
+            params = {"cnj": cnj}
             response = requests.get(API_URL, params=params, timeout=60)
             
             if response.status_code == 422:
