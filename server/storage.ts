@@ -1,7 +1,6 @@
 import {
-  advogados,
+  todosAdvogadosInfos,
   escritorios,
-  advogadoEscritorios,
   reclamantes,
   leads,
   activities,
@@ -13,12 +12,10 @@ import {
   clients,
   opportunities,
   users,
-  type Advogado,
-  type InsertAdvogado,
+  type TodosAdvogadosInfos,
+  type InsertTodosAdvogadosInfos,
   type Escritorio,
   type InsertEscritorio,
-  type AdvogadoEscritorio,
-  type InsertAdvogadoEscritorio,
   type Reclamante,
   type InsertReclamante,
   type Lead,
@@ -44,12 +41,12 @@ import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
-  // Advogados
-  getAdvogados(ownerId: string): Promise<Advogado[]>;
-  getAdvogado(id: string, ownerId: string): Promise<Advogado | undefined>;
-  createAdvogado(advogado: InsertAdvogado): Promise<Advogado>;
-  updateAdvogado(id: string, ownerId: string, advogado: Partial<InsertAdvogado>): Promise<Advogado | undefined>;
-  deleteAdvogado(id: string, ownerId: string): Promise<boolean>;
+  // Todos Advogados Infos
+  getTodosAdvogadosInfos(ownerId: string): Promise<TodosAdvogadosInfos[]>;
+  getTodosAdvogadosInfo(id: string, ownerId: string): Promise<TodosAdvogadosInfos | undefined>;
+  createTodosAdvogadosInfo(info: InsertTodosAdvogadosInfos): Promise<TodosAdvogadosInfos>;
+  updateTodosAdvogadosInfo(id: string, ownerId: string, info: Partial<InsertTodosAdvogadosInfos>): Promise<TodosAdvogadosInfos | undefined>;
+  deleteTodosAdvogadosInfo(id: string, ownerId: string): Promise<boolean>;
 
   // Escritórios
   getEscritorios(ownerId: string): Promise<Escritorio[]>;
@@ -57,12 +54,6 @@ export interface IStorage {
   createEscritorio(escritorio: InsertEscritorio): Promise<Escritorio>;
   updateEscritorio(id: string, ownerId: string, escritorio: Partial<InsertEscritorio>): Promise<Escritorio | undefined>;
   deleteEscritorio(id: string, ownerId: string): Promise<boolean>;
-
-  // Advogado-Escritório (relação N:N)
-  getAdvogadoEscritorios(advogadoId: string): Promise<AdvogadoEscritorio[]>;
-  getEscritorioAdvogados(escritorioId: string): Promise<AdvogadoEscritorio[]>;
-  createAdvogadoEscritorio(rel: InsertAdvogadoEscritorio): Promise<AdvogadoEscritorio>;
-  deleteAdvogadoEscritorio(id: string): Promise<boolean>;
 
   // Reclamantes
   getReclamantes(ownerId: string): Promise<Reclamante[]>;
@@ -139,32 +130,32 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // Advogados
-  async getAdvogados(ownerId: string): Promise<Advogado[]> {
-    return db.select().from(advogados).where(eq(advogados.ownerId, ownerId)).orderBy(desc(advogados.createdAt));
+  // Todos Advogados Infos
+  async getTodosAdvogadosInfos(ownerId: string): Promise<TodosAdvogadosInfos[]> {
+    return db.select().from(todosAdvogadosInfos).where(eq(todosAdvogadosInfos.ownerId, ownerId)).orderBy(desc(todosAdvogadosInfos.createdAt));
   }
 
-  async getAdvogado(id: string, ownerId: string): Promise<Advogado | undefined> {
-    const [advogado] = await db.select().from(advogados).where(and(eq(advogados.id, id), eq(advogados.ownerId, ownerId)));
-    return advogado;
+  async getTodosAdvogadosInfo(id: string, ownerId: string): Promise<TodosAdvogadosInfos | undefined> {
+    const [info] = await db.select().from(todosAdvogadosInfos).where(and(eq(todosAdvogadosInfos.id, id), eq(todosAdvogadosInfos.ownerId, ownerId)));
+    return info;
   }
 
-  async createAdvogado(advogado: InsertAdvogado): Promise<Advogado> {
-    const [newAdvogado] = await db.insert(advogados).values(advogado).returning();
-    return newAdvogado;
+  async createTodosAdvogadosInfo(info: InsertTodosAdvogadosInfos): Promise<TodosAdvogadosInfos> {
+    const [newInfo] = await db.insert(todosAdvogadosInfos).values(info).returning();
+    return newInfo;
   }
 
-  async updateAdvogado(id: string, ownerId: string, advogado: Partial<InsertAdvogado>): Promise<Advogado | undefined> {
+  async updateTodosAdvogadosInfo(id: string, ownerId: string, info: Partial<InsertTodosAdvogadosInfos>): Promise<TodosAdvogadosInfos | undefined> {
     const [updated] = await db
-      .update(advogados)
-      .set({ ...advogado, updatedAt: new Date() })
-      .where(and(eq(advogados.id, id), eq(advogados.ownerId, ownerId)))
+      .update(todosAdvogadosInfos)
+      .set({ ...info, updatedAt: new Date() })
+      .where(and(eq(todosAdvogadosInfos.id, id), eq(todosAdvogadosInfos.ownerId, ownerId)))
       .returning();
     return updated;
   }
 
-  async deleteAdvogado(id: string, ownerId: string): Promise<boolean> {
-    const result = await db.delete(advogados).where(and(eq(advogados.id, id), eq(advogados.ownerId, ownerId))).returning();
+  async deleteTodosAdvogadosInfo(id: string, ownerId: string): Promise<boolean> {
+    const result = await db.delete(todosAdvogadosInfos).where(and(eq(todosAdvogadosInfos.id, id), eq(todosAdvogadosInfos.ownerId, ownerId))).returning();
     return result.length > 0;
   }
 
@@ -194,25 +185,6 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEscritorio(id: string, ownerId: string): Promise<boolean> {
     const result = await db.delete(escritorios).where(and(eq(escritorios.id, id), eq(escritorios.ownerId, ownerId))).returning();
-    return result.length > 0;
-  }
-
-  // Advogado-Escritório
-  async getAdvogadoEscritorios(advogadoId: string): Promise<AdvogadoEscritorio[]> {
-    return db.select().from(advogadoEscritorios).where(eq(advogadoEscritorios.advogadoId, advogadoId));
-  }
-
-  async getEscritorioAdvogados(escritorioId: string): Promise<AdvogadoEscritorio[]> {
-    return db.select().from(advogadoEscritorios).where(eq(advogadoEscritorios.escritorioId, escritorioId));
-  }
-
-  async createAdvogadoEscritorio(rel: InsertAdvogadoEscritorio): Promise<AdvogadoEscritorio> {
-    const [newRel] = await db.insert(advogadoEscritorios).values(rel).returning();
-    return newRel;
-  }
-
-  async deleteAdvogadoEscritorio(id: string): Promise<boolean> {
-    const result = await db.delete(advogadoEscritorios).where(eq(advogadoEscritorios.id, id)).returning();
     return result.length > 0;
   }
 

@@ -118,49 +118,34 @@ export const escritorios = pgTable("escritorios", {
 });
 
 export const escritoriosRelations = relations(escritorios, ({ many }) => ({
-  advogadoEscritorios: many(advogadoEscritorios),
   leads: many(leads),
 }));
 
-// Advogados (Lawyers)
-export const advogados = pgTable("advogados", {
+// Todos Advogados Infos (substitui a tabela advogados)
+export const todosAdvogadosInfos = pgTable("todos_advogados_infos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cpf: varchar("cpf", { length: 14 }),
   nome: text("nome").notNull(),
-  oab: varchar("oab", { length: 20 }),
+  cnj: varchar("cnj", { length: 30 }),
+  valorCausa: numeric("valor_causa", { precision: 12, scale: 2 }),
   email: text("email"),
   telefone: varchar("telefone", { length: 20 }),
   celular: varchar("celular", { length: 20 }),
-  especialidade: text("especialidade"),
-  numeroCaso: varchar("numero_caso", { length: 50 }),
+  cep: varchar("cep", { length: 10 }),
+  estado: varchar("estado", { length: 2 }),
+  municipio: text("municipio"),
+  bairro: text("bairro"),
+  logradouro: text("logradouro"),
+  numero: varchar("numero", { length: 20 }),
+  complemento: text("complemento"),
   observacoes: text("observacoes"),
   ownerId: varchar("owner_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const advogadosRelations = relations(advogados, ({ many }) => ({
-  advogadoEscritorios: many(advogadoEscritorios),
+export const todosAdvogadosInfosRelations = relations(todosAdvogadosInfos, ({ many }) => ({
   leads: many(leads),
-}));
-
-// Relação N:N entre Advogados e Escritórios
-export const advogadoEscritorios = pgTable("advogado_escritorios", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  advogadoId: varchar("advogado_id").notNull().references(() => advogados.id, { onDelete: "cascade" }),
-  escritorioId: varchar("escritorio_id").notNull().references(() => escritorios.id, { onDelete: "cascade" }),
-  cargo: text("cargo"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const advogadoEscritoriosRelations = relations(advogadoEscritorios, ({ one }) => ({
-  advogado: one(advogados, {
-    fields: [advogadoEscritorios.advogadoId],
-    references: [advogados.id],
-  }),
-  escritorio: one(escritorios, {
-    fields: [advogadoEscritorios.escritorioId],
-    references: [escritorios.id],
-  }),
 }));
 
 // Reclamantes (Claimants)
@@ -178,17 +163,12 @@ export const reclamantes = pgTable("reclamantes", {
   processoNumero: varchar("processo_numero", { length: 50 }),
   valorCausa: numeric("valor_causa", { precision: 12, scale: 2 }),
   observacoes: text("observacoes"),
-  advogadoId: varchar("advogado_id").references(() => advogados.id),
   ownerId: varchar("owner_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const reclamantesRelations = relations(reclamantes, ({ one, many }) => ({
-  advogado: one(advogados, {
-    fields: [reclamantes.advogadoId],
-    references: [advogados.id],
-  }),
+export const reclamantesRelations = relations(reclamantes, ({ many }) => ({
   leads: many(leads),
 }));
 
@@ -201,7 +181,7 @@ export const leads = pgTable("leads", {
   position: integer("position").default(0),
   
   // Referências opcionais dependendo do pipeline
-  advogadoId: varchar("advogado_id").references(() => advogados.id, { onDelete: "cascade" }),
+  todosAdvogadosInfosId: varchar("todos_advogados_infos_id").references(() => todosAdvogadosInfos.id, { onDelete: "cascade" }),
   escritorioId: varchar("escritorio_id").references(() => escritorios.id, { onDelete: "cascade" }),
   reclamanteId: varchar("reclamante_id").references(() => reclamantes.id, { onDelete: "cascade" }),
   
@@ -224,9 +204,9 @@ export const leads = pgTable("leads", {
 });
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
-  advogado: one(advogados, {
-    fields: [leads.advogadoId],
-    references: [advogados.id],
+  todosAdvogadosInfos: one(todosAdvogadosInfos, {
+    fields: [leads.todosAdvogadosInfosId],
+    references: [todosAdvogadosInfos.id],
   }),
   escritorio: one(escritorios, {
     fields: [leads.escritorioId],
@@ -382,8 +362,7 @@ export const pipelineTriggers = pgTable("pipeline_triggers", {
 
 // Insert schemas
 export const insertEscritorioSchema = createInsertSchema(escritorios).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertAdvogadoSchema = createInsertSchema(advogados).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertAdvogadoEscritorioSchema = createInsertSchema(advogadoEscritorios).omit({ id: true, createdAt: true });
+export const insertTodosAdvogadosInfosSchema = createInsertSchema(todosAdvogadosInfos).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertReclamanteSchema = createInsertSchema(reclamantes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInteractionSchema = createInsertSchema(interactions).omit({ id: true, createdAt: true });
@@ -396,10 +375,8 @@ export const insertPipelineTriggerSchema = createInsertSchema(pipelineTriggers).
 // Types
 export type Escritorio = typeof escritorios.$inferSelect;
 export type InsertEscritorio = z.infer<typeof insertEscritorioSchema>;
-export type Advogado = typeof advogados.$inferSelect;
-export type InsertAdvogado = z.infer<typeof insertAdvogadoSchema>;
-export type AdvogadoEscritorio = typeof advogadoEscritorios.$inferSelect;
-export type InsertAdvogadoEscritorio = z.infer<typeof insertAdvogadoEscritorioSchema>;
+export type TodosAdvogadosInfos = typeof todosAdvogadosInfos.$inferSelect;
+export type InsertTodosAdvogadosInfos = z.infer<typeof insertTodosAdvogadosInfosSchema>;
 export type Reclamante = typeof reclamantes.$inferSelect;
 export type InsertReclamante = z.infer<typeof insertReclamanteSchema>;
 export type Lead = typeof leads.$inferSelect;

@@ -4,9 +4,8 @@ import { storage } from "./storage";
 import { isAuthenticated, registerAuthRoutes, AuthRequest } from "./auth";
 import { wsManager } from "./websocket";
 import {
-  insertAdvogadoSchema,
+  insertTodosAdvogadosInfosSchema,
   insertEscritorioSchema,
-  insertAdvogadoEscritorioSchema,
   insertReclamanteSchema,
   insertLeadSchema,
   insertProductSchema,
@@ -18,7 +17,7 @@ import {
   insertClientSchema,
   insertOpportunitySchema,
   type Lead,
-  type Advogado,
+  type TodosAdvogadosInfos,
   type Escritorio,
   type Reclamante,
 } from "@shared/schema";
@@ -30,7 +29,7 @@ async function fireWebhookTriggers(
   fromStage: string | null,
   toStage: string,
   lead: Lead,
-  entity?: Advogado | Escritorio | Reclamante
+  entity?: TodosAdvogadosInfos | Escritorio | Reclamante
 ) {
   try {
     const triggers = await storage.getMatchingTriggers(ownerId, pipelineType, fromStage, toStage);
@@ -101,81 +100,81 @@ export async function registerRoutes(
   wsManager.initialize(httpServer);
   registerAuthRoutes(app);
 
-  // Advogados
-  app.get("/api/advogados", isAuthenticated, async (req: Request, res: Response) => {
+  // Todos Advogados Infos
+  app.get("/api/todos-advogados-infos", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const advogados = await storage.getAdvogados(userId);
-      res.json(advogados);
+      const infos = await storage.getTodosAdvogadosInfos(userId);
+      res.json(infos);
     } catch (error) {
-      console.error("Error fetching advogados:", error);
-      res.status(500).json({ message: "Failed to fetch advogados" });
+      console.error("Error fetching todos advogados infos:", error);
+      res.status(500).json({ message: "Failed to fetch todos advogados infos" });
     }
   });
 
-  app.get("/api/advogados/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/todos-advogados-infos/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const advogado = await storage.getAdvogado(req.params.id, userId);
-      if (!advogado) {
-        res.status(404).json({ message: "Advogado not found" });
+      const info = await storage.getTodosAdvogadosInfo(req.params.id, userId);
+      if (!info) {
+        res.status(404).json({ message: "Todos advogados info not found" });
         return;
       }
-      res.json(advogado);
+      res.json(info);
     } catch (error) {
-      console.error("Error fetching advogado:", error);
-      res.status(500).json({ message: "Failed to fetch advogado" });
+      console.error("Error fetching todos advogados info:", error);
+      res.status(500).json({ message: "Failed to fetch todos advogados info" });
     }
   });
 
-  app.post("/api/advogados", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/todos-advogados-infos", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertAdvogadoSchema.safeParse({ ...req.body, ownerId: userId });
+      const parsed = insertTodosAdvogadosInfosSchema.safeParse({ ...req.body, ownerId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
-      const advogado = await storage.createAdvogado(parsed.data);
-      res.status(201).json(advogado);
+      const info = await storage.createTodosAdvogadosInfo(parsed.data);
+      res.status(201).json(info);
     } catch (error) {
-      console.error("Error creating advogado:", error);
-      res.status(500).json({ message: "Failed to create advogado" });
+      console.error("Error creating todos advogados info:", error);
+      res.status(500).json({ message: "Failed to create todos advogados info" });
     }
   });
 
-  app.patch("/api/advogados/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.patch("/api/todos-advogados-infos/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertAdvogadoSchema.partial().safeParse(req.body);
+      const partial = insertTodosAdvogadosInfosSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const advogado = await storage.updateAdvogado(req.params.id, userId, partial.data);
-      if (!advogado) {
-        res.status(404).json({ message: "Advogado not found" });
+      const info = await storage.updateTodosAdvogadosInfo(req.params.id, userId, partial.data);
+      if (!info) {
+        res.status(404).json({ message: "Todos advogados info not found" });
         return;
       }
-      res.json(advogado);
+      res.json(info);
     } catch (error) {
-      console.error("Error updating advogado:", error);
-      res.status(500).json({ message: "Failed to update advogado" });
+      console.error("Error updating todos advogados info:", error);
+      res.status(500).json({ message: "Failed to update todos advogados info" });
     }
   });
 
-  app.delete("/api/advogados/:id", isAuthenticated, async (req: Request, res: Response) => {
+  app.delete("/api/todos-advogados-infos/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteAdvogado(req.params.id, userId);
+      const deleted = await storage.deleteTodosAdvogadosInfo(req.params.id, userId);
       if (!deleted) {
-        res.status(404).json({ message: "Advogado not found" });
+        res.status(404).json({ message: "Todos advogados info not found" });
         return;
       }
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting advogado:", error);
-      res.status(500).json({ message: "Failed to delete advogado" });
+      console.error("Error deleting todos advogados info:", error);
+      res.status(500).json({ message: "Failed to delete todos advogados info" });
     }
   });
 
@@ -254,56 +253,6 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting escritorio:", error);
       res.status(500).json({ message: "Failed to delete escritorio" });
-    }
-  });
-
-  // Advogado-Escritório relationship
-  app.get("/api/advogados/:advogadoId/escritorios", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const relations = await storage.getAdvogadoEscritorios(req.params.advogadoId);
-      res.json(relations);
-    } catch (error) {
-      console.error("Error fetching advogado escritorios:", error);
-      res.status(500).json({ message: "Failed to fetch relationships" });
-    }
-  });
-
-  app.get("/api/escritorios/:escritorioId/advogados", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const relations = await storage.getEscritorioAdvogados(req.params.escritorioId);
-      res.json(relations);
-    } catch (error) {
-      console.error("Error fetching escritorio advogados:", error);
-      res.status(500).json({ message: "Failed to fetch relationships" });
-    }
-  });
-
-  app.post("/api/advogado-escritorios", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const parsed = insertAdvogadoEscritorioSchema.safeParse(req.body);
-      if (!parsed.success) {
-        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
-        return;
-      }
-      const relation = await storage.createAdvogadoEscritorio(parsed.data);
-      res.status(201).json(relation);
-    } catch (error) {
-      console.error("Error creating advogado-escritorio relation:", error);
-      res.status(500).json({ message: "Failed to create relationship" });
-    }
-  });
-
-  app.delete("/api/advogado-escritorios/:id", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const deleted = await storage.deleteAdvogadoEscritorio(req.params.id);
-      if (!deleted) {
-        res.status(404).json({ message: "Relationship not found" });
-        return;
-      }
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting advogado-escritorio relation:", error);
-      res.status(500).json({ message: "Failed to delete relationship" });
     }
   });
 
