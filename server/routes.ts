@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { type Server } from "http";
+import { z } from "zod";
 import { storage } from "./storage";
 import { isAuthenticated, registerAuthRoutes, AuthRequest } from "./auth";
 import { wsManager } from "./websocket";
@@ -475,6 +476,133 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting lead:", error);
       res.status(500).json({ message: "Failed to delete lead" });
+    }
+  });
+
+  // Lead-Advogados N:N
+  const addAdvogadoSchema = z.object({ advogadoId: z.number().int().positive() });
+  const addReclamanteSchema = z.object({ reclamanteId: z.string().uuid() });
+
+  app.get("/api/leads/:id/advogados", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const lead = await storage.getLeadById(req.params.id, userId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      const advogados = await storage.getLeadAdvogados(req.params.id);
+      res.json(advogados);
+    } catch (error) {
+      console.error("Error fetching lead advogados:", error);
+      res.status(500).json({ message: "Failed to fetch lead advogados" });
+    }
+  });
+
+  app.post("/api/leads/:id/advogados", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const lead = await storage.getLeadById(req.params.id, userId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      const parsed = addAdvogadoSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "advogadoId (number) is required", errors: parsed.error.errors });
+        return;
+      }
+      const result = await storage.addAdvogadoToLead(req.params.id, parsed.data.advogadoId);
+      res.status(201).json(result);
+    } catch (error: any) {
+      if (error?.code === "23505") {
+        res.status(409).json({ message: "Advogado already linked to this lead" });
+        return;
+      }
+      console.error("Error adding advogado to lead:", error);
+      res.status(500).json({ message: "Failed to add advogado to lead" });
+    }
+  });
+
+  app.delete("/api/leads/:leadId/advogados/:advogadoId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const lead = await storage.getLeadById(req.params.leadId, userId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      const deleted = await storage.removeAdvogadoFromLead(req.params.leadId, parseInt(req.params.advogadoId));
+      if (!deleted) {
+        res.status(404).json({ message: "Relationship not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing advogado from lead:", error);
+      res.status(500).json({ message: "Failed to remove advogado from lead" });
+    }
+  });
+
+  // Lead-Reclamantes N:N
+  app.get("/api/leads/:id/reclamantes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const lead = await storage.getLeadById(req.params.id, userId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      const reclamantes = await storage.getLeadReclamantes(req.params.id);
+      res.json(reclamantes);
+    } catch (error) {
+      console.error("Error fetching lead reclamantes:", error);
+      res.status(500).json({ message: "Failed to fetch lead reclamantes" });
+    }
+  });
+
+  app.post("/api/leads/:id/reclamantes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const lead = await storage.getLeadById(req.params.id, userId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      const parsed = addReclamanteSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "reclamanteId (uuid) is required", errors: parsed.error.errors });
+        return;
+      }
+      const result = await storage.addReclamanteToLead(req.params.id, parsed.data.reclamanteId);
+      res.status(201).json(result);
+    } catch (error: any) {
+      if (error?.code === "23505") {
+        res.status(409).json({ message: "Reclamante already linked to this lead" });
+        return;
+      }
+      console.error("Error adding reclamante to lead:", error);
+      res.status(500).json({ message: "Failed to add reclamante to lead" });
+    }
+  });
+
+  app.delete("/api/leads/:leadId/reclamantes/:reclamanteId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const lead = await storage.getLeadById(req.params.leadId, userId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      const deleted = await storage.removeReclamanteFromLead(req.params.leadId, req.params.reclamanteId);
+      if (!deleted) {
+        res.status(404).json({ message: "Relationship not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing reclamante from lead:", error);
+      res.status(500).json({ message: "Failed to remove reclamante from lead" });
     }
   });
 

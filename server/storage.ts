@@ -3,6 +3,8 @@ import {
   escritorios,
   reclamantes,
   leads,
+  leadsAdvogados,
+  leadsReclamantes,
   activities,
   proposals,
   proposalItems,
@@ -36,6 +38,10 @@ import {
   type InsertClient,
   type Opportunity,
   type InsertOpportunity,
+  type LeadAdvogado,
+  type InsertLeadAdvogado,
+  type LeadReclamante,
+  type InsertLeadReclamante,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -133,6 +139,16 @@ export interface IStorage {
   
   // Sync Reclamantes to Leads
   syncReclamantesToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
+
+  // Lead-Advogados N:N
+  getLeadAdvogados(leadId: string): Promise<TodosAdvogadosInfos[]>;
+  addAdvogadoToLead(leadId: string, advogadoId: number): Promise<LeadAdvogado>;
+  removeAdvogadoFromLead(leadId: string, advogadoId: number): Promise<boolean>;
+
+  // Lead-Reclamantes N:N
+  getLeadReclamantes(leadId: string): Promise<Reclamante[]>;
+  addReclamanteToLead(leadId: string, reclamanteId: string): Promise<LeadReclamante>;
+  removeReclamanteFromLead(leadId: string, reclamanteId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -589,6 +605,48 @@ export class DatabaseStorage implements IStorage {
     }
     
     return { synced, skipped, leads: createdLeads };
+  }
+
+  // Lead-Advogados N:N
+  async getLeadAdvogados(leadId: string): Promise<TodosAdvogadosInfos[]> {
+    const result = await db
+      .select({ advogado: todosAdvogadosInfos })
+      .from(leadsAdvogados)
+      .innerJoin(todosAdvogadosInfos, eq(leadsAdvogados.advogadoId, todosAdvogadosInfos.id))
+      .where(eq(leadsAdvogados.leadId, leadId));
+    return result.map(r => r.advogado);
+  }
+
+  async addAdvogadoToLead(leadId: string, advogadoId: number): Promise<LeadAdvogado> {
+    const [result] = await db.insert(leadsAdvogados).values({ leadId, advogadoId }).returning();
+    return result;
+  }
+
+  async removeAdvogadoFromLead(leadId: string, advogadoId: number): Promise<boolean> {
+    const result = await db.delete(leadsAdvogados)
+      .where(and(eq(leadsAdvogados.leadId, leadId), eq(leadsAdvogados.advogadoId, advogadoId)));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Lead-Reclamantes N:N
+  async getLeadReclamantes(leadId: string): Promise<Reclamante[]> {
+    const result = await db
+      .select({ reclamante: reclamantes })
+      .from(leadsReclamantes)
+      .innerJoin(reclamantes, eq(leadsReclamantes.reclamanteId, reclamantes.id))
+      .where(eq(leadsReclamantes.leadId, leadId));
+    return result.map(r => r.reclamante);
+  }
+
+  async addReclamanteToLead(leadId: string, reclamanteId: string): Promise<LeadReclamante> {
+    const [result] = await db.insert(leadsReclamantes).values({ leadId, reclamanteId }).returning();
+    return result;
+  }
+
+  async removeReclamanteFromLead(leadId: string, reclamanteId: string): Promise<boolean> {
+    const result = await db.delete(leadsReclamantes)
+      .where(and(eq(leadsReclamantes.leadId, leadId), eq(leadsReclamantes.reclamanteId, reclamanteId)));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 

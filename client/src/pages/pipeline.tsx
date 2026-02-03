@@ -265,6 +265,16 @@ function LeadDetailPanel({
     queryKey: [`/api/leads/${lead.id}/interactions`],
   });
 
+  // Fetch related advogados (N:N)
+  const { data: leadAdvogados = [] } = useQuery<TodosAdvogadosInfos[]>({
+    queryKey: [`/api/leads/${lead.id}/advogados`],
+  });
+
+  // Fetch related reclamantes (N:N)
+  const { data: leadReclamantes = [] } = useQuery<Reclamante[]>({
+    queryKey: [`/api/leads/${lead.id}/reclamantes`],
+  });
+
   const updateFieldMutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
       return apiRequest("PATCH", `/api/leads/${lead.id}`, data);
@@ -358,6 +368,59 @@ function LeadDetailPanel({
     },
     onError: () => {
       toast({ title: "Erro ao criar reclamante", variant: "destructive" });
+    },
+  });
+
+  // Mutations for N:N relationships
+  const addAdvogadoToLeadMutation = useMutation({
+    mutationFn: async (advogadoId: number) => {
+      return apiRequest("POST", `/api/leads/${lead.id}/advogados`, { advogadoId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/advogados`] });
+      toast({ title: "Advogado vinculado ao lead" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao vincular advogado", variant: "destructive" });
+    },
+  });
+
+  const removeAdvogadoFromLeadMutation = useMutation({
+    mutationFn: async (advogadoId: number) => {
+      return apiRequest("DELETE", `/api/leads/${lead.id}/advogados/${advogadoId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/advogados`] });
+      toast({ title: "Advogado desvinculado do lead" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao desvincular advogado", variant: "destructive" });
+    },
+  });
+
+  const addReclamanteToLeadMutation = useMutation({
+    mutationFn: async (reclamanteId: string) => {
+      return apiRequest("POST", `/api/leads/${lead.id}/reclamantes`, { reclamanteId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/reclamantes`] });
+      toast({ title: "Reclamante vinculado ao lead" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao vincular reclamante", variant: "destructive" });
+    },
+  });
+
+  const removeReclamanteFromLeadMutation = useMutation({
+    mutationFn: async (reclamanteId: string) => {
+      return apiRequest("DELETE", `/api/leads/${lead.id}/reclamantes/${reclamanteId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/reclamantes`] });
+      toast({ title: "Reclamante desvinculado do lead" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao desvincular reclamante", variant: "destructive" });
     },
   });
 
@@ -836,6 +899,128 @@ function LeadDetailPanel({
                       </div>
                     )}
                   </>
+                )}
+              </Card>
+            </div>
+
+            {/* Advogados Vinculados (N:N) */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Advogados Vinculados ({leadAdvogados.length})
+                </h3>
+              </div>
+              <Card className="p-4 space-y-3" data-testid="card-advogados-vinculados">
+                <Select 
+                  value=""
+                  onValueChange={(v) => {
+                    if (v) {
+                      addAdvogadoToLeadMutation.mutate(parseInt(v));
+                    }
+                  }}
+                  disabled={addAdvogadoToLeadMutation.isPending}
+                >
+                  <SelectTrigger data-testid="select-add-advogado">
+                    <SelectValue placeholder={addAdvogadoToLeadMutation.isPending ? "Adicionando..." : "Adicionar advogado..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {todosAdvogadosInfos
+                      .filter(a => !leadAdvogados.some(la => la.id === a.id))
+                      .map((a) => (
+                        <SelectItem key={a.id} value={a.id.toString()} data-testid={`select-item-advogado-${a.id}`}>
+                          {a.nome}{a.cnj ? ` (${a.cnj})` : ""}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {leadAdvogados.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t">
+                    {leadAdvogados.map((a) => (
+                      <div key={a.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md" data-testid={`card-linked-advogado-${a.id}`}>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium truncate" data-testid={`text-advogado-nome-${a.id}`}>{a.nome}</div>
+                          {a.cnj && <div className="text-xs text-muted-foreground truncate">CNJ: {a.cnj}</div>}
+                          {a.cpf && <div className="text-xs text-muted-foreground">CPF: {a.cpf}</div>}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => removeAdvogadoFromLeadMutation.mutate(a.id)}
+                          disabled={removeAdvogadoFromLeadMutation.isPending}
+                          data-testid={`button-remove-advogado-${a.id}`}
+                        >
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {leadAdvogados.length === 0 && (
+                  <div className="text-xs text-muted-foreground text-center py-2" data-testid="text-no-advogados-linked">
+                    Nenhum advogado vinculado
+                  </div>
+                )}
+              </Card>
+            </div>
+
+            {/* Reclamantes Vinculados (N:N) */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Reclamantes Vinculados ({leadReclamantes.length})
+                </h3>
+              </div>
+              <Card className="p-4 space-y-3" data-testid="card-reclamantes-vinculados">
+                <Select 
+                  value=""
+                  onValueChange={(v) => {
+                    if (v) {
+                      addReclamanteToLeadMutation.mutate(v);
+                    }
+                  }}
+                  disabled={addReclamanteToLeadMutation.isPending}
+                >
+                  <SelectTrigger data-testid="select-add-reclamante">
+                    <SelectValue placeholder={addReclamanteToLeadMutation.isPending ? "Adicionando..." : "Adicionar reclamante..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {reclamantes
+                      .filter(r => !leadReclamantes.some(lr => lr.id === r.id))
+                      .map((r) => (
+                        <SelectItem key={r.id} value={r.id} data-testid={`select-item-reclamante-${r.id}`}>
+                          {r.nome}{r.processoNumero ? ` (${r.processoNumero})` : ""}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {leadReclamantes.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t">
+                    {leadReclamantes.map((r) => (
+                      <div key={r.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md" data-testid={`card-linked-reclamante-${r.id}`}>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium truncate" data-testid={`text-reclamante-nome-${r.id}`}>{r.nome}</div>
+                          {r.processoNumero && <div className="text-xs text-muted-foreground truncate">Processo: {r.processoNumero}</div>}
+                          {r.cpf && <div className="text-xs text-muted-foreground">CPF: {r.cpf}</div>}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => removeReclamanteFromLeadMutation.mutate(r.id)}
+                          disabled={removeReclamanteFromLeadMutation.isPending}
+                          data-testid={`button-remove-reclamante-${r.id}`}
+                        >
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {leadReclamantes.length === 0 && (
+                  <div className="text-xs text-muted-foreground text-center py-2" data-testid="text-no-reclamantes-linked">
+                    Nenhum reclamante vinculado
+                  </div>
                 )}
               </Card>
             </div>

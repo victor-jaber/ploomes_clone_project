@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, numeric, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, numeric, boolean, pgEnum, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -182,10 +182,13 @@ export const leads = pgTable("leads", {
   stage: text("stage").notNull().default("novo_lead"),
   position: integer("position").default(0),
   
-  // Referências opcionais dependendo do pipeline
+  // Referências opcionais dependendo do pipeline (mantidas para compatibilidade, mas N:N usa tabelas de junção)
   todosAdvogadosInfosId: integer("todos_advogados_infos_id").references(() => todosAdvogadosInfos.id, { onDelete: "cascade" }),
   escritorioId: varchar("escritorio_id").references(() => escritorios.id, { onDelete: "cascade" }),
   reclamanteId: varchar("reclamante_id").references(() => reclamantes.id, { onDelete: "cascade" }),
+  
+  // CNJ principal do lead (para agrupar advogados e reclamantes)
+  cnj: varchar("cnj", { length: 30 }),
   
   valor: numeric("valor", { precision: 12, scale: 2 }),
   probabilidade: integer("probabilidade").default(0),
@@ -204,6 +207,26 @@ export const leads = pgTable("leads", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Tabela de junção: Leads x Advogados (N:N)
+export const leadsAdvogados = pgTable("leads_advogados", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+  advogadoId: integer("advogado_id").notNull().references(() => todosAdvogadosInfos.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique("leads_advogados_unique").on(table.leadId, table.advogadoId),
+]);
+
+// Tabela de junção: Leads x Reclamantes (N:N)
+export const leadsReclamantes = pgTable("leads_reclamantes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+  reclamanteId: varchar("reclamante_id").notNull().references(() => reclamantes.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique("leads_reclamantes_unique").on(table.leadId, table.reclamanteId),
+]);
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
   todosAdvogadosInfos: one(todosAdvogadosInfos, {
@@ -224,6 +247,30 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
   }),
   interactions: many(interactions),
   activities: many(activities),
+  leadsAdvogados: many(leadsAdvogados),
+  leadsReclamantes: many(leadsReclamantes),
+}));
+
+export const leadsAdvogadosRelations = relations(leadsAdvogados, ({ one }) => ({
+  lead: one(leads, {
+    fields: [leadsAdvogados.leadId],
+    references: [leads.id],
+  }),
+  advogado: one(todosAdvogadosInfos, {
+    fields: [leadsAdvogados.advogadoId],
+    references: [todosAdvogadosInfos.id],
+  }),
+}));
+
+export const leadsReclamantesRelations = relations(leadsReclamantes, ({ one }) => ({
+  lead: one(leads, {
+    fields: [leadsReclamantes.leadId],
+    references: [leads.id],
+  }),
+  reclamante: one(reclamantes, {
+    fields: [leadsReclamantes.reclamanteId],
+    references: [reclamantes.id],
+  }),
 }));
 
 // Interações (Comentários entre vendedores)
@@ -373,6 +420,8 @@ export const insertProductSchema = createInsertSchema(products).omit({ id: true,
 export const insertProposalSchema = createInsertSchema(proposals).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProposalItemSchema = createInsertSchema(proposalItems).omit({ id: true });
 export const insertPipelineTriggerSchema = createInsertSchema(pipelineTriggers).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLeadAdvogadoSchema = createInsertSchema(leadsAdvogados).omit({ id: true, createdAt: true });
+export const insertLeadReclamanteSchema = createInsertSchema(leadsReclamantes).omit({ id: true, createdAt: true });
 
 // Types
 export type Escritorio = typeof escritorios.$inferSelect;
@@ -395,6 +444,10 @@ export type ProposalItem = typeof proposalItems.$inferSelect;
 export type InsertProposalItem = z.infer<typeof insertProposalItemSchema>;
 export type PipelineTrigger = typeof pipelineTriggers.$inferSelect;
 export type InsertPipelineTrigger = z.infer<typeof insertPipelineTriggerSchema>;
+export type LeadAdvogado = typeof leadsAdvogados.$inferSelect;
+export type InsertLeadAdvogado = z.infer<typeof insertLeadAdvogadoSchema>;
+export type LeadReclamante = typeof leadsReclamantes.$inferSelect;
+export type InsertLeadReclamante = z.infer<typeof insertLeadReclamanteSchema>;
 
 // Pipeline stage configurations
 export const PIPELINE_STAGES = {
