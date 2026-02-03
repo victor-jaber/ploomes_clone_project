@@ -123,20 +123,20 @@ export const escritoriosRelations = relations(escritorios, ({ many }) => ({
 
 // Todos Advogados Infos (substitui a tabela advogados)
 export const todosAdvogadosInfos = pgTable("todos_advogados_infos", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   cpf: varchar("cpf", { length: 14 }),
   nome: text("nome").notNull(),
   cnj: varchar("cnj", { length: 30 }),
   valorCausa: numeric("valor_causa", { precision: 12, scale: 2 }),
   email: text("email"),
-  telefone: varchar("telefone", { length: 20 }),
-  celular: varchar("celular", { length: 20 }),
-  cep: varchar("cep", { length: 10 }),
+  telefone: text("telefone"),
+  celular: text("celular"),
+  cep: text("cep"),
   estado: varchar("estado", { length: 2 }),
   municipio: text("municipio"),
   bairro: text("bairro"),
   logradouro: text("logradouro"),
-  numero: varchar("numero", { length: 20 }),
+  numero: text("numero"),
   complemento: text("complemento"),
   observacoes: text("observacoes"),
   ownerId: varchar("owner_id").notNull(),
@@ -181,7 +181,7 @@ export const leads = pgTable("leads", {
   position: integer("position").default(0),
   
   // Referências opcionais dependendo do pipeline
-  todosAdvogadosInfosId: varchar("todos_advogados_infos_id").references(() => todosAdvogadosInfos.id, { onDelete: "cascade" }),
+  todosAdvogadosInfosId: integer("todos_advogados_infos_id").references(() => todosAdvogadosInfos.id, { onDelete: "cascade" }),
   escritorioId: varchar("escritorio_id").references(() => escritorios.id, { onDelete: "cascade" }),
   reclamanteId: varchar("reclamante_id").references(() => reclamantes.id, { onDelete: "cascade" }),
   
