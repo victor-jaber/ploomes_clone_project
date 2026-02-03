@@ -1,0 +1,89 @@
+rocesso/details?numero_cnj=0013192-19.2016.5.15.0059
+[93/218] Processando CNJ: 0000025-49.2021.5.06.0013
+  [ERRO] Falha ao consultar API para CNJ 0000025-49.2021.5.06.0013: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0000025-49.2021.5.06.0013
+[94/218] Processando CNJ: 1002215-66.2024.5.02.0241
+  [ERRO] Falha ao consultar API para CNJ 1002215-66.2024.5.02.0241: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=1002215-66.2024.5.02.0241
+[95/218] Processando CNJ: 1000066-32.2023.5.02.0371
+  [ERRO] Falha ao consultar API para CNJ 1000066-32.2023.5.02.0371: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=1000066-32.2023.5.02.0371
+[96/218] Processando CNJ: 0021269-17.2019.5.04.0027
+  [ERRO] Falha ao consultar API para CNJ 0021269-17.2019.5.04.0027: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0021269-17.2019.5.04.0027
+[97/218] Processando CNJ: 1001771-76.2022.5.02.0023
+  [ERRO] Falha ao consultar API para CNJ 1001771-76.2022.5.02.0023: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=1001771-76.2022.5.02.0023
+[98/218] Processando CNJ: 0011642-89.2014.5.15.0016
+  [ERRO] Falha ao consultar API para CNJ 0011642-89.2014.5.15.0016: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0011642-89.2014.5.15.0016
+[99/218] Processando CNJ: 1000377-57.2024.5.02.0025
+  [ERRO] Falha ao consultar API para CNJ 1000377-57.2024.5.02.0025: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=1000377-57.2024.5.02.0025
+[100/218] Processando CNJ: 0021020-10.2021.5.04.0023
+  [ERRO] Falha ao consultar API para CNJ 0021020-10.2021.5.04.0023: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0021020-10.2021.5.04.0023
+[101/218] Processando CNJ: 0011121-39.2019.5.15.0059
+  [ERRO] Falha ao consultar API para CNJ 0011121-39.2019.5.15.0059: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0011121-39.2019.5.15.0059
+[102/218] Processando CNJ: 1000772-14.2023.5.02.0242
+  [ERRO] Falha ao consultar API para CNJ 1000772-14.2023.5.02.0242: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=1000772-14.2023.5.02.0242
+[103/218] Processando CNJ: 1002261-34.2016.5.02.0371
+  [ERRO] Falha ao consultar API para CNJ 1002261-34.2016.5.02.0371: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=1002261-34.2016.5.02.0371
+[104/218] Processando CNJ: 0010520-55.2021.5.15.0029
+  [ERRO] Falha ao consultar API para CNJ 0010520-55.2021.5.15.0029: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0010520-55.2021.5.15.0029
+[105/218] Processando CNJ: 0011763-35.2023.5.15.0006
+  [ERRO] Falha ao consultar API para CNJ 0011763-35.2023.5.15.0006: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0011763-35.2023.5.15.0006
+[106/218] Processando CNJ: 0001205-88.2023.5.09.0129
+  [ERRO] Falha ao consultar API para CNJ 0001205-88.2023.5.09.0129: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0001205-88.2023.5.09.0129
+[107/218] Processando CNJ: 1001784-77.2023.5.02.0011
+  [ERRO] Falha ao consultar API para CNJ 1001784-77.2023.5.02.0011: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=1001784-77.2023.5.02.0011
+[108/218] Processando CNJ: 0010711-05.2024.5.18.0129
+  [ERRO] Falha ao consultar API para CNJ 0010711-05.2024.5.18.0129: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0010711-05.2024.5.18.0129
+[109/218] Processando CNJ: 0011311-98.2023.5.15.0014
+  [ERRO] Falha ao consultar API para CNJ 0011311-98.2023.5.15.0014: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0011311-98.2023.5.15.0014
+[110/218] Processando CNJ: 0001205-88.2023.5.09.0129
+  [ERRO] Falha ao consultar API para CNJ 0001205-88.2023.5.09.0129: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0001205-88.2023.5.09.0129
+[111/218] Processando CNJ: 0011395-69.2018.5.15.0016
+  [ERRO] Falha ao consultar API para CNJ 0011395-69.2018.5.15.0016: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0011395-69.2018.5.15.0016
+[112/218] Processando CNJ: 0020764-96.2022.5.04.0002
+  [ERRO] Falha ao consultar API para CNJ 0020764-96.2022.5.04.0002: 422 Client Error: Unprocessable Entity for url: http://10.15.0.1:8001/api/v1/processo/details?numero_cnj=0020764-96.2022.5.04.0002
+[113/218] Processando CNJ: 0012422-60.2014.5.15.0135
+Traceback (most recent call last):
+  File "C:\Users\VictorJaber\OneDrive - Artemis Tech\Documentos\data_adv\main.py", line 231, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\VictorJaber\OneDrive - Artemis Tech\Documentos\data_adv\main.py", line 192, in main
+    data = fetch_processo_details(cnj)
+  File "C:\Users\VictorJaber\OneDrive - Artemis Tech\Documentos\data_adv\main.py", line 46, in fetch_processo_details
+    response = requests.get(API_URL, params=params, timeout=30)
+  File "C:\Users\VictorJaber\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\api.py", line 73, in get
+    return request("get", url, params=params, **kwargs)
+  File "C:\Users\VictorJaber\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\VictorJaber\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "C:\Users\VictorJaber\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "C:\Users\VictorJaber\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\adapters.py", line 644, in send
+    resp = conn.urlopen(
+        method=request.method,
+    ...<9 lines>...
+        chunked=chunked,
+    )
+  File "C:\Users\VictorJaber\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+        conn,
+    ...<10 lines>...
+        **response_kw,
+    )
+  File "C:\Users\VictorJaber\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connectionpool.py", line 534, in _make_request     
+    response = conn.getresponse()
+  File "C:\Users\VictorJaber\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\urllib3\connection.py", line 571, in getresponse
+    httplib_response = super().getresponse()
+  File "C:\Users\VictorJaber\AppData\Local\Python\pythoncore-3.14-64\Lib\http\client.py", line 1450, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\VictorJaber\AppData\Local\Python\pythoncore-3.14-64\Lib\http\client.py", line 336, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\VictorJaber\AppData\Local\Python\pythoncore-3.14-64\Lib\http\client.py", line 297, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\VictorJaber\AppData\Local\Python\pythoncore-3.14-64\Lib\socket.py", line 725, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+KeyboardInterrupt
+PS C:\Users\VictorJaber\OneDrive - Artemis Tech\Documentos\data_adv> 
