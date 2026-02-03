@@ -236,7 +236,7 @@ function LeadDetailPanel({
   const [showNewReclamante, setShowNewReclamante] = useState(false);
   const [newAdvogado, setNewAdvogado] = useState({ nome: "", cnj: "", cpf: "", telefone: "", email: "" });
   const [newEscritorio, setNewEscritorio] = useState({ nome: "", cnpj: "", telefone: "", email: "", numeroCaso: "" });
-  const [newReclamante, setNewReclamante] = useState({ nome: "", cpf: "", telefone: "", email: "", processoNumero: "" });
+  const [newReclamante, setNewReclamante] = useState({ nome: "", cpf: "", cnj: "", telefone: "", email: "" });
   
   const stages = PIPELINE_STAGES[pipelineType];
   const currentStageIndex = stages.findIndex(s => s.id === lead.stage);
@@ -346,7 +346,7 @@ function LeadDetailPanel({
       queryClient.invalidateQueries({ queryKey: ["/api/reclamantes"] });
       handleUpdateField("reclamanteId", created.id);
       setShowNewReclamante(false);
-      setNewReclamante({ nome: "", cpf: "", telefone: "", email: "", processoNumero: "" });
+      setNewReclamante({ nome: "", cpf: "", cnj: "", telefone: "", email: "" });
       toast({ title: "Reclamante criado e vinculado" });
     },
     onError: () => {
@@ -828,9 +828,9 @@ function LeadDetailPanel({
                       onChange={(e) => setNewReclamante({...newReclamante, email: e.target.value})}
                     />
                     <Input
-                      placeholder="Número do Processo/Caso"
-                      value={newReclamante.processoNumero}
-                      onChange={(e) => setNewReclamante({...newReclamante, processoNumero: e.target.value})}
+                      placeholder="CNJ do Processo"
+                      value={newReclamante.cnj}
+                      onChange={(e) => setNewReclamante({...newReclamante, cnj: e.target.value})}
                     />
                     <div className="flex gap-2">
                       <Button 
@@ -861,7 +861,7 @@ function LeadDetailPanel({
                       <SelectContent>
                         <SelectItem value="none">Nenhum</SelectItem>
                         {reclamantes.map((r) => (
-                          <SelectItem key={r.id} value={r.id}>{r.nome}{r.processoNumero ? ` (${r.processoNumero})` : ""}</SelectItem>
+                          <SelectItem key={r.id} value={r.id}>{r.nome}{r.cnj ? ` (${r.cnj})` : ""}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -870,8 +870,8 @@ function LeadDetailPanel({
                         {reclamante.cpf && (
                           <div className="text-xs text-muted-foreground">CPF: {reclamante.cpf}</div>
                         )}
-                        {reclamante.processoNumero && (
-                          <div className="text-xs text-muted-foreground">Processo: {reclamante.processoNumero}</div>
+                        {reclamante.cnj && (
+                          <div className="text-xs text-muted-foreground">CNJ: {reclamante.cnj}</div>
                         )}
                         {reclamante.telefone && (
                           <div className="flex items-center gap-2 text-sm">
@@ -972,7 +972,7 @@ function LeadDetailPanel({
                       .filter(r => !leadReclamantes.some(lr => lr.id === r.id))
                       .map((r) => (
                         <SelectItem key={r.id} value={r.id} data-testid={`select-item-reclamante-${r.id}`}>
-                          {r.nome}{r.processoNumero ? ` (${r.processoNumero})` : ""}
+                          {r.nome}{r.cnj ? ` (${r.cnj})` : ""}
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -983,7 +983,7 @@ function LeadDetailPanel({
                       <div key={r.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md" data-testid={`card-linked-reclamante-${r.id}`}>
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-medium truncate" data-testid={`text-reclamante-nome-${r.id}`}>{r.nome}</div>
-                          {r.processoNumero && <div className="text-xs text-muted-foreground truncate">Processo: {r.processoNumero}</div>}
+                          {r.cnj && <div className="text-xs text-muted-foreground truncate">CNJ: {r.cnj}</div>}
                           {r.cpf && <div className="text-xs text-muted-foreground">CPF: {r.cpf}</div>}
                         </div>
                         <Button
@@ -1655,7 +1655,7 @@ export default function PipelinePage() {
   // Inline entity creation states
   const [showInlineCreate, setShowInlineCreate] = useState(false);
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
-  const [newEntityData, setNewEntityData] = useState({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+  const [newEntityData, setNewEntityData] = useState({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "" });
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDraggingScroll, setIsDraggingScroll] = useState(false);
@@ -1823,7 +1823,7 @@ export default function PipelinePage() {
       setIsDialogOpen(false);
       setSelectedEntityId("");
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "" });
       toast({
         title: "Sucesso",
         description: "Lead criado com sucesso",
@@ -1905,7 +1905,7 @@ export default function PipelinePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
       setSelectedEntityId(created.id.toString());
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "" });
       toast({ title: "Advogado criado" });
     },
     onError: () => {
@@ -1922,7 +1922,7 @@ export default function PipelinePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/escritorios"] });
       setSelectedEntityId(created.id);
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "" });
       toast({ title: "Escritório criado" });
     },
     onError: () => {
@@ -1931,7 +1931,7 @@ export default function PipelinePage() {
   });
 
   const createInlineReclamanteMutation = useMutation({
-    mutationFn: async (data: { nome: string; cpf: string; telefone: string; email: string; processoNumero: string }) => {
+    mutationFn: async (data: { nome: string; cpf: string; cnj: string; telefone: string; email: string }) => {
       const response = await apiRequest("POST", "/api/reclamantes", data);
       return response.json();
     },
@@ -1939,7 +1939,7 @@ export default function PipelinePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/reclamantes"] });
       setSelectedEntityId(created.id);
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "" });
       toast({ title: "Reclamante criado" });
     },
     onError: () => {
@@ -1968,9 +1968,9 @@ export default function PipelinePage() {
       createInlineReclamanteMutation.mutate({
         nome: newEntityData.nome,
         cpf: newEntityData.cpf,
+        cnj: newEntityData.cnj,
         telefone: newEntityData.telefone,
         email: newEntityData.email,
-        processoNumero: newEntityData.processoNumero,
       });
     }
   };
@@ -2242,10 +2242,10 @@ export default function PipelinePage() {
                               data-testid="input-inline-cpf"
                             />
                             <Input
-                              placeholder="Nº do Processo"
-                              value={newEntityData.processoNumero}
-                              onChange={(e) => setNewEntityData({ ...newEntityData, processoNumero: e.target.value })}
-                              data-testid="input-inline-processo"
+                              placeholder="CNJ do Processo"
+                              value={newEntityData.cnj}
+                              onChange={(e) => setNewEntityData({ ...newEntityData, cnj: e.target.value })}
+                              data-testid="input-inline-cnj"
                             />
                           </>
                         )}

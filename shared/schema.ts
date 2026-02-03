@@ -154,6 +154,7 @@ export const reclamantes = pgTable("reclamantes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   nome: text("nome").notNull(),
   cpf: varchar("cpf", { length: 14 }),
+  cnj: varchar("cnj", { length: 30 }),
   email: text("email"),
   telefone: varchar("telefone", { length: 20 }),
   celular: varchar("celular", { length: 20 }),
