@@ -78,7 +78,7 @@ const PIPELINE_LABELS: Record<PipelineType, { label: string; icon: JSX.Element; 
 };
 
 type PipelineFilter = {
-  type: "advogado" | "reclamante" | "cnj" | "escritorio";
+  type: "advogado" | "reclamante" | "cnj" | "escritorio" | "reclamante_cnj";
   id?: number | string;
   value: string;
   label: string;
@@ -1420,6 +1420,18 @@ function LeadCard({
                 <Filter className="h-4 w-4 mr-2" />
                 Filtrar por: {reclamante.nome}
               </ContextMenuItem>
+              {reclamante.cnj && (
+                <ContextMenuItem 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFilter({ type: "reclamante_cnj", value: reclamante.cnj!, label: `CNJ: ${reclamante.cnj}` });
+                  }}
+                  data-testid="context-menu-filter-reclamante-cnj"
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filtrar por CNJ: {reclamante.cnj}
+                </ContextMenuItem>
+              )}
               <ContextMenuSeparator />
             </>
           ) : null;
@@ -1769,6 +1781,21 @@ export default function PipelinePage() {
           return todosAdvogadosInfos
             .filter(a => leadAdvogadoIds.includes(a.id))
             .some(a => a.cnj === filter.value);
+        
+        case "reclamante_cnj":
+          // Check CNJ on lead's linked reclamante or on any N:N reclamantes
+          const linkedReclamante = lead.reclamanteId 
+            ? reclamantes.find(r => r.id === lead.reclamanteId)
+            : null;
+          if (linkedReclamante?.cnj === filter.value) return true;
+          
+          // Check N:N reclamantes for CNJ match
+          const leadReclamanteIds = allLeadReclamantes
+            .filter(lr => lr.leadId === lead.id)
+            .map(lr => lr.reclamanteId);
+          return reclamantes
+            .filter(r => leadReclamanteIds.includes(r.id))
+            .some(r => r.cnj === filter.value);
         
         default:
           return true;
