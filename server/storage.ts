@@ -127,6 +127,9 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<{ id: string; name: string; email: string } | undefined>;
   createUser(user: { name: string; email: string; password: string }): Promise<{ id: string; name: string; email: string; createdAt: Date | null }>;
   deleteUser(id: string): Promise<boolean>;
+
+  // Sync Advogados to Leads
+  syncAdvogadosToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -519,6 +522,37 @@ export class DatabaseStorage implements IStorage {
   async deleteUser(id: string): Promise<boolean> {
     const result = await db.delete(users).where(eq(users.id, id)).returning();
     return result.length > 0;
+  }
+
+  async syncAdvogadosToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }> {
+    const advogadosToSync = await db.select().from(todosAdvogadosInfos).where(eq(todosAdvogadosInfos.enviadoParaPipeline, false));
+    
+    let synced = 0;
+    let skipped = 0;
+    const createdLeads: Lead[] = [];
+    
+    for (const advogado of advogadosToSync) {
+      const titulo = `${advogado.nome} - ${advogado.cpf || 'Sem CPF'}`;
+      
+      const [newLead] = await db.insert(leads).values({
+        titulo,
+        pipelineType: 'advogados',
+        stage: 'novo_lead',
+        todosAdvogadosInfosId: advogado.id,
+        valor: advogado.valorCausa,
+        ownerId: userId,
+        vendedorId: userId,
+      }).returning();
+      
+      await db.update(todosAdvogadosInfos)
+        .set({ enviadoParaPipeline: true })
+        .where(eq(todosAdvogadosInfos.id, advogado.id));
+      
+      createdLeads.push(newLead);
+      synced++;
+    }
+    
+    return { synced, skipped, leads: createdLeads };
   }
 }
 

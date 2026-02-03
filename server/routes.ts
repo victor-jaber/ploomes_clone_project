@@ -129,12 +129,25 @@ export async function registerRoutes(
   app.post("/api/todos-advogados-infos", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertTodosAdvogadosInfosSchema.safeParse({ ...req.body, ownerId: userId });
+      const parsed = insertTodosAdvogadosInfosSchema.safeParse({ ...req.body, ownerId: userId, enviadoParaPipeline: true });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
       const info = await storage.createTodosAdvogadosInfo(parsed.data);
+      
+      const titulo = `${info.nome} - ${info.cpf || 'Sem CPF'}`;
+      const lead = await storage.createLead({
+        titulo,
+        pipelineType: 'advogados',
+        stage: 'novo_lead',
+        todosAdvogadosInfosId: info.id,
+        valor: info.valorCausa,
+        ownerId: userId,
+        vendedorId: userId,
+      });
+      wsManager.broadcastLeadCreated(lead);
+      
       res.status(201).json(info);
     } catch (error) {
       console.error("Error creating todos advogados info:", error);
@@ -174,6 +187,22 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting todos advogados info:", error);
       res.status(500).json({ message: "Failed to delete todos advogados info" });
+    }
+  });
+
+  app.post("/api/sync-advogados-to-leads", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const result = await storage.syncAdvogadosToLeads(userId);
+      
+      for (const lead of result.leads) {
+        wsManager.broadcastLeadCreated(lead);
+      }
+      
+      res.json({ synced: result.synced, skipped: result.skipped });
+    } catch (error) {
+      console.error("Error syncing advogados to leads:", error);
+      res.status(500).json({ message: "Failed to sync advogados to leads" });
     }
   });
 
