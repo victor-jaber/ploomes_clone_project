@@ -130,6 +130,9 @@ export interface IStorage {
 
   // Sync Advogados to Leads
   syncAdvogadosToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
+  
+  // Sync Reclamantes to Leads
+  syncReclamantesToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -547,6 +550,42 @@ export class DatabaseStorage implements IStorage {
       await db.update(todosAdvogadosInfos)
         .set({ enviadoParaPipeline: true })
         .where(eq(todosAdvogadosInfos.id, advogado.id));
+      
+      createdLeads.push(newLead);
+      synced++;
+    }
+    
+    return { synced, skipped, leads: createdLeads };
+  }
+
+  async syncReclamantesToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }> {
+    const reclamantesToSync = await db.select().from(reclamantes).where(
+      and(
+        eq(reclamantes.enviadoParaPipeline, false),
+        eq(reclamantes.ownerId, userId)
+      )
+    );
+    
+    let synced = 0;
+    let skipped = 0;
+    const createdLeads: Lead[] = [];
+    
+    for (const reclamante of reclamantesToSync) {
+      const titulo = `${reclamante.nome} - ${reclamante.cpf || 'Sem CPF'}`;
+      
+      const [newLead] = await db.insert(leads).values({
+        titulo,
+        pipelineType: 'reclamantes',
+        stage: 'novo_lead',
+        reclamanteId: reclamante.id,
+        valor: reclamante.valorCausa,
+        ownerId: userId,
+        vendedorId: userId,
+      }).returning();
+      
+      await db.update(reclamantes)
+        .set({ enviadoParaPipeline: true })
+        .where(eq(reclamantes.id, reclamante.id));
       
       createdLeads.push(newLead);
       synced++;
