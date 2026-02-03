@@ -560,10 +560,7 @@ export class DatabaseStorage implements IStorage {
 
   async syncReclamantesToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }> {
     const reclamantesToSync = await db.select().from(reclamantes).where(
-      and(
-        eq(reclamantes.enviadoParaPipeline, false),
-        eq(reclamantes.ownerId, userId)
-      )
+      eq(reclamantes.enviadoParaPipeline, false)
     );
     
     let synced = 0;
