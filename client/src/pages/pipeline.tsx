@@ -65,7 +65,7 @@ import {
   Send, Paperclip, FileText, Kanban, User, Scale, Users, FileSearch, Handshake
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Lead, Advogado, Escritorio, Reclamante, PipelineTrigger, Activity, Interaction, InsertLead } from "@shared/schema";
+import type { Lead, TodosAdvogadosInfos, Escritorio, Reclamante, PipelineTrigger, Activity, Interaction, InsertLead } from "@shared/schema";
 import { PIPELINE_STAGES, type PipelineType } from "@shared/schema";
 
 const PIPELINE_LABELS: Record<PipelineType, { label: string; icon: JSX.Element; description: string }> = {
@@ -208,9 +208,9 @@ function InlineEditField({
   );
 }
 
-function getEntityName(lead: Lead, advogados: Advogado[], escritorios: Escritorio[], reclamantes: Reclamante[]): string {
-  if (lead.advogadoId) {
-    const adv = advogados.find(a => a.id === lead.advogadoId);
+function getEntityName(lead: Lead, todosAdvogadosInfos: TodosAdvogadosInfos[], escritorios: Escritorio[], reclamantes: Reclamante[]): string {
+  if (lead.todosAdvogadosInfosId) {
+    const adv = todosAdvogadosInfos.find(a => a.id === lead.todosAdvogadosInfosId);
     return adv?.nome || "Advogado";
   }
   if (lead.escritorioId) {
@@ -226,7 +226,7 @@ function getEntityName(lead: Lead, advogados: Advogado[], escritorios: Escritori
 
 function LeadDetailPanel({
   lead,
-  advogados,
+  todosAdvogadosInfos,
   escritorios,
   reclamantes,
   activities,
@@ -236,7 +236,7 @@ function LeadDetailPanel({
   isPending,
 }: {
   lead: Lead;
-  advogados: Advogado[];
+  todosAdvogadosInfos: TodosAdvogadosInfos[];
   escritorios: Escritorio[];
   reclamantes: Reclamante[];
   activities: Activity[];
@@ -250,7 +250,7 @@ function LeadDetailPanel({
   const [showNewAdvogado, setShowNewAdvogado] = useState(false);
   const [showNewEscritorio, setShowNewEscritorio] = useState(false);
   const [showNewReclamante, setShowNewReclamante] = useState(false);
-  const [newAdvogado, setNewAdvogado] = useState({ nome: "", oab: "", telefone: "", email: "", numeroCaso: "" });
+  const [newAdvogado, setNewAdvogado] = useState({ nome: "", cnj: "", cpf: "", telefone: "", email: "" });
   const [newEscritorio, setNewEscritorio] = useState({ nome: "", cnpj: "", telefone: "", email: "", numeroCaso: "" });
   const [newReclamante, setNewReclamante] = useState({ nome: "", cpf: "", telefone: "", email: "", processoNumero: "" });
   
@@ -311,14 +311,14 @@ function LeadDetailPanel({
 
   const createAdvogadoMutation = useMutation({
     mutationFn: async (data: typeof newAdvogado) => {
-      return apiRequest("POST", "/api/advogados", data);
+      return apiRequest("POST", "/api/todos-advogados-infos", data);
     },
     onSuccess: async (response) => {
       const created = await response.json();
-      queryClient.invalidateQueries({ queryKey: ["/api/advogados"] });
-      handleUpdateField("advogadoId", created.id);
+      queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
+      handleUpdateField("todosAdvogadosInfosId", created.id);
       setShowNewAdvogado(false);
-      setNewAdvogado({ nome: "", oab: "", telefone: "", email: "", numeroCaso: "" });
+      setNewAdvogado({ nome: "", cnj: "", cpf: "", telefone: "", email: "" });
       toast({ title: "Advogado criado e vinculado" });
     },
     onError: () => {
@@ -387,7 +387,7 @@ function LeadDetailPanel({
     }
   };
 
-  const advogado = lead.advogadoId ? advogados.find(a => a.id === lead.advogadoId) : null;
+  const advogado = lead.todosAdvogadosInfosId ? todosAdvogadosInfos.find(a => a.id === lead.todosAdvogadosInfosId) : null;
   const escritorio = lead.escritorioId ? escritorios.find(e => e.id === lead.escritorioId) : null;
   const reclamante = lead.reclamanteId ? reclamantes.find(r => r.id === lead.reclamanteId) : null;
 
@@ -404,7 +404,7 @@ function LeadDetailPanel({
             <div className="min-w-0 flex-1">
               <h2 className="font-semibold text-xl truncate">{lead.titulo}</h2>
               <p className="text-muted-foreground truncate">
-                {getEntityName(lead, advogados, escritorios, reclamantes)}
+                {getEntityName(lead, todosAdvogadosInfos, escritorios, reclamantes)}
               </p>
             </div>
           </div>
@@ -560,9 +560,14 @@ function LeadDetailPanel({
                       onChange={(e) => setNewAdvogado({...newAdvogado, nome: e.target.value})}
                     />
                     <Input
-                      placeholder="OAB"
-                      value={newAdvogado.oab}
-                      onChange={(e) => setNewAdvogado({...newAdvogado, oab: e.target.value})}
+                      placeholder="CPF"
+                      value={newAdvogado.cpf}
+                      onChange={(e) => setNewAdvogado({...newAdvogado, cpf: e.target.value})}
+                    />
+                    <Input
+                      placeholder="CNJ"
+                      value={newAdvogado.cnj}
+                      onChange={(e) => setNewAdvogado({...newAdvogado, cnj: e.target.value})}
                     />
                     <Input
                       placeholder="Telefone"
@@ -573,11 +578,6 @@ function LeadDetailPanel({
                       placeholder="Email"
                       value={newAdvogado.email}
                       onChange={(e) => setNewAdvogado({...newAdvogado, email: e.target.value})}
-                    />
-                    <Input
-                      placeholder="Número do Caso"
-                      value={newAdvogado.numeroCaso}
-                      onChange={(e) => setNewAdvogado({...newAdvogado, numeroCaso: e.target.value})}
                     />
                     <div className="flex gap-2">
                       <Button 
@@ -599,26 +599,26 @@ function LeadDetailPanel({
                 ) : (
                   <>
                     <Select 
-                      value={lead.advogadoId || "none"} 
-                      onValueChange={(v) => handleUpdateField("advogadoId", v === "none" ? null : v)}
+                      value={lead.todosAdvogadosInfosId?.toString() || "none"} 
+                      onValueChange={(v) => handleUpdateField("todosAdvogadosInfosId", v === "none" ? null : parseInt(v))}
                     >
                       <SelectTrigger data-testid="select-advogado">
                         <SelectValue placeholder="Selecione um advogado" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Nenhum</SelectItem>
-                        {advogados.map((a) => (
-                          <SelectItem key={a.id} value={a.id}>{a.nome}{a.numeroCaso ? ` (${a.numeroCaso})` : ""}</SelectItem>
+                        {todosAdvogadosInfos.map((a) => (
+                          <SelectItem key={a.id} value={a.id.toString()}>{a.nome}{a.cnj ? ` (${a.cnj})` : ""}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     {advogado && (
                       <div className="space-y-2 pt-2 border-t">
-                        {advogado.oab && (
-                          <div className="text-xs text-muted-foreground">OAB: {advogado.oab}</div>
+                        {advogado.cnj && (
+                          <div className="text-xs text-muted-foreground">CNJ: {advogado.cnj}</div>
                         )}
-                        {(advogado as any).numeroCaso && (
-                          <div className="text-xs text-muted-foreground">Caso: {(advogado as any).numeroCaso}</div>
+                        {advogado.cpf && (
+                          <div className="text-xs text-muted-foreground">CPF: {advogado.cpf}</div>
                         )}
                         {advogado.telefone && (
                           <div className="flex items-center gap-2 text-sm">
@@ -1035,7 +1035,7 @@ function LeadDetailPanel({
 
 function LeadCard({
   lead,
-  advogados,
+  todosAdvogadosInfos,
   escritorios,
   reclamantes,
   activities,
@@ -1050,7 +1050,7 @@ function LeadCard({
   isUpdating,
 }: {
   lead: Lead;
-  advogados: Advogado[];
+  todosAdvogadosInfos: TodosAdvogadosInfos[];
   escritorios: Escritorio[];
   reclamantes: Reclamante[];
   activities: Activity[];
@@ -1087,7 +1087,7 @@ function LeadCard({
   };
 
   const currentStage = stages[currentStageIndex];
-  const entityName = getEntityName(lead, advogados, escritorios, reclamantes);
+  const entityName = getEntityName(lead, todosAdvogadosInfos, escritorios, reclamantes);
   const prevStage = currentStageIndex > 0 ? stages[currentStageIndex - 1] : null;
 
   return (
@@ -1183,7 +1183,7 @@ function LeadCard({
 function PipelineColumn({
   stage,
   leads,
-  advogados,
+  todosAdvogadosInfos,
   escritorios,
   reclamantes,
   activities,
@@ -1204,7 +1204,7 @@ function PipelineColumn({
 }: {
   stage: { id: string; label: string; color: string };
   leads: Lead[];
-  advogados: Advogado[];
+  todosAdvogadosInfos: TodosAdvogadosInfos[];
   escritorios: Escritorio[];
   reclamantes: Reclamante[];
   activities: Activity[];
@@ -1267,7 +1267,7 @@ function PipelineColumn({
               <LeadCard
                 key={lead.id}
                 lead={lead}
-                advogados={advogados}
+                todosAdvogadosInfos={todosAdvogadosInfos}
                 escritorios={escritorios}
                 reclamantes={reclamantes}
                 activities={activities}
@@ -1732,7 +1732,7 @@ export default function PipelinePage() {
   // Inline entity creation states
   const [showInlineCreate, setShowInlineCreate] = useState(false);
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
-  const [newEntityData, setNewEntityData] = useState({ nome: "", oab: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+  const [newEntityData, setNewEntityData] = useState({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDraggingScroll, setIsDraggingScroll] = useState(false);
@@ -1782,8 +1782,8 @@ export default function PipelinePage() {
     queryKey: ["/api/leads"],
   });
 
-  const { data: advogados = [] } = useQuery<Advogado[]>({
-    queryKey: ["/api/advogados"],
+  const { data: todosAdvogadosInfos = [] } = useQuery<TodosAdvogadosInfos[]>({
+    queryKey: ["/api/todos-advogados-infos"],
   });
 
   const { data: escritorios = [] } = useQuery<Escritorio[]>({
@@ -1848,7 +1848,7 @@ export default function PipelinePage() {
       setIsDialogOpen(false);
       setSelectedEntityId("");
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", oab: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
       toast({
         title: "Sucesso",
         description: "Lead criado com sucesso",
@@ -1878,15 +1878,15 @@ export default function PipelinePage() {
   });
 
   const createInlineAdvogadoMutation = useMutation({
-    mutationFn: async (data: { nome: string; oab: string; telefone: string; email: string; numeroCaso: string }) => {
-      const response = await apiRequest("POST", "/api/advogados", data);
+    mutationFn: async (data: { nome: string; cnj: string; cpf: string; telefone: string; email: string }) => {
+      const response = await apiRequest("POST", "/api/todos-advogados-infos", data);
       return response.json();
     },
     onSuccess: (created) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/advogados"] });
-      setSelectedEntityId(created.id);
+      queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
+      setSelectedEntityId(created.id.toString());
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", oab: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
       toast({ title: "Advogado criado" });
     },
     onError: () => {
@@ -1903,7 +1903,7 @@ export default function PipelinePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/escritorios"] });
       setSelectedEntityId(created.id);
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", oab: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
       toast({ title: "Escritório criado" });
     },
     onError: () => {
@@ -1920,7 +1920,7 @@ export default function PipelinePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/reclamantes"] });
       setSelectedEntityId(created.id);
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", oab: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
+      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", processoNumero: "" });
       toast({ title: "Reclamante criado" });
     },
     onError: () => {
@@ -1932,10 +1932,10 @@ export default function PipelinePage() {
     if (selectedPipeline === "advogados") {
       createInlineAdvogadoMutation.mutate({
         nome: newEntityData.nome,
-        oab: newEntityData.oab,
+        cnj: newEntityData.cnj,
+        cpf: newEntityData.cpf,
         telefone: newEntityData.telefone,
         email: newEntityData.email,
-        numeroCaso: newEntityData.numeroCaso,
       });
     } else if (selectedPipeline === "escritorios") {
       createInlineEscritorioMutation.mutate({
@@ -2064,7 +2064,7 @@ export default function PipelinePage() {
     // Only set entity ID if a valid ID was selected (using controlled state)
     if (selectedEntityId && selectedEntityId.trim()) {
       if (selectedPipeline === "advogados") {
-        data.advogadoId = selectedEntityId;
+        data.todosAdvogadosInfosId = parseInt(selectedEntityId);
       } else if (selectedPipeline === "escritorios") {
         data.escritorioId = selectedEntityId;
       } else if (selectedPipeline === "reclamantes") {
@@ -2080,7 +2080,7 @@ export default function PipelinePage() {
 
   const getEntityOptions = () => {
     if (selectedPipeline === "advogados") {
-      return advogados.map(a => ({ id: a.id, name: a.nome }));
+      return todosAdvogadosInfos.map(a => ({ id: a.id.toString(), name: a.nome }));
     }
     if (selectedPipeline === "escritorios") {
       return escritorios.map(e => ({ id: e.id, name: e.nome }));
@@ -2150,7 +2150,7 @@ export default function PipelinePage() {
                     data-testid="input-lead-titulo"
                   />
                 </div>
-                {(selectedPipeline === "advogados" || selectedPipeline === "escritorios" || selectedPipeline === "reclamantes") && (
+                {(selectedPipeline === "escritorios" || selectedPipeline === "reclamantes") && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label>{pipelineInfo.label.slice(0, -1)}</Label>
@@ -2174,22 +2174,6 @@ export default function PipelinePage() {
                           onChange={(e) => setNewEntityData({ ...newEntityData, nome: e.target.value })}
                           data-testid="input-inline-nome"
                         />
-                        {selectedPipeline === "advogados" && (
-                          <>
-                            <Input
-                              placeholder="OAB"
-                              value={newEntityData.oab}
-                              onChange={(e) => setNewEntityData({ ...newEntityData, oab: e.target.value })}
-                              data-testid="input-inline-oab"
-                            />
-                            <Input
-                              placeholder="Nº do Caso"
-                              value={newEntityData.numeroCaso}
-                              onChange={(e) => setNewEntityData({ ...newEntityData, numeroCaso: e.target.value })}
-                              data-testid="input-inline-numero-caso"
-                            />
-                          </>
-                        )}
                         {selectedPipeline === "escritorios" && (
                           <>
                             <Input
@@ -2358,7 +2342,7 @@ export default function PipelinePage() {
               key={stage.id}
               stage={stage}
               leads={filteredLeads.filter((l) => l.stage === stage.id)}
-              advogados={advogados}
+              todosAdvogadosInfos={todosAdvogadosInfos}
               escritorios={escritorios}
               reclamantes={reclamantes}
               activities={activities}
@@ -2402,7 +2386,7 @@ export default function PipelinePage() {
             <SheetContent className="w-full sm:max-w-3xl p-0 overflow-hidden">
               <LeadDetailPanel
                 lead={selectedLead}
-                advogados={advogados}
+                todosAdvogadosInfos={todosAdvogadosInfos}
                 escritorios={escritorios}
                 reclamantes={reclamantes}
                 activities={activities}
