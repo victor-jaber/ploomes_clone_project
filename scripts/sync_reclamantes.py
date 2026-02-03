@@ -17,10 +17,10 @@ import os
 import requests
 import psycopg2
 from psycopg2.extras import RealDictCursor
-import json
 from datetime import datetime
 import uuid
 import sys
+import time
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgres://postgres:NkkxEHRzrllRvfM0hRMaeR5mTVeM0gQpz8apUFb13qtow3v618zm71Uc1lGLBSqq@72.62.107.161:5433/postgres")
 API_URL = os.getenv("API_URL", "http://10.15.0.1:8001/api/v1/processo/details")
@@ -39,16 +39,40 @@ def get_advogados_cnjs(conn):
         """)
         return cur.fetchall()
 
-def fetch_processo_details(cnj):
+def fetch_processo_details(cnj, max_retries=3):
     """Consulta a API externa para obter detalhes do processo pelo CNJ."""
-    try:
-        params = {"numero_cnj": cnj}
-        response = requests.get(API_URL, params=params, timeout=30)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"  [ERRO] Falha ao consultar API para CNJ {cnj}: {e}")
-        return None
+    for attempt in range(max_retries):
+        try:
+            params = {"numero_cnj": cnj}
+            response = requests.get(API_URL, params=params, timeout=60)
+            
+            if response.status_code == 422:
+                return {"status": "not_found", "data": None}
+            
+            if response.status_code == 404:
+                return {"status": "not_found", "data": None}
+            
+            response.raise_for_status()
+            return {"status": "ok", "data": response.json()}
+            
+        except requests.exceptions.Timeout:
+            if attempt < max_retries - 1:
+                print(f"  [RETRY] Timeout, tentando novamente ({attempt + 2}/{max_retries})...")
+                time.sleep(2)
+                continue
+            return {"status": "timeout", "data": None}
+            
+        except requests.exceptions.ConnectionError:
+            if attempt < max_retries - 1:
+                print(f"  [RETRY] Erro de conexão, tentando novamente ({attempt + 2}/{max_retries})...")
+                time.sleep(3)
+                continue
+            return {"status": "connection_error", "data": None}
+            
+        except requests.exceptions.RequestException as e:
+            return {"status": "error", "data": None, "error": str(e)}
+    
+    return {"status": "error", "data": None}
 
 def extract_documento(documentos):
     """Extrai o documento principal (CPF prioritário, depois RG ou CNPJ)."""
@@ -148,6 +172,26 @@ def get_default_owner_id(conn):
             return result[0]
         return None
 
+def print_summary(total_cnjs, total_inseridos, total_existentes, total_nao_encontrados, total_erros, interrupted=False):
+    """Exibe o resumo da sincronização."""
+    print()
+    print("=" * 60)
+    if interrupted:
+        print("RESUMO (INTERROMPIDO)")
+    else:
+        print("RESUMO")
+    print("=" * 60)
+    print(f"Total de CNJs processados: {total_cnjs}")
+    print(f"Reclamantes inseridos: {total_inseridos}")
+    print(f"Reclamantes já existentes: {total_existentes}")
+    print(f"Processos não encontrados na API: {total_nao_encontrados}")
+    print(f"Erros de conexão/API: {total_erros}")
+    print()
+    if interrupted:
+        print("[INTERROMPIDO] Sincronização interrompida pelo usuário.")
+    else:
+        print("[CONCLUÍDO] Sincronização finalizada!")
+
 def main():
     print("=" * 60)
     print("SINCRONIZAÇÃO DE RECLAMANTES")
@@ -182,50 +226,61 @@ def main():
     
     total_inseridos = 0
     total_existentes = 0
+    total_nao_encontrados = 0
     total_erros = 0
+    processados = 0
     
-    for i, advogado in enumerate(advogados, 1):
-        cnj = advogado["cnj"]
-        owner_id = advogado.get("owner_id") or default_owner_id
-        print(f"[{i}/{len(advogados)}] Processando CNJ: {cnj}")
-        
-        data = fetch_processo_details(cnj)
-        
-        if not data:
-            total_erros += 1
-            continue
-        
-        reclamantes = extract_reclamantes(data, cnj, owner_id)
-        
-        if not reclamantes:
-            print(f"  [INFO] Nenhum reclamante encontrado")
-            continue
-        
-        for reclamante in reclamantes:
-            try:
-                inserted = insert_reclamante(conn, reclamante)
-                if inserted:
-                    print(f"  [OK] Inserido: {reclamante['nome']} - {reclamante['cpf']}")
-                    total_inseridos += 1
-                else:
-                    print(f"  [SKIP] Reclamante já existe: {reclamante['nome']}")
-                    total_existentes += 1
-            except Exception as e:
-                print(f"  [ERRO] Falha ao inserir {reclamante['nome']}: {e}")
+    try:
+        for i, advogado in enumerate(advogados, 1):
+            cnj = advogado["cnj"]
+            owner_id = advogado.get("owner_id") or default_owner_id
+            print(f"[{i}/{len(advogados)}] Processando CNJ: {cnj}")
+            processados = i
+            
+            result = fetch_processo_details(cnj)
+            
+            if result["status"] == "not_found":
+                print(f"  [--] Processo não encontrado na API")
+                total_nao_encontrados += 1
+                continue
+            
+            if result["status"] in ("timeout", "connection_error", "error"):
+                print(f"  [ERRO] {result.get('error', result['status'])}")
                 total_erros += 1
+                continue
+            
+            data = result["data"]
+            if not data:
+                total_erros += 1
+                continue
+            
+            reclamantes = extract_reclamantes(data, cnj, owner_id)
+            
+            if not reclamantes:
+                print(f"  [INFO] Nenhum reclamante encontrado")
+                continue
+            
+            for reclamante in reclamantes:
+                try:
+                    inserted = insert_reclamante(conn, reclamante)
+                    if inserted:
+                        print(f"  [OK] Inserido: {reclamante['nome']} - {reclamante['cpf']}")
+                        total_inseridos += 1
+                    else:
+                        print(f"  [SKIP] Já existe: {reclamante['nome']}")
+                        total_existentes += 1
+                except Exception as e:
+                    print(f"  [ERRO] Falha ao inserir {reclamante['nome']}: {e}")
+                    total_erros += 1
+    
+    except KeyboardInterrupt:
+        print("\n\n[!] Interrupção detectada (Ctrl+C)")
+        conn.close()
+        print_summary(processados, total_inseridos, total_existentes, total_nao_encontrados, total_erros, interrupted=True)
+        sys.exit(0)
     
     conn.close()
-    
-    print()
-    print("=" * 60)
-    print("RESUMO")
-    print("=" * 60)
-    print(f"Total de CNJs processados: {len(advogados)}")
-    print(f"Reclamantes inseridos: {total_inseridos}")
-    print(f"Reclamantes já existentes: {total_existentes}")
-    print(f"Erros: {total_erros}")
-    print()
-    print("[CONCLUÍDO] Sincronização finalizada!")
+    print_summary(len(advogados), total_inseridos, total_existentes, total_nao_encontrados, total_erros)
 
 if __name__ == "__main__":
     main()
