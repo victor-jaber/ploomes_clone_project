@@ -41,12 +41,12 @@ import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
-  // Todos Advogados Infos
-  getTodosAdvogadosInfos(ownerId: string): Promise<TodosAdvogadosInfos[]>;
-  getTodosAdvogadosInfo(id: string, ownerId: string): Promise<TodosAdvogadosInfos | undefined>;
+  // Todos Advogados Infos - Dados compartilhados entre todos os usuários
+  getTodosAdvogadosInfos(): Promise<TodosAdvogadosInfos[]>;
+  getTodosAdvogadosInfo(id: number): Promise<TodosAdvogadosInfos | undefined>;
   createTodosAdvogadosInfo(info: InsertTodosAdvogadosInfos): Promise<TodosAdvogadosInfos>;
-  updateTodosAdvogadosInfo(id: string, ownerId: string, info: Partial<InsertTodosAdvogadosInfos>): Promise<TodosAdvogadosInfos | undefined>;
-  deleteTodosAdvogadosInfo(id: string, ownerId: string): Promise<boolean>;
+  updateTodosAdvogadosInfo(id: number, info: Partial<InsertTodosAdvogadosInfos>): Promise<TodosAdvogadosInfos | undefined>;
+  deleteTodosAdvogadosInfo(id: number): Promise<boolean>;
 
   // Escritórios
   getEscritorios(ownerId: string): Promise<Escritorio[]>;
@@ -130,13 +130,13 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // Todos Advogados Infos
-  async getTodosAdvogadosInfos(ownerId: string): Promise<TodosAdvogadosInfos[]> {
-    return db.select().from(todosAdvogadosInfos).where(eq(todosAdvogadosInfos.ownerId, ownerId)).orderBy(desc(todosAdvogadosInfos.createdAt));
+  // Todos Advogados Infos - Dados compartilhados entre todos os usuários
+  async getTodosAdvogadosInfos(): Promise<TodosAdvogadosInfos[]> {
+    return db.select().from(todosAdvogadosInfos).orderBy(desc(todosAdvogadosInfos.createdAt));
   }
 
-  async getTodosAdvogadosInfo(id: string, ownerId: string): Promise<TodosAdvogadosInfos | undefined> {
-    const [info] = await db.select().from(todosAdvogadosInfos).where(and(eq(todosAdvogadosInfos.id, id), eq(todosAdvogadosInfos.ownerId, ownerId)));
+  async getTodosAdvogadosInfo(id: number): Promise<TodosAdvogadosInfos | undefined> {
+    const [info] = await db.select().from(todosAdvogadosInfos).where(eq(todosAdvogadosInfos.id, id));
     return info;
   }
 
@@ -145,17 +145,17 @@ export class DatabaseStorage implements IStorage {
     return newInfo;
   }
 
-  async updateTodosAdvogadosInfo(id: string, ownerId: string, info: Partial<InsertTodosAdvogadosInfos>): Promise<TodosAdvogadosInfos | undefined> {
+  async updateTodosAdvogadosInfo(id: number, info: Partial<InsertTodosAdvogadosInfos>): Promise<TodosAdvogadosInfos | undefined> {
     const [updated] = await db
       .update(todosAdvogadosInfos)
       .set({ ...info, updatedAt: new Date() })
-      .where(and(eq(todosAdvogadosInfos.id, id), eq(todosAdvogadosInfos.ownerId, ownerId)))
+      .where(eq(todosAdvogadosInfos.id, id))
       .returning();
     return updated;
   }
 
-  async deleteTodosAdvogadosInfo(id: string, ownerId: string): Promise<boolean> {
-    const result = await db.delete(todosAdvogadosInfos).where(and(eq(todosAdvogadosInfos.id, id), eq(todosAdvogadosInfos.ownerId, ownerId))).returning();
+  async deleteTodosAdvogadosInfo(id: number): Promise<boolean> {
+    const result = await db.delete(todosAdvogadosInfos).where(eq(todosAdvogadosInfos.id, id)).returning();
     return result.length > 0;
   }
 
