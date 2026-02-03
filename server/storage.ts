@@ -144,11 +144,13 @@ export interface IStorage {
   getLeadAdvogados(leadId: string): Promise<TodosAdvogadosInfos[]>;
   addAdvogadoToLead(leadId: string, advogadoId: number): Promise<LeadAdvogado>;
   removeAdvogadoFromLead(leadId: string, advogadoId: number): Promise<boolean>;
+  getAllLeadAdvogadosForUser(ownerId: string): Promise<{ leadId: string; advogadoId: number }[]>;
 
   // Lead-Reclamantes N:N
   getLeadReclamantes(leadId: string): Promise<Reclamante[]>;
   addReclamanteToLead(leadId: string, reclamanteId: string): Promise<LeadReclamante>;
   removeReclamanteFromLead(leadId: string, reclamanteId: string): Promise<boolean>;
+  getAllLeadReclamantesForUser(ownerId: string): Promise<{ leadId: string; reclamanteId: string }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -647,6 +649,24 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(leadsReclamantes)
       .where(and(eq(leadsReclamantes.leadId, leadId), eq(leadsReclamantes.reclamanteId, reclamanteId)));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async getAllLeadAdvogadosForUser(ownerId: string): Promise<{ leadId: string; advogadoId: number }[]> {
+    const result = await db
+      .select({ leadId: leadsAdvogados.leadId, advogadoId: leadsAdvogados.advogadoId })
+      .from(leadsAdvogados)
+      .innerJoin(leads, eq(leadsAdvogados.leadId, leads.id))
+      .where(eq(leads.ownerId, ownerId));
+    return result;
+  }
+
+  async getAllLeadReclamantesForUser(ownerId: string): Promise<{ leadId: string; reclamanteId: string }[]> {
+    const result = await db
+      .select({ leadId: leadsReclamantes.leadId, reclamanteId: leadsReclamantes.reclamanteId })
+      .from(leadsReclamantes)
+      .innerJoin(leads, eq(leadsReclamantes.leadId, leads.id))
+      .where(eq(leads.ownerId, ownerId));
+    return result;
   }
 }
 

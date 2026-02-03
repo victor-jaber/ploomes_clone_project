@@ -63,7 +63,7 @@ import {
   Plus, GripVertical, Building2, DollarSign, Trash2, Pencil,
   Phone, Mail, MessageSquare, ArrowRight, Clock, CheckCircle2,
   Send, Paperclip, FileText, Kanban, User, Scale, Users, FileSearch, Handshake, MapPin, RefreshCw,
-  Minimize2, Maximize2
+  Minimize2, Maximize2, Filter, X
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Lead, TodosAdvogadosInfos, Escritorio, Reclamante, Activity, Interaction, InsertLead } from "@shared/schema";
@@ -75,6 +75,13 @@ const PIPELINE_LABELS: Record<PipelineType, { label: string; icon: JSX.Element; 
   reclamantes: { label: "Reclamantes", icon: <Users className="h-4 w-4" />, description: "Pipeline de reclamantes" },
   triagem: { label: "Triagem", icon: <FileSearch className="h-4 w-4" />, description: "Pipeline de triagem" },
   fechamento: { label: "Fechamento", icon: <Handshake className="h-4 w-4" />, description: "Pipeline de fechamento" },
+};
+
+type PipelineFilter = {
+  type: "advogado" | "reclamante" | "cnj" | "escritorio";
+  id?: number | string;
+  value: string;
+  label: string;
 };
 
 function formatCurrency(value: number) {
@@ -1208,6 +1215,7 @@ function LeadCard({
   onDropOnLead,
   onSelect,
   onDelete,
+  onFilter,
   isDragOver,
   isUpdating,
 }: {
@@ -1223,6 +1231,7 @@ function LeadCard({
   onDropOnLead: (e: React.DragEvent, leadId: string) => void;
   onSelect: (leadId: string) => void;
   onDelete: (id: string) => void;
+  onFilter: (filter: PipelineFilter) => void;
   isDragOver: boolean;
   isUpdating: boolean;
 }) {
@@ -1346,12 +1355,75 @@ function LeadCard({
           </CardContent>
         </Card>
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-48" data-testid={`context-menu-${lead.id}`}>
+      <ContextMenuContent className="w-56" data-testid={`context-menu-${lead.id}`}>
         <ContextMenuItem onClick={() => onSelect(lead.id)} data-testid="context-menu-view">
           <FileText className="h-4 w-4 mr-2" />
           Ver detalhes
         </ContextMenuItem>
         <ContextMenuSeparator />
+        {linkedAdvogado && (
+          <>
+            <ContextMenuItem 
+              onClick={(e) => {
+                e.stopPropagation();
+                onFilter({ type: "advogado", id: linkedAdvogado.id, value: String(linkedAdvogado.id), label: `Advogado: ${linkedAdvogado.nome}` });
+              }} 
+              data-testid="context-menu-filter-advogado"
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filtrar por: {linkedAdvogado.nome}
+            </ContextMenuItem>
+            {linkedAdvogado.cnj && (
+              <ContextMenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFilter({ type: "cnj", value: linkedAdvogado.cnj!, label: `CNJ: ${linkedAdvogado.cnj}` });
+                }}
+                data-testid="context-menu-filter-cnj"
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filtrar por CNJ: {linkedAdvogado.cnj}
+              </ContextMenuItem>
+            )}
+            <ContextMenuSeparator />
+          </>
+        )}
+        {lead.escritorioId && (() => {
+          const escritorio = escritorios.find(e => e.id === lead.escritorioId);
+          return escritorio ? (
+            <>
+              <ContextMenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFilter({ type: "escritorio", id: escritorio.id, value: escritorio.id, label: `Escritório: ${escritorio.nome}` });
+                }}
+                data-testid="context-menu-filter-escritorio"
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filtrar por: {escritorio.nome}
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+            </>
+          ) : null;
+        })()}
+        {lead.reclamanteId && (() => {
+          const reclamante = reclamantes.find(r => r.id === lead.reclamanteId);
+          return reclamante ? (
+            <>
+              <ContextMenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFilter({ type: "reclamante", id: reclamante.id, value: reclamante.id, label: `Reclamante: ${reclamante.nome}` });
+                }}
+                data-testid="context-menu-filter-reclamante"
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filtrar por: {reclamante.nome}
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+            </>
+          ) : null;
+        })()}
         {prevStage && (
           <ContextMenuItem onClick={() => onUpdateStage(lead.id, prevStage.id)} data-testid="context-menu-prev-stage">
             <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
@@ -1395,6 +1467,7 @@ function PipelineColumn({
   onDropOnLead,
   onSelectLead,
   onDeleteLead,
+  onFilter,
   dragOverLeadId,
   isLoading,
   isDragOver,
@@ -1418,6 +1491,7 @@ function PipelineColumn({
   onDropOnLead: (e: React.DragEvent, leadId: string, stageId: string) => void;
   onSelectLead: (leadId: string) => void;
   onDeleteLead: (id: string) => void;
+  onFilter: (filter: PipelineFilter) => void;
   dragOverLeadId: string | null;
   isLoading: boolean;
   isDragOver: boolean;
@@ -1525,6 +1599,7 @@ function PipelineColumn({
                 onDropOnLead={(e, leadId) => onDropOnLead(e, leadId, stage.id)}
                 onSelect={onSelectLead}
                 onDelete={onDeleteLead}
+                onFilter={onFilter}
                 isDragOver={dragOverLeadId === lead.id}
                 isUpdating={isUpdating}
               />
@@ -1546,6 +1621,24 @@ export default function PipelinePage() {
   const [selectedPipeline, setSelectedPipeline] = useState<PipelineType>("advogados");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [minimizedColumns, setMinimizedColumns] = useState<Set<string>>(new Set());
+  const [activeFilters, setActiveFilters] = useState<PipelineFilter[]>([]);
+
+  const addFilter = useCallback((filter: PipelineFilter) => {
+    setActiveFilters(prev => {
+      const exists = prev.some(f => f.type === filter.type && f.value === filter.value);
+      if (exists) return prev;
+      return [...prev, filter];
+    });
+    toast({ title: `Filtro aplicado: ${filter.label}` });
+  }, [toast]);
+
+  const removeFilter = useCallback((filter: PipelineFilter) => {
+    setActiveFilters(prev => prev.filter(f => !(f.type === filter.type && f.value === filter.value)));
+  }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setActiveFilters([]);
+  }, []);
   
   const toggleColumnMinimize = useCallback((stageId: string) => {
     setMinimizedColumns(prev => {
@@ -1628,9 +1721,61 @@ export default function PipelinePage() {
     queryKey: ["/api/activities"],
   });
 
+  // Fetch all lead-advogado relationships for filtering
+  const { data: allLeadAdvogados = [] } = useQuery<{ leadId: string; advogadoId: number }[]>({
+    queryKey: ["/api/leads-advogados"],
+  });
+
+  // Fetch all lead-reclamante relationships for filtering
+  const { data: allLeadReclamantes = [] } = useQuery<{ leadId: string; reclamanteId: string }[]>({
+    queryKey: ["/api/leads-reclamantes"],
+  });
+
   const isLoading = leadsLoading;
 
-  const filteredLeads = leads.filter(l => l.pipelineType === selectedPipeline);
+  // Apply pipeline type filter first
+  const pipelineFilteredLeads = leads.filter(l => l.pipelineType === selectedPipeline);
+  
+  // Apply active filters
+  const filteredLeads = pipelineFilteredLeads.filter(lead => {
+    if (activeFilters.length === 0) return true;
+    
+    return activeFilters.every(filter => {
+      switch (filter.type) {
+        case "advogado":
+          // Check direct relationship or N:N relationship
+          if (lead.todosAdvogadosInfosId === filter.id) return true;
+          return allLeadAdvogados.some(la => la.leadId === lead.id && la.advogadoId === filter.id);
+        
+        case "reclamante":
+          // Check direct relationship or N:N relationship
+          if (lead.reclamanteId === filter.id) return true;
+          return allLeadReclamantes.some(lr => lr.leadId === lead.id && lr.reclamanteId === filter.id);
+        
+        case "escritorio":
+          return lead.escritorioId === filter.id;
+        
+        case "cnj":
+          // Check CNJ on lead's linked advogado or on any N:N advogados
+          const linkedAdvogado = lead.todosAdvogadosInfosId 
+            ? todosAdvogadosInfos.find(a => a.id === lead.todosAdvogadosInfosId)
+            : null;
+          if (linkedAdvogado?.cnj === filter.value) return true;
+          
+          // Check N:N advogados for CNJ match
+          const leadAdvogadoIds = allLeadAdvogados
+            .filter(la => la.leadId === lead.id)
+            .map(la => la.advogadoId);
+          return todosAdvogadosInfos
+            .filter(a => leadAdvogadoIds.includes(a.id))
+            .some(a => a.cnj === filter.value);
+        
+        default:
+          return true;
+      }
+    });
+  });
+  
   const stages = PIPELINE_STAGES[selectedPipeline];
 
   const updateMutation = useMutation({
@@ -2194,7 +2339,7 @@ export default function PipelinePage() {
         </div>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-4">
         <Select value={selectedPipeline} onValueChange={(v) => setSelectedPipeline(v as PipelineType)}>
           <SelectTrigger className="w-64" data-testid="select-pipeline-type">
             <SelectValue placeholder="Selecione o pipeline" />
@@ -2210,6 +2355,41 @@ export default function PipelinePage() {
             ))}
           </SelectContent>
         </Select>
+
+        {activeFilters.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filtros:</span>
+            {activeFilters.map((filter, index) => (
+              <Badge 
+                key={`${filter.type}-${filter.value}-${index}`} 
+                variant="secondary" 
+                className="flex items-center gap-1 pl-2 pr-1 py-1"
+                data-testid={`filter-badge-${filter.type}-${index}`}
+              >
+                <span className="text-xs">{filter.label}</span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-4 w-4 hover:bg-destructive/20"
+                  onClick={() => removeFilter(filter)}
+                  data-testid={`button-remove-filter-${filter.type}-${index}`}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            ))}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-muted-foreground hover:text-destructive"
+              onClick={clearAllFilters}
+              data-testid="button-clear-all-filters"
+            >
+              Limpar todos
+            </Button>
+          </div>
+        )}
       </div>
 
       <div 
@@ -2241,6 +2421,7 @@ export default function PipelinePage() {
               onDropOnLead={handleDropOnLead}
               onSelectLead={setSelectedLeadId}
               onDeleteLead={(id) => deleteLeadMutation.mutate(id)}
+              onFilter={addFilter}
               dragOverLeadId={dragOverLeadId}
               isLoading={isLoading}
               isDragOver={dragOverStage === stage.id}
