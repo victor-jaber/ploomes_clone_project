@@ -164,6 +164,7 @@ export const reclamantes = pgTable("reclamantes", {
   processoNumero: varchar("processo_numero", { length: 50 }),
   valorCausa: numeric("valor_causa", { precision: 12, scale: 2 }),
   observacoes: text("observacoes"),
+  enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
   ownerId: varchar("owner_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

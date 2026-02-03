@@ -3,6 +3,12 @@
 Script para sincronizar reclamantes da API externa para o banco de dados.
 Execute este script localmente (onde você tem acesso VPN à API).
 
+Este script:
+1. Busca CNJs dos advogados cadastrados
+2. Consulta a API externa para obter detalhes do processo
+3. Extrai os reclamantes (AUTOR) e insere na tabela reclamantes
+4. Cria leads no pipeline de Reclamantes (com flag para evitar duplicação)
+
 Requisitos:
 pip install psycopg2-binary requests
 
@@ -133,35 +139,69 @@ def extract_reclamantes(data, cnj, owner_id):
     return reclamantes
 
 def reclamante_exists(conn, nome, processo_numero):
-    """Verifica se o reclamante já existe no banco."""
-    with conn.cursor() as cur:
+    """Verifica se o reclamante já existe no banco e retorna o id se existir."""
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute("""
-            SELECT id FROM reclamantes 
+            SELECT id, enviado_para_pipeline FROM reclamantes 
             WHERE nome = %s AND processo_numero = %s
         """, (nome, processo_numero))
-        return cur.fetchone() is not None
+        return cur.fetchone()
 
 def insert_reclamante(conn, reclamante):
-    """Insere um reclamante no banco de dados."""
-    if reclamante_exists(conn, reclamante["nome"], reclamante["processo_numero"]):
-        return False
+    """Insere um reclamante no banco de dados e retorna o id."""
+    existing = reclamante_exists(conn, reclamante["nome"], reclamante["processo_numero"])
+    if existing:
+        return {"inserted": False, "id": existing["id"], "enviado_para_pipeline": existing["enviado_para_pipeline"]}
     
+    reclamante_id = str(uuid.uuid4())
     with conn.cursor() as cur:
         cur.execute("""
-            INSERT INTO reclamantes (id, nome, cpf, processo_numero, valor_causa, owner_id, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO reclamantes (id, nome, cpf, processo_numero, valor_causa, owner_id, enviado_para_pipeline, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            str(uuid.uuid4()),
+            reclamante_id,
             reclamante["nome"],
             reclamante["cpf"],
             reclamante["processo_numero"],
             reclamante["valor_causa"],
             reclamante["owner_id"],
+            False,
             datetime.now(),
             datetime.now()
         ))
     conn.commit()
-    return True
+    return {"inserted": True, "id": reclamante_id, "enviado_para_pipeline": False}
+
+def create_lead_for_reclamante(conn, reclamante_id, reclamante_nome, valor_causa, owner_id):
+    """Cria um lead no pipeline de reclamantes."""
+    lead_id = str(uuid.uuid4())
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO leads (id, titulo, pipeline_type, stage, position, reclamante_id, valor, owner_id, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            lead_id,
+            reclamante_nome,
+            "reclamantes",
+            "novo_lead",
+            0,
+            reclamante_id,
+            valor_causa,
+            owner_id,
+            datetime.now(),
+            datetime.now()
+        ))
+    conn.commit()
+    return lead_id
+
+def mark_as_sent_to_pipeline(conn, reclamante_id):
+    """Marca o reclamante como enviado para o pipeline."""
+    with conn.cursor() as cur:
+        cur.execute("""
+            UPDATE reclamantes SET enviado_para_pipeline = true, updated_at = %s
+            WHERE id = %s
+        """, (datetime.now(), reclamante_id))
+    conn.commit()
 
 def get_default_owner_id(conn):
     """Busca um owner_id padrão (primeiro usuário do sistema)."""
@@ -172,7 +212,7 @@ def get_default_owner_id(conn):
             return result[0]
         return None
 
-def print_summary(total_cnjs, total_inseridos, total_existentes, total_nao_encontrados, total_erros, interrupted=False):
+def print_summary(total_cnjs, total_inseridos, total_existentes, total_leads_criados, total_nao_encontrados, total_erros, interrupted=False):
     """Exibe o resumo da sincronização."""
     print()
     print("=" * 60)
@@ -184,6 +224,7 @@ def print_summary(total_cnjs, total_inseridos, total_existentes, total_nao_encon
     print(f"Total de CNJs processados: {total_cnjs}")
     print(f"Reclamantes inseridos: {total_inseridos}")
     print(f"Reclamantes já existentes: {total_existentes}")
+    print(f"Leads criados no pipeline: {total_leads_criados}")
     print(f"Processos não encontrados na API: {total_nao_encontrados}")
     print(f"Erros de conexão/API: {total_erros}")
     print()
@@ -194,7 +235,7 @@ def print_summary(total_cnjs, total_inseridos, total_existentes, total_nao_encon
 
 def main():
     print("=" * 60)
-    print("SINCRONIZAÇÃO DE RECLAMANTES")
+    print("SINCRONIZAÇÃO DE RECLAMANTES + PIPELINE")
     print("=" * 60)
     print()
     
@@ -226,6 +267,7 @@ def main():
     
     total_inseridos = 0
     total_existentes = 0
+    total_leads_criados = 0
     total_nao_encontrados = 0
     total_erros = 0
     processados = 0
@@ -262,25 +304,46 @@ def main():
             
             for reclamante in reclamantes:
                 try:
-                    inserted = insert_reclamante(conn, reclamante)
-                    if inserted:
+                    result = insert_reclamante(conn, reclamante)
+                    reclamante_id = result["id"]
+                    
+                    if result["inserted"]:
                         print(f"  [OK] Inserido: {reclamante['nome']} - {reclamante['cpf']}")
                         total_inseridos += 1
                     else:
                         print(f"  [SKIP] Já existe: {reclamante['nome']}")
                         total_existentes += 1
+                    
+                    if not result["enviado_para_pipeline"]:
+                        try:
+                            create_lead_for_reclamante(
+                                conn, 
+                                reclamante_id, 
+                                reclamante["nome"], 
+                                reclamante["valor_causa"], 
+                                reclamante["owner_id"]
+                            )
+                            mark_as_sent_to_pipeline(conn, reclamante_id)
+                            print(f"  [PIPELINE] Lead criado: {reclamante['nome']}")
+                            total_leads_criados += 1
+                        except Exception as e:
+                            print(f"  [ERRO] Falha ao criar lead: {e}")
+                            total_erros += 1
+                    else:
+                        print(f"  [PIPELINE] Já enviado anteriormente")
+                        
                 except Exception as e:
-                    print(f"  [ERRO] Falha ao inserir {reclamante['nome']}: {e}")
+                    print(f"  [ERRO] Falha ao processar {reclamante['nome']}: {e}")
                     total_erros += 1
     
     except KeyboardInterrupt:
         print("\n\n[!] Interrupção detectada (Ctrl+C)")
         conn.close()
-        print_summary(processados, total_inseridos, total_existentes, total_nao_encontrados, total_erros, interrupted=True)
+        print_summary(processados, total_inseridos, total_existentes, total_leads_criados, total_nao_encontrados, total_erros, interrupted=True)
         sys.exit(0)
     
     conn.close()
-    print_summary(len(advogados), total_inseridos, total_existentes, total_nao_encontrados, total_erros)
+    print_summary(len(advogados), total_inseridos, total_existentes, total_leads_criados, total_nao_encontrados, total_erros)
 
 if __name__ == "__main__":
     main()
