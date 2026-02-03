@@ -1272,7 +1272,7 @@ function PipelineColumn({
   if (isMinimized) {
     return (
       <div
-        className={`flex flex-col w-14 shrink-0 rounded-xl transition-all duration-150 ease-out ${
+        className={`flex flex-col w-14 shrink-0 rounded-xl ${
           isDragOver ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
         }`}
         onDrop={(e) => onDrop(e, stage.id)}
@@ -1307,7 +1307,7 @@ function PipelineColumn({
 
   return (
     <div
-      className={`flex flex-col w-96 shrink-0 rounded-xl transition-all duration-150 ease-out ${
+      className={`flex flex-col w-96 shrink-0 rounded-xl ${
         isDragOver ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
       }`}
       onDrop={(e) => onDrop(e, stage.id)}
