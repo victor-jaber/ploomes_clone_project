@@ -42,17 +42,17 @@ import {
   Pencil,
   Trash2,
   Eye,
-  FileText,
+  MapPin,
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Advogado, Escritorio, Reclamante, InsertAdvogado, InsertEscritorio, InsertReclamante } from "@shared/schema";
+import type { TodosAdvogadosInfos, Escritorio, Reclamante, InsertTodosAdvogadosInfos, InsertEscritorio, InsertReclamante } from "@shared/schema";
 
-type EntityType = "advogados" | "escritorios" | "reclamantes";
+type EntityType = "todosAdvogadosInfos" | "escritorios" | "reclamantes";
 
 const entityConfig = {
-  advogados: {
-    label: "Advogados",
-    labelSingular: "Advogado",
+  todosAdvogadosInfos: {
+    label: "Todos Advogados Infos",
+    labelSingular: "Advogado Info",
     icon: Scale,
     color: "from-purple-500 to-violet-500",
   },
@@ -72,14 +72,14 @@ const entityConfig = {
 
 export default function ClientsPage() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<EntityType>("advogados");
+  const [activeTab, setActiveTab] = useState<EntityType>("todosAdvogadosInfos");
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingEntity, setEditingEntity] = useState<Advogado | Escritorio | Reclamante | null>(null);
-  const [viewingEntity, setViewingEntity] = useState<Advogado | Escritorio | Reclamante | null>(null);
+  const [editingEntity, setEditingEntity] = useState<TodosAdvogadosInfos | Escritorio | Reclamante | null>(null);
+  const [viewingEntity, setViewingEntity] = useState<TodosAdvogadosInfos | Escritorio | Reclamante | null>(null);
 
-  const { data: advogados = [], isLoading: advogadosLoading } = useQuery<Advogado[]>({
-    queryKey: ["/api/advogados"],
+  const { data: todosAdvogadosInfos = [], isLoading: todosAdvogadosInfosLoading } = useQuery<TodosAdvogadosInfos[]>({
+    queryKey: ["/api/todos-advogados-infos"],
   });
 
   const { data: escritorios = [], isLoading: escritoriosLoading } = useQuery<Escritorio[]>({
@@ -90,36 +90,36 @@ export default function ClientsPage() {
     queryKey: ["/api/reclamantes"],
   });
 
-  const createAdvogadoMutation = useMutation({
-    mutationFn: async (data: InsertAdvogado) => apiRequest("POST", "/api/advogados", data),
+  const createTodosAdvogadosInfosMutation = useMutation({
+    mutationFn: async (data: InsertTodosAdvogadosInfos) => apiRequest("POST", "/api/todos-advogados-infos", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/advogados"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
       setIsDialogOpen(false);
       setEditingEntity(null);
-      toast({ title: "Sucesso", description: "Advogado criado com sucesso" });
+      toast({ title: "Sucesso", description: "Advogado Info criado com sucesso" });
     },
-    onError: () => toast({ title: "Erro", description: "Não foi possível criar o advogado", variant: "destructive" }),
+    onError: () => toast({ title: "Erro", description: "Não foi possível criar o advogado info", variant: "destructive" }),
   });
 
-  const updateAdvogadoMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertAdvogado> }) => 
-      apiRequest("PATCH", `/api/advogados/${id}`, data),
+  const updateTodosAdvogadosInfosMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertTodosAdvogadosInfos> }) => 
+      apiRequest("PATCH", `/api/todos-advogados-infos/${id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/advogados"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
       setIsDialogOpen(false);
       setEditingEntity(null);
-      toast({ title: "Sucesso", description: "Advogado atualizado com sucesso" });
+      toast({ title: "Sucesso", description: "Advogado Info atualizado com sucesso" });
     },
-    onError: () => toast({ title: "Erro", description: "Não foi possível atualizar o advogado", variant: "destructive" }),
+    onError: () => toast({ title: "Erro", description: "Não foi possível atualizar o advogado info", variant: "destructive" }),
   });
 
-  const deleteAdvogadoMutation = useMutation({
-    mutationFn: async (id: string) => apiRequest("DELETE", `/api/advogados/${id}`),
+  const deleteTodosAdvogadosInfosMutation = useMutation({
+    mutationFn: async (id: string) => apiRequest("DELETE", `/api/todos-advogados-infos/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/advogados"] });
-      toast({ title: "Sucesso", description: "Advogado excluído com sucesso" });
+      queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
+      toast({ title: "Sucesso", description: "Advogado Info excluído com sucesso" });
     },
-    onError: () => toast({ title: "Erro", description: "Não foi possível excluir o advogado", variant: "destructive" }),
+    onError: () => toast({ title: "Erro", description: "Não foi possível excluir o advogado info", variant: "destructive" }),
   });
 
   const createEscritorioMutation = useMutation({
@@ -189,12 +189,13 @@ export default function ClientsPage() {
   const getFilteredData = () => {
     const term = searchTerm.toLowerCase();
     switch (activeTab) {
-      case "advogados":
-        return advogados.filter(a => 
+      case "todosAdvogadosInfos":
+        return todosAdvogadosInfos.filter(a => 
           a.nome?.toLowerCase().includes(term) || 
-          a.oab?.toLowerCase().includes(term) ||
+          a.cpf?.toLowerCase().includes(term) ||
+          a.cnj?.toLowerCase().includes(term) ||
           a.email?.toLowerCase().includes(term) ||
-          a.numeroCaso?.toLowerCase().includes(term)
+          a.municipio?.toLowerCase().includes(term)
         );
       case "escritorios":
         return escritorios.filter(e => 
@@ -214,24 +215,31 @@ export default function ClientsPage() {
     }
   };
 
-  const handleSubmitAdvogado = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitTodosAdvogadosInfos = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const data: InsertAdvogado = {
+    const data: InsertTodosAdvogadosInfos = {
       nome: formData.get("nome") as string,
-      oab: formData.get("oab") as string,
+      cpf: formData.get("cpf") as string || null,
+      cnj: formData.get("cnj") as string || null,
+      valorCausa: formData.get("valorCausa") as string || null,
       email: formData.get("email") as string || null,
       telefone: formData.get("telefone") as string || null,
       celular: formData.get("celular") as string || null,
-      especialidade: formData.get("especialidade") as string || null,
-      numeroCaso: formData.get("numeroCaso") as string || null,
+      cep: formData.get("cep") as string || null,
+      estado: formData.get("estado") as string || null,
+      municipio: formData.get("municipio") as string || null,
+      bairro: formData.get("bairro") as string || null,
+      logradouro: formData.get("logradouro") as string || null,
+      numero: formData.get("numero") as string || null,
+      complemento: formData.get("complemento") as string || null,
       observacoes: formData.get("observacoes") as string || null,
       ownerId: "",
     };
     if (editingEntity) {
-      updateAdvogadoMutation.mutate({ id: editingEntity.id, data });
+      updateTodosAdvogadosInfosMutation.mutate({ id: editingEntity.id, data });
     } else {
-      createAdvogadoMutation.mutate(data);
+      createTodosAdvogadosInfosMutation.mutate(data);
     }
   };
 
@@ -278,8 +286,8 @@ export default function ClientsPage() {
 
   const handleDelete = (id: string) => {
     switch (activeTab) {
-      case "advogados":
-        deleteAdvogadoMutation.mutate(id);
+      case "todosAdvogadosInfos":
+        deleteTodosAdvogadosInfosMutation.mutate(id);
         break;
       case "escritorios":
         deleteEscritorioMutation.mutate(id);
@@ -295,7 +303,7 @@ export default function ClientsPage() {
     setIsDialogOpen(true);
   };
 
-  const openEditDialog = (entity: Advogado | Escritorio | Reclamante) => {
+  const openEditDialog = (entity: TodosAdvogadosInfos | Escritorio | Reclamante) => {
     setEditingEntity(entity);
     setIsDialogOpen(true);
   };
@@ -303,25 +311,35 @@ export default function ClientsPage() {
   const config = entityConfig[activeTab];
   const Icon = config.icon;
   const filteredData = getFilteredData();
-  const isLoading = activeTab === "advogados" ? advogadosLoading : 
+  const isLoading = activeTab === "todosAdvogadosInfos" ? todosAdvogadosInfosLoading : 
                     activeTab === "escritorios" ? escritoriosLoading : reclamantesLoading;
 
-  const isPending = createAdvogadoMutation.isPending || updateAdvogadoMutation.isPending ||
+  const isPending = createTodosAdvogadosInfosMutation.isPending || updateTodosAdvogadosInfosMutation.isPending ||
                     createEscritorioMutation.isPending || updateEscritorioMutation.isPending ||
                     createReclamanteMutation.isPending || updateReclamanteMutation.isPending;
 
-  const renderAdvogadoForm = () => {
-    const adv = editingEntity as Advogado | null;
+  const renderTodosAdvogadosInfosForm = () => {
+    const adv = editingEntity as TodosAdvogadosInfos | null;
     return (
-      <form onSubmit={handleSubmitAdvogado} className="space-y-4">
+      <form onSubmit={handleSubmitTodosAdvogadosInfos} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="nome">Nome *</Label>
             <Input id="nome" name="nome" defaultValue={adv?.nome || ""} required data-testid="input-advogado-nome" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="oab">OAB *</Label>
-            <Input id="oab" name="oab" defaultValue={adv?.oab || ""} required data-testid="input-advogado-oab" />
+            <Label htmlFor="cpf">CPF</Label>
+            <Input id="cpf" name="cpf" defaultValue={adv?.cpf || ""} placeholder="000.000.000-00" data-testid="input-advogado-cpf" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="cnj">CNJ</Label>
+            <Input id="cnj" name="cnj" defaultValue={adv?.cnj || ""} data-testid="input-advogado-cnj" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="valorCausa">Valor da Causa</Label>
+            <Input id="valorCausa" name="valorCausa" type="number" step="0.01" defaultValue={adv?.valorCausa || ""} data-testid="input-advogado-valor" />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -340,20 +358,46 @@ export default function ClientsPage() {
             <Input id="celular" name="celular" defaultValue={adv?.celular || ""} data-testid="input-advogado-celular" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="especialidade">Especialidade</Label>
-            <Input id="especialidade" name="especialidade" defaultValue={adv?.especialidade || ""} data-testid="input-advogado-especialidade" />
+            <Label htmlFor="cep">CEP</Label>
+            <Input id="cep" name="cep" defaultValue={adv?.cep || ""} placeholder="00000-000" data-testid="input-advogado-cep" />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="numeroCaso">Número do Caso</Label>
-          <Input id="numeroCaso" name="numeroCaso" defaultValue={adv?.numeroCaso || ""} data-testid="input-advogado-caso" />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="estado">Estado</Label>
+            <Input id="estado" name="estado" maxLength={2} defaultValue={adv?.estado || ""} placeholder="SP" data-testid="input-advogado-estado" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="municipio">Município</Label>
+            <Input id="municipio" name="municipio" defaultValue={adv?.municipio || ""} data-testid="input-advogado-municipio" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="bairro">Bairro</Label>
+            <Input id="bairro" name="bairro" defaultValue={adv?.bairro || ""} data-testid="input-advogado-bairro" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="logradouro">Logradouro</Label>
+            <Input id="logradouro" name="logradouro" defaultValue={adv?.logradouro || ""} data-testid="input-advogado-logradouro" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="numero">Número</Label>
+            <Input id="numero" name="numero" defaultValue={adv?.numero || ""} data-testid="input-advogado-numero" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="complemento">Complemento</Label>
+            <Input id="complemento" name="complemento" defaultValue={adv?.complemento || ""} data-testid="input-advogado-complemento" />
+          </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="observacoes">Observações</Label>
           <Textarea id="observacoes" name="observacoes" defaultValue={adv?.observacoes || ""} data-testid="input-advogado-obs" />
         </div>
         <Button type="submit" className="w-full" disabled={isPending} data-testid="button-save-advogado">
-          {isPending ? "Salvando..." : editingEntity ? "Atualizar Advogado" : "Criar Advogado"}
+          {isPending ? "Salvando..." : editingEntity ? "Atualizar Advogado Info" : "Criar Advogado Info"}
         </Button>
       </form>
     );
@@ -453,17 +497,18 @@ export default function ClientsPage() {
     );
   };
 
-  const renderAdvogadosTable = () => {
-    const data = filteredData as Advogado[];
+  const renderTodosAdvogadosInfosTable = () => {
+    const data = filteredData as TodosAdvogadosInfos[];
     return (
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Advogado</TableHead>
-            <TableHead>OAB</TableHead>
+            <TableHead>Nome</TableHead>
+            <TableHead>CPF</TableHead>
+            <TableHead>CNJ</TableHead>
+            <TableHead>Valor da Causa</TableHead>
             <TableHead>Contato</TableHead>
-            <TableHead>Especialidade</TableHead>
-            <TableHead>Nº Caso</TableHead>
+            <TableHead>Endereço</TableHead>
             <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -481,7 +526,17 @@ export default function ClientsPage() {
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant="outline">{adv.oab}</Badge>
+                {adv.cpf && <Badge variant="outline">{adv.cpf}</Badge>}
+              </TableCell>
+              <TableCell>
+                {adv.cnj && <Badge variant="secondary">{adv.cnj}</Badge>}
+              </TableCell>
+              <TableCell>
+                {adv.valorCausa && (
+                  <span className="font-semibold text-green-600 dark:text-green-400">
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(adv.valorCausa))}
+                  </span>
+                )}
               </TableCell>
               <TableCell>
                 <div className="space-y-1 text-sm">
@@ -498,13 +553,10 @@ export default function ClientsPage() {
                 </div>
               </TableCell>
               <TableCell>
-                {adv.especialidade && <Badge variant="secondary">{adv.especialidade}</Badge>}
-              </TableCell>
-              <TableCell>
-                {adv.numeroCaso && (
-                  <div className="flex items-center gap-1 text-sm">
-                    <FileText className="h-3 w-3 text-muted-foreground" />
-                    {adv.numeroCaso}
+                {adv.municipio && adv.estado && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    {adv.municipio}/{adv.estado}
                   </div>
                 )}
               </TableCell>
@@ -657,8 +709,7 @@ export default function ClientsPage() {
               <TableCell>
                 {rec.processoNumero && (
                   <div className="flex items-center gap-1 text-sm">
-                    <FileText className="h-3 w-3 text-muted-foreground" />
-                    {rec.processoNumero}
+                    <span className="text-muted-foreground">{rec.processoNumero}</span>
                   </div>
                 )}
               </TableCell>
@@ -699,8 +750,8 @@ export default function ClientsPage() {
   const renderViewDialog = () => {
     if (!viewingEntity) return null;
     
-    if (activeTab === "advogados") {
-      const adv = viewingEntity as Advogado;
+    if (activeTab === "todosAdvogadosInfos") {
+      const adv = viewingEntity as TodosAdvogadosInfos;
       return (
         <div className="space-y-4">
           <div className="flex items-center gap-4">
@@ -711,16 +762,29 @@ export default function ClientsPage() {
             </Avatar>
             <div>
               <h3 className="text-lg font-semibold">{adv.nome}</h3>
-              <Badge variant="outline">OAB: {adv.oab}</Badge>
+              {adv.cpf && <Badge variant="outline">CPF: {adv.cpf}</Badge>}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
+            {adv.cnj && <div><p className="text-sm text-muted-foreground">CNJ</p><p className="font-medium">{adv.cnj}</p></div>}
+            {adv.valorCausa && <div><p className="text-sm text-muted-foreground">Valor da Causa</p><p className="font-semibold text-green-600 dark:text-green-400">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(adv.valorCausa))}</p></div>}
             {adv.email && <div><p className="text-sm text-muted-foreground">E-mail</p><p className="font-medium">{adv.email}</p></div>}
             {adv.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium">{adv.telefone}</p></div>}
             {adv.celular && <div><p className="text-sm text-muted-foreground">Celular</p><p className="font-medium">{adv.celular}</p></div>}
-            {adv.especialidade && <div><p className="text-sm text-muted-foreground">Especialidade</p><p className="font-medium">{adv.especialidade}</p></div>}
-            {adv.numeroCaso && <div><p className="text-sm text-muted-foreground">Nº Caso</p><p className="font-medium">{adv.numeroCaso}</p></div>}
+            {adv.cep && <div><p className="text-sm text-muted-foreground">CEP</p><p className="font-medium">{adv.cep}</p></div>}
           </div>
+          {(adv.logradouro || adv.municipio) && (
+            <div>
+              <p className="text-sm text-muted-foreground">Endereço</p>
+              <p className="font-medium">
+                {adv.logradouro}{adv.numero && `, ${adv.numero}`}
+                {adv.complemento && ` - ${adv.complemento}`}
+                {adv.bairro && `, ${adv.bairro}`}
+                {adv.municipio && `, ${adv.municipio}`}
+                {adv.estado && ` - ${adv.estado}`}
+              </p>
+            </div>
+          )}
           {adv.observacoes && <div><p className="text-sm text-muted-foreground">Observações</p><p className="text-sm">{adv.observacoes}</p></div>}
         </div>
       );
@@ -798,11 +862,11 @@ export default function ClientsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as EntityType); setSearchTerm(""); setEditingEntity(null); setViewingEntity(null); setIsDialogOpen(false); }}>
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="advogados" className="gap-2" data-testid="tab-advogados">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
+          <TabsTrigger value="todosAdvogadosInfos" className="gap-2" data-testid="tab-advogados">
             <Scale className="h-4 w-4" />
-            Advogados
-            <Badge variant="secondary" className="ml-1">{advogados.length}</Badge>
+            <span className="hidden sm:inline">Advogados Infos</span>
+            <Badge variant="secondary" className="ml-1">{todosAdvogadosInfos.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="escritorios" className="gap-2" data-testid="tab-escritorios">
             <Building2 className="h-4 w-4" />
@@ -848,8 +912,8 @@ export default function ClientsPage() {
               </div>
             ) : (
               <>
-                <TabsContent value="advogados" className="mt-0">
-                  {renderAdvogadosTable()}
+                <TabsContent value="todosAdvogadosInfos" className="mt-0">
+                  {renderTodosAdvogadosInfosTable()}
                 </TabsContent>
                 <TabsContent value="escritorios" className="mt-0">
                   {renderEscritoriosTable()}
@@ -870,7 +934,7 @@ export default function ClientsPage() {
               {editingEntity ? `Editar ${config.labelSingular}` : `Novo ${config.labelSingular}`}
             </DialogTitle>
           </DialogHeader>
-          {activeTab === "advogados" && renderAdvogadoForm()}
+          {activeTab === "todosAdvogadosInfos" && renderTodosAdvogadosInfosForm()}
           {activeTab === "escritorios" && renderEscritorioForm()}
           {activeTab === "reclamantes" && renderReclamanteForm()}
         </DialogContent>
