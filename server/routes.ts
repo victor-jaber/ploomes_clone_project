@@ -606,6 +606,30 @@ export async function registerRoutes(
     }
   });
 
+  // Get all lead-advogado relationships for filtering
+  app.get("/api/leads-advogados", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const relationships = await storage.getAllLeadAdvogadosForUser(userId);
+      res.json(relationships);
+    } catch (error) {
+      console.error("Error fetching lead-advogado relationships:", error);
+      res.status(500).json({ message: "Failed to fetch lead-advogado relationships" });
+    }
+  });
+
+  // Get all lead-reclamante relationships for filtering
+  app.get("/api/leads-reclamantes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const relationships = await storage.getAllLeadReclamantesForUser(userId);
+      res.json(relationships);
+    } catch (error) {
+      console.error("Error fetching lead-reclamante relationships:", error);
+      res.status(500).json({ message: "Failed to fetch lead-reclamante relationships" });
+    }
+  });
+
   // Products
   app.get("/api/products", isAuthenticated, async (req: Request, res: Response) => {
     try {
