@@ -150,9 +150,9 @@ export const leads = pgTable("leads", {
   formaPagamento: text("forma_pagamento"),
   observacoesFinanceiras: text("observacoes_financeiras"),
   
-  lawyerId: integer("lawyer_id"),
-  lawFirmId: varchar("law_firm_id"),
-  claimantId: varchar("claimant_id"),
+  lawyerId: integer("lawyer_id").references(() => lawyers.id, { onDelete: "set null" }),
+  lawFirmId: varchar("law_firm_id").references(() => lawFirms.id, { onDelete: "set null" }),
+  claimantId: varchar("claimant_id").references(() => claimants.id, { onDelete: "set null" }),
   
   vendedorId: varchar("vendedor_id").notNull(),
   ownerId: varchar("owner_id").notNull(),
@@ -266,6 +266,18 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
   vendedor: one(users, {
     fields: [leads.vendedorId],
     references: [users.id],
+  }),
+  lawyer: one(lawyers, {
+    fields: [leads.lawyerId],
+    references: [lawyers.id],
+  }),
+  lawFirm: one(lawFirms, {
+    fields: [leads.lawFirmId],
+    references: [lawFirms.id],
+  }),
+  claimant: one(claimants, {
+    fields: [leads.claimantId],
+    references: [claimants.id],
   }),
   interactions: many(interactions),
   activities: many(activities),
