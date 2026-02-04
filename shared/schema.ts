@@ -94,6 +94,7 @@ export const lawFirms = pgTable("law_firms", {
   estado: varchar("estado", { length: 2 }),
   cep: varchar("cep", { length: 10 }),
   observacoes: text("observacoes"),
+  cnjs: text("cnjs").array(), // Array of CNJ numbers
   ownerId: varchar("owner_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
