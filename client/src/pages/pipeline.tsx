@@ -193,16 +193,16 @@ function InlineEditField({
 }
 
 function getEntityName(lead: Lead, todosAdvogadosInfos: TodosAdvogadosInfos[], escritorios: Escritorio[], reclamantes: Reclamante[]): string {
-  if (lead.todosAdvogadosInfosId) {
-    const adv = todosAdvogadosInfos.find(a => a.id === lead.todosAdvogadosInfosId);
+  if (lead.lawyerId) {
+    const adv = todosAdvogadosInfos.find(a => a.id === lead.lawyerId);
     return adv?.nome || "Advogado";
   }
-  if (lead.escritorioId) {
-    const esc = escritorios.find(e => e.id === lead.escritorioId);
+  if (lead.lawFirmId) {
+    const esc = escritorios.find(e => e.id === lead.lawFirmId);
     return esc?.nome || "Escritório";
   }
-  if (lead.reclamanteId) {
-    const rec = reclamantes.find(r => r.id === lead.reclamanteId);
+  if (lead.claimantId) {
+    const rec = reclamantes.find(r => r.id === lead.claimantId);
     return rec?.nome || "Reclamante";
   }
   return "—";
@@ -310,7 +310,7 @@ function LeadDetailPanel({
     onSuccess: async (response) => {
       const created = await response.json();
       queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
-      handleUpdateField("todosAdvogadosInfosId", created.id);
+      handleUpdateField("lawyerId", created.id);
       setShowNewAdvogado(false);
       setNewAdvogado({ nome: "", cnj: "", cpf: "", telefone: "", email: "" });
       toast({ title: "Advogado criado e vinculado" });
@@ -327,7 +327,7 @@ function LeadDetailPanel({
     onSuccess: async (response) => {
       const created = await response.json();
       queryClient.invalidateQueries({ queryKey: ["/api/escritorios"] });
-      handleUpdateField("escritorioId", created.id);
+      handleUpdateField("lawFirmId", created.id);
       setShowNewEscritorio(false);
       setNewEscritorio({ nome: "", cnpj: "", telefone: "", email: "", numeroCaso: "" });
       toast({ title: "Escritório criado e vinculado" });
@@ -344,7 +344,7 @@ function LeadDetailPanel({
     onSuccess: async (response) => {
       const created = await response.json();
       queryClient.invalidateQueries({ queryKey: ["/api/reclamantes"] });
-      handleUpdateField("reclamanteId", created.id);
+      handleUpdateField("claimantId", created.id);
       setShowNewReclamante(false);
       setNewReclamante({ nome: "", cpf: "", cnj: "", telefone: "", email: "" });
       toast({ title: "Reclamante criado e vinculado" });
@@ -382,8 +382,8 @@ function LeadDetailPanel({
   });
 
   const addReclamanteToLeadMutation = useMutation({
-    mutationFn: async (reclamanteId: string) => {
-      return apiRequest("POST", `/api/leads/${lead.id}/reclamantes`, { reclamanteId });
+    mutationFn: async (claimantId: string) => {
+      return apiRequest("POST", `/api/leads/${lead.id}/reclamantes`, { claimantId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/reclamantes`] });
@@ -395,8 +395,8 @@ function LeadDetailPanel({
   });
 
   const removeReclamanteFromLeadMutation = useMutation({
-    mutationFn: async (reclamanteId: string) => {
-      return apiRequest("DELETE", `/api/leads/${lead.id}/reclamantes/${reclamanteId}`);
+    mutationFn: async (claimantId: string) => {
+      return apiRequest("DELETE", `/api/leads/${lead.id}/reclamantes/${claimantId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/reclamantes`] });
@@ -434,9 +434,9 @@ function LeadDetailPanel({
     }
   };
 
-  const advogado = lead.todosAdvogadosInfosId ? todosAdvogadosInfos.find(a => a.id === lead.todosAdvogadosInfosId) : null;
-  const escritorio = lead.escritorioId ? escritorios.find(e => e.id === lead.escritorioId) : null;
-  const reclamante = lead.reclamanteId ? reclamantes.find(r => r.id === lead.reclamanteId) : null;
+  const advogado = lead.lawyerId ? todosAdvogadosInfos.find(a => a.id === lead.lawyerId) : null;
+  const escritorio = lead.lawFirmId ? escritorios.find(e => e.id === lead.lawFirmId) : null;
+  const reclamante = lead.claimantId ? reclamantes.find(r => r.id === lead.claimantId) : null;
 
   return (
     <div className="h-full flex flex-col">
@@ -646,8 +646,8 @@ function LeadDetailPanel({
                 ) : (
                   <>
                     <Select 
-                      value={lead.todosAdvogadosInfosId?.toString() || "none"} 
-                      onValueChange={(v) => handleUpdateField("todosAdvogadosInfosId", v === "none" ? null : parseInt(v))}
+                      value={lead.lawyerId?.toString() || "none"} 
+                      onValueChange={(v) => handleUpdateField("lawyerId", v === "none" ? null : parseInt(v))}
                     >
                       <SelectTrigger data-testid="select-advogado">
                         <SelectValue placeholder="Selecione um advogado" />
@@ -749,8 +749,8 @@ function LeadDetailPanel({
                 ) : (
                   <>
                     <Select 
-                      value={lead.escritorioId || "none"} 
-                      onValueChange={(v) => handleUpdateField("escritorioId", v === "none" ? null : v)}
+                      value={lead.lawFirmId || "none"} 
+                      onValueChange={(v) => handleUpdateField("lawFirmId", v === "none" ? null : v)}
                     >
                       <SelectTrigger data-testid="select-escritorio">
                         <SelectValue placeholder="Selecione um escritório" />
@@ -852,8 +852,8 @@ function LeadDetailPanel({
                 ) : (
                   <>
                     <Select 
-                      value={lead.reclamanteId || "none"} 
-                      onValueChange={(v) => handleUpdateField("reclamanteId", v === "none" ? null : v)}
+                      value={lead.claimantId || "none"} 
+                      onValueChange={(v) => handleUpdateField("claimantId", v === "none" ? null : v)}
                     >
                       <SelectTrigger data-testid="select-reclamante">
                         <SelectValue placeholder="Selecione um reclamante" />
@@ -1260,8 +1260,8 @@ function LeadCard({
   const currentStage = stages[currentStageIndex];
   const entityName = getEntityName(lead, todosAdvogadosInfos, escritorios, reclamantes);
   const prevStage = currentStageIndex > 0 ? stages[currentStageIndex - 1] : null;
-  const linkedAdvogado = lead.todosAdvogadosInfosId 
-    ? todosAdvogadosInfos.find(a => a.id === lead.todosAdvogadosInfosId)
+  const linkedAdvogado = lead.lawyerId 
+    ? todosAdvogadosInfos.find(a => a.id === lead.lawyerId)
     : null;
 
   return (
@@ -1388,8 +1388,8 @@ function LeadCard({
             <ContextMenuSeparator />
           </>
         )}
-        {lead.escritorioId && (() => {
-          const escritorio = escritorios.find(e => e.id === lead.escritorioId);
+        {lead.lawFirmId && (() => {
+          const escritorio = escritorios.find(e => e.id === lead.lawFirmId);
           return escritorio ? (
             <>
               <ContextMenuItem 
@@ -1406,8 +1406,8 @@ function LeadCard({
             </>
           ) : null;
         })()}
-        {lead.reclamanteId && (() => {
-          const reclamante = reclamantes.find(r => r.id === lead.reclamanteId);
+        {lead.claimantId && (() => {
+          const reclamante = reclamantes.find(r => r.id === lead.claimantId);
           return reclamante ? (
             <>
               <ContextMenuItem 
@@ -1733,16 +1733,6 @@ export default function PipelinePage() {
     queryKey: ["/api/activities"],
   });
 
-  // Fetch all lead-advogado relationships for filtering
-  const { data: allLeadAdvogados = [] } = useQuery<{ leadId: string; advogadoId: number }[]>({
-    queryKey: ["/api/leads-advogados"],
-  });
-
-  // Fetch all lead-reclamante relationships for filtering
-  const { data: allLeadReclamantes = [] } = useQuery<{ leadId: string; reclamanteId: string }[]>({
-    queryKey: ["/api/leads-reclamantes"],
-  });
-
   const isLoading = leadsLoading;
 
   // Apply pipeline type filter first
@@ -1755,47 +1745,27 @@ export default function PipelinePage() {
     return activeFilters.every(filter => {
       switch (filter.type) {
         case "advogado":
-          // Check direct relationship or N:N relationship
-          if (lead.todosAdvogadosInfosId === filter.id) return true;
-          return allLeadAdvogados.some(la => la.leadId === lead.id && la.advogadoId === filter.id);
+          return lead.lawyerId === filter.id;
         
         case "reclamante":
-          // Check direct relationship or N:N relationship
-          if (lead.reclamanteId === filter.id) return true;
-          return allLeadReclamantes.some(lr => lr.leadId === lead.id && lr.reclamanteId === filter.id);
+          return lead.claimantId === filter.id;
         
         case "escritorio":
-          return lead.escritorioId === filter.id;
+          return lead.lawFirmId === filter.id;
         
         case "cnj":
-          // Check CNJ on lead's linked advogado or on any N:N advogados
-          const linkedAdvogado = lead.todosAdvogadosInfosId 
-            ? todosAdvogadosInfos.find(a => a.id === lead.todosAdvogadosInfosId)
+          // Check CNJ on lead's linked advogado
+          const linkedAdvogado = lead.lawyerId 
+            ? todosAdvogadosInfos.find(a => a.id === lead.lawyerId)
             : null;
-          if (linkedAdvogado?.cnj === filter.value) return true;
-          
-          // Check N:N advogados for CNJ match
-          const leadAdvogadoIds = allLeadAdvogados
-            .filter(la => la.leadId === lead.id)
-            .map(la => la.advogadoId);
-          return todosAdvogadosInfos
-            .filter(a => leadAdvogadoIds.includes(a.id))
-            .some(a => a.cnj === filter.value);
+          return linkedAdvogado?.cnj === filter.value;
         
         case "reclamante_cnj":
-          // Check CNJ on lead's linked reclamante or on any N:N reclamantes
-          const linkedReclamante = lead.reclamanteId 
-            ? reclamantes.find(r => r.id === lead.reclamanteId)
+          // Check CNJ on lead's linked reclamante
+          const linkedReclamante = lead.claimantId 
+            ? reclamantes.find(r => r.id === lead.claimantId)
             : null;
-          if (linkedReclamante?.cnj === filter.value) return true;
-          
-          // Check N:N reclamantes for CNJ match
-          const leadReclamanteIds = allLeadReclamantes
-            .filter(lr => lr.leadId === lead.id)
-            .map(lr => lr.reclamanteId);
-          return reclamantes
-            .filter(r => leadReclamanteIds.includes(r.id))
-            .some(r => r.cnj === filter.value);
+          return linkedReclamante?.cnj === filter.value;
         
         default:
           return true;
@@ -2110,11 +2080,11 @@ export default function PipelinePage() {
     // Only set entity ID if a valid ID was selected (using controlled state)
     if (selectedEntityId && selectedEntityId.trim()) {
       if (selectedPipeline === "advogados") {
-        data.todosAdvogadosInfosId = parseInt(selectedEntityId);
+        data.lawyerId = parseInt(selectedEntityId);
       } else if (selectedPipeline === "escritorios") {
-        data.escritorioId = selectedEntityId;
+        data.lawFirmId = selectedEntityId;
       } else if (selectedPipeline === "reclamantes") {
-        data.reclamanteId = selectedEntityId;
+        data.claimantId = selectedEntityId;
       }
     }
 
@@ -2382,6 +2352,170 @@ export default function PipelinePage() {
             ))}
           </SelectContent>
         </Select>
+
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="outline" className="gap-2" data-testid="button-open-filters">
+              <Filter className="h-4 w-4" />
+              Filtros
+              {activeFilters.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center">
+                  {activeFilters.length}
+                </Badge>
+              )}
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-96">
+            <SheetHeader>
+              <SheetTitle>Filtrar Pipeline</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6 space-y-6">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Filtrar por Advogado</Label>
+                <Select
+                  value=""
+                  onValueChange={(value) => {
+                    const advogado = todosAdvogadosInfos.find(a => String(a.id) === value);
+                    if (advogado) {
+                      addFilter({
+                        type: "advogado",
+                        id: advogado.id,
+                        value: String(advogado.id),
+                        label: `Advogado: ${advogado.nome}`
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger data-testid="select-filter-advogado">
+                    <SelectValue placeholder="Selecione um advogado..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {todosAdvogadosInfos.map((advogado) => (
+                      <SelectItem key={advogado.id} value={String(advogado.id)}>
+                        {advogado.nome} {advogado.cnj ? `(${advogado.cnj})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Filtrar por Reclamante</Label>
+                <Select
+                  value=""
+                  onValueChange={(value) => {
+                    const reclamante = reclamantes.find(r => r.id === value);
+                    if (reclamante) {
+                      addFilter({
+                        type: "reclamante",
+                        id: reclamante.id,
+                        value: reclamante.id,
+                        label: `Reclamante: ${reclamante.nome}`
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger data-testid="select-filter-reclamante">
+                    <SelectValue placeholder="Selecione um reclamante..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {reclamantes.map((reclamante) => (
+                      <SelectItem key={reclamante.id} value={reclamante.id}>
+                        {reclamante.nome} {reclamante.cnj ? `(${reclamante.cnj})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Filtrar por Escritório</Label>
+                <Select
+                  value=""
+                  onValueChange={(value) => {
+                    const escritorio = escritorios.find(e => e.id === value);
+                    if (escritorio) {
+                      addFilter({
+                        type: "escritorio",
+                        id: escritorio.id,
+                        value: escritorio.id,
+                        label: `Escritório: ${escritorio.nome}`
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger data-testid="select-filter-escritorio">
+                    <SelectValue placeholder="Selecione um escritório..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {escritorios.map((escritorio) => (
+                      <SelectItem key={escritorio.id} value={escritorio.id}>
+                        {escritorio.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Filtrar por CNJ</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Digite o número CNJ..."
+                    data-testid="input-filter-cnj"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const value = (e.target as HTMLInputElement).value.trim();
+                        if (value) {
+                          addFilter({
+                            type: "cnj",
+                            value: value,
+                            label: `CNJ: ${value}`
+                          });
+                          (e.target as HTMLInputElement).value = '';
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Pressione Enter para aplicar</p>
+              </div>
+
+              {activeFilters.length > 0 && (
+                <div className="pt-4 border-t space-y-2">
+                  <Label className="text-sm font-medium">Filtros Ativos</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {activeFilters.map((filter, index) => (
+                      <Badge 
+                        key={`${filter.type}-${filter.value}-${index}`} 
+                        variant="secondary" 
+                        className="flex items-center gap-1 pl-2 pr-1 py-1"
+                      >
+                        <span className="text-xs">{filter.label}</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-4 w-4 hover:bg-destructive/20"
+                          onClick={() => removeFilter(filter)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full mt-2"
+                    onClick={clearAllFilters}
+                  >
+                    Limpar todos os filtros
+                  </Button>
+                </div>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {activeFilters.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
