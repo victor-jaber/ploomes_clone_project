@@ -2,6 +2,7 @@
 """
 Script para sincronizar processos (lawsuits) da API de teses.
 Busca por CPF de cada advogado cadastrado no sistema.
+Vincula TODOS os advogados do processo via tabela N:N lawsuit_lawyers.
 """
 
 import psycopg2
@@ -11,6 +12,7 @@ import json
 import sys
 import os
 import re
+import uuid
 
 # Configurações da API de teses
 API_URL = "http://10.15.0.1:8005/api/v1/tese_advogado/tese_processos"
@@ -81,56 +83,96 @@ def fetch_lawsuits_from_api(cpf):
         return None
 
 
-def find_lawyer_id_from_processo(processo, lawyers_map):
-    """Encontra o lawyer_id correto baseado nos advogados do processo"""
+def get_all_lawyer_ids_from_processo(processo, lawyers_map):
+    """Encontra TODOS os lawyer_ids que estão no sistema baseado nos advogados do processo"""
     advogados = processo.get("advogados", [])
+    lawyer_ids = []
     
     for adv in advogados:
         cpf_api = adv.get("cpf", "")
         cpf_norm = normalize_cpf(cpf_api)
         
         if cpf_norm in lawyers_map:
-            return lawyers_map[cpf_norm][0]  # Retorna o lawyer_id
+            lawyer_ids.append(lawyers_map[cpf_norm][0])
     
-    return None
+    return lawyer_ids
 
 
-def insert_lawsuit(local_conn, processo, lawyer_id, owner_id):
-    """Insere ou atualiza um processo no banco local"""
+def insert_lawsuit(local_conn, processo, owner_id):
+    """Insere ou atualiza um processo no banco local, retorna o ID"""
     cursor = local_conn.cursor()
     
     # Extrair dados dos reclamantes para autor
     reclamantes = processo.get("reclamantes", [])
     autor = ", ".join([r.get("nome", "") for r in reclamantes]) if reclamantes else None
     
-    cursor.execute("""
-        INSERT INTO lawsuits (
-            cnj, lawyer_id, valor_causa, tese_id, autor, api_data, owner_id
-        ) VALUES (
-            %(cnj)s, %(lawyer_id)s, %(valor_causa)s, %(tese_id)s, %(autor)s, %(api_data)s, %(owner_id)s
-        )
-        ON CONFLICT (cnj) DO UPDATE SET
-            lawyer_id = COALESCE(EXCLUDED.lawyer_id, lawsuits.lawyer_id),
-            valor_causa = EXCLUDED.valor_causa,
-            tese_id = EXCLUDED.tese_id,
-            autor = EXCLUDED.autor,
-            api_data = EXCLUDED.api_data,
-            updated_at = NOW()
-        RETURNING id
-    """, {
-        "cnj": processo.get("cnj"),
-        "lawyer_id": lawyer_id,
-        "valor_causa": processo.get("valor_causa"),
-        "tese_id": str(processo.get("tese_id")) if processo.get("tese_id") else None,
-        "autor": autor,
-        "api_data": json.dumps(processo, ensure_ascii=False),
-        "owner_id": owner_id
-    })
+    cnj = processo.get("cnj")
+    
+    # Verificar se já existe
+    cursor.execute("SELECT id FROM lawsuits WHERE cnj = %s", (cnj,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        # Atualizar
+        cursor.execute("""
+            UPDATE lawsuits SET
+                valor_causa = %(valor_causa)s,
+                tese_id = %(tese_id)s,
+                autor = %(autor)s,
+                api_data = %(api_data)s,
+                updated_at = NOW()
+            WHERE cnj = %(cnj)s
+            RETURNING id
+        """, {
+            "cnj": cnj,
+            "valor_causa": processo.get("valor_causa"),
+            "tese_id": str(processo.get("tese_id")) if processo.get("tese_id") else None,
+            "autor": autor,
+            "api_data": json.dumps(processo, ensure_ascii=False),
+        })
+    else:
+        # Inserir novo
+        cursor.execute("""
+            INSERT INTO lawsuits (
+                cnj, valor_causa, tese_id, autor, api_data, owner_id
+            ) VALUES (
+                %(cnj)s, %(valor_causa)s, %(tese_id)s, %(autor)s, %(api_data)s, %(owner_id)s
+            )
+            RETURNING id
+        """, {
+            "cnj": cnj,
+            "valor_causa": processo.get("valor_causa"),
+            "tese_id": str(processo.get("tese_id")) if processo.get("tese_id") else None,
+            "autor": autor,
+            "api_data": json.dumps(processo, ensure_ascii=False),
+            "owner_id": owner_id
+        })
     
     result = cursor.fetchone()
     local_conn.commit()
     cursor.close()
     return result[0] if result else None
+
+
+def link_lawsuit_lawyers(local_conn, lawsuit_id, lawyer_ids):
+    """Vincula advogados ao processo via tabela N:N"""
+    cursor = local_conn.cursor()
+    
+    linked = 0
+    for lawyer_id in lawyer_ids:
+        try:
+            cursor.execute("""
+                INSERT INTO lawsuit_lawyers (lawsuit_id, lawyer_id)
+                VALUES (%s, %s)
+                ON CONFLICT (lawsuit_id, lawyer_id) DO NOTHING
+            """, (lawsuit_id, lawyer_id))
+            linked += 1
+        except Exception as e:
+            print(f"      Erro ao vincular advogado {lawyer_id}: {e}")
+    
+    local_conn.commit()
+    cursor.close()
+    return linked
 
 
 def sync_lawsuits():
@@ -155,7 +197,7 @@ def sync_lawsuits():
     
     # Lista para armazenar CPFs únicos já consultados
     consulted_cpfs = set()
-    all_processos = []
+    all_processos = {}  # cnj -> processo (para evitar duplicatas)
     
     # Para cada advogado, buscar processos na API
     print("\n3. Buscando processos na API...")
@@ -179,53 +221,51 @@ def sync_lawsuits():
             print(f"      Encontrados {len(processos)} processos")
             
             for processo in processos:
-                all_processos.append(processo)
+                cnj = processo.get("cnj")
+                if cnj and cnj not in all_processos:
+                    all_processos[cnj] = processo
         else:
             print("      Nenhum processo encontrado")
     
-    # Remover duplicatas por CNJ
-    print(f"\n4. Processando {len(all_processos)} processos encontrados...")
-    cnjs_inseridos = set()
+    # Processar todos os processos únicos
+    print(f"\n4. Processando {len(all_processos)} processos únicos...")
     total_inserted = 0
+    total_links = 0
     total_errors = 0
-    total_no_lawyer = 0
     
-    for processo in all_processos:
-        cnj = processo.get("cnj")
-        if not cnj:
-            continue
-        
-        if cnj in cnjs_inseridos:
-            continue
-        
+    for cnj, processo in all_processos.items():
         try:
-            # Encontrar o lawyer_id correto baseado no CPF do advogado no processo
-            lawyer_id = find_lawyer_id_from_processo(processo, lawyers_map)
+            # Inserir/atualizar o processo
+            lawsuit_id = insert_lawsuit(local_conn, processo, owner_id)
             
-            if not lawyer_id:
-                total_no_lawyer += 1
-                # Ainda insere, mas sem lawyer_id
-                print(f"   ? CNJ: {cnj} - Advogado não encontrado no sistema")
+            if not lawsuit_id:
+                print(f"   X Erro: Não foi possível inserir {cnj}")
+                total_errors += 1
+                continue
             
-            lawsuit_id = insert_lawsuit(local_conn, processo, lawyer_id, owner_id)
-            cnjs_inseridos.add(cnj)
             total_inserted += 1
             
-            valor = processo.get("valor_causa", 0) or 0
-            advogados = processo.get("advogados", [])
-            adv_nomes = ", ".join([a.get("nome", "") for a in advogados[:2]])
+            # Encontrar TODOS os advogados do processo que estão no sistema
+            lawyer_ids = get_all_lawyer_ids_from_processo(processo, lawyers_map)
             
-            if lawyer_id:
-                print(f"   + CNJ: {cnj} | Valor: R$ {valor:,.2f} | Advogado ID: {lawyer_id}")
-            
+            # Vincular advogados via tabela N:N
+            if lawyer_ids:
+                linked = link_lawsuit_lawyers(local_conn, lawsuit_id, lawyer_ids)
+                total_links += linked
+                
+                valor = processo.get("valor_causa", 0) or 0
+                print(f"   + CNJ: {cnj} | Valor: R$ {valor:,.2f} | {len(lawyer_ids)} advogados vinculados")
+            else:
+                print(f"   ? CNJ: {cnj} - Nenhum advogado encontrado no sistema")
+                
         except Exception as e:
             total_errors += 1
-            print(f"   X Erro ao inserir {cnj}: {e}")
+            print(f"   X Erro ao processar {cnj}: {e}")
     
     print("\n" + "=" * 60)
     print("SINCRONIZAÇÃO CONCLUÍDA!")
     print(f"Total de processos inseridos/atualizados: {total_inserted}")
-    print(f"Processos sem advogado vinculado: {total_no_lawyer}")
+    print(f"Total de vínculos advogado-processo criados: {total_links}")
     print(f"Total de erros: {total_errors}")
     print("=" * 60)
     
