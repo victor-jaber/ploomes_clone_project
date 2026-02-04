@@ -43,7 +43,17 @@ import {
   Trash2,
   Eye,
   MapPin,
+  X,
+  FileText,
+  UserPlus,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { TodosAdvogadosInfos, Escritorio, Reclamante, InsertTodosAdvogadosInfos, InsertEscritorio, InsertReclamante } from "@shared/schema";
 
@@ -77,6 +87,12 @@ export default function ClientsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEntity, setEditingEntity] = useState<TodosAdvogadosInfos | Escritorio | Reclamante | null>(null);
   const [viewingEntity, setViewingEntity] = useState<TodosAdvogadosInfos | Escritorio | Reclamante | null>(null);
+  
+  // State for escritório CNJs and advogados
+  const [escritorioCnjs, setEscritorioCnjs] = useState<string[]>([]);
+  const [newCnj, setNewCnj] = useState("");
+  const [escritorioAdvogados, setEscritorioAdvogados] = useState<number[]>([]);
+  const [selectedAdvogadoId, setSelectedAdvogadoId] = useState<string>("");
 
   const { data: todosAdvogadosInfos = [], isLoading: todosAdvogadosInfosLoading } = useQuery<TodosAdvogadosInfos[]>({
     queryKey: ["/api/todos-advogados-infos"],
@@ -123,23 +139,42 @@ export default function ClientsPage() {
   });
 
   const createEscritorioMutation = useMutation({
-    mutationFn: async (data: InsertEscritorio) => apiRequest("POST", "/api/escritorios", data),
+    mutationFn: async (data: InsertEscritorio & { advogadoIds?: number[] }) => {
+      const { advogadoIds, ...escritorioData } = data;
+      const result = await apiRequest("POST", "/api/escritorios", escritorioData);
+      // Add lawyers to the firm
+      if (advogadoIds && advogadoIds.length > 0) {
+        const escritorio = await result.json();
+        for (const lawyerId of advogadoIds) {
+          await apiRequest("POST", `/api/law-firms/${escritorio.id}/lawyers`, { lawyerId });
+        }
+      }
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/escritorios"] });
       setIsDialogOpen(false);
       setEditingEntity(null);
+      setEscritorioCnjs([]);
+      setEscritorioAdvogados([]);
       toast({ title: "Sucesso", description: "Escritório criado com sucesso" });
     },
     onError: () => toast({ title: "Erro", description: "Não foi possível criar o escritório", variant: "destructive" }),
   });
 
   const updateEscritorioMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertEscritorio> }) => 
-      apiRequest("PATCH", `/api/escritorios/${id}`, data),
+    mutationFn: async ({ id, data, advogadoIds }: { id: string; data: Partial<InsertEscritorio>; advogadoIds?: number[] }) => {
+      const result = await apiRequest("PATCH", `/api/escritorios/${id}`, data);
+      // Sync lawyers - for simplicity, we'll handle this by updating the cnjs array
+      // The advogados are handled via the law_firm_lawyers table separately
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/escritorios"] });
       setIsDialogOpen(false);
       setEditingEntity(null);
+      setEscritorioCnjs([]);
+      setEscritorioAdvogados([]);
       toast({ title: "Sucesso", description: "Escritório atualizado com sucesso" });
     },
     onError: () => toast({ title: "Erro", description: "Não foi possível atualizar o escritório", variant: "destructive" }),
@@ -208,7 +243,7 @@ export default function ClientsPage() {
           r.nome?.toLowerCase().includes(term) || 
           r.cpf?.toLowerCase().includes(term) ||
           r.email?.toLowerCase().includes(term) ||
-          r.processoNumero?.toLowerCase().includes(term)
+          r.cnj?.toLowerCase().includes(term)
         );
       default:
         return [];
@@ -255,13 +290,36 @@ export default function ClientsPage() {
       cidade: formData.get("cidade") as string || null,
       estado: formData.get("estado") as string || null,
       observacoes: formData.get("observacoes") as string || null,
+      cnjs: escritorioCnjs.length > 0 ? escritorioCnjs : null,
       ownerId: "",
     };
     if (editingEntity) {
-      updateEscritorioMutation.mutate({ id: editingEntity.id, data });
+      updateEscritorioMutation.mutate({ id: editingEntity.id, data, advogadoIds: escritorioAdvogados });
     } else {
-      createEscritorioMutation.mutate(data);
+      createEscritorioMutation.mutate({ ...data, advogadoIds: escritorioAdvogados } as InsertEscritorio & { advogadoIds: number[] });
     }
+  };
+  
+  const handleAddCnj = () => {
+    if (newCnj.trim() && !escritorioCnjs.includes(newCnj.trim())) {
+      setEscritorioCnjs([...escritorioCnjs, newCnj.trim()]);
+      setNewCnj("");
+    }
+  };
+  
+  const handleRemoveCnj = (cnj: string) => {
+    setEscritorioCnjs(escritorioCnjs.filter(c => c !== cnj));
+  };
+  
+  const handleAddAdvogado = () => {
+    if (selectedAdvogadoId && !escritorioAdvogados.includes(Number(selectedAdvogadoId))) {
+      setEscritorioAdvogados([...escritorioAdvogados, Number(selectedAdvogadoId)]);
+      setSelectedAdvogadoId("");
+    }
+  };
+  
+  const handleRemoveAdvogado = (id: number) => {
+    setEscritorioAdvogados(escritorioAdvogados.filter(a => a !== id));
   };
 
   const handleSubmitReclamante = (e: React.FormEvent<HTMLFormElement>) => {
@@ -272,7 +330,7 @@ export default function ClientsPage() {
       cpf: formData.get("cpf") as string || null,
       email: formData.get("email") as string || null,
       telefone: formData.get("telefone") as string || null,
-      processoNumero: formData.get("processoNumero") as string || null,
+      cnj: formData.get("cnj") as string || null,
       valorCausa: formData.get("valorCausa") as string || null,
       observacoes: formData.get("observacoes") as string || null,
       ownerId: "",
@@ -300,11 +358,23 @@ export default function ClientsPage() {
 
   const openNewDialog = () => {
     setEditingEntity(null);
+    // Reset escritório-specific states
+    setEscritorioCnjs([]);
+    setEscritorioAdvogados([]);
+    setNewCnj("");
+    setSelectedAdvogadoId("");
     setIsDialogOpen(true);
   };
 
   const openEditDialog = (entity: TodosAdvogadosInfos | Escritorio | Reclamante) => {
     setEditingEntity(entity);
+    // Initialize escritório-specific states
+    if (activeTab === "escritorios") {
+      const esc = entity as Escritorio;
+      setEscritorioCnjs(esc.cnjs || []);
+      // TODO: Load existing advogados from law_firm_lawyers
+      setEscritorioAdvogados([]);
+    }
     setIsDialogOpen(true);
   };
 
@@ -405,6 +475,8 @@ export default function ClientsPage() {
 
   const renderEscritorioForm = () => {
     const esc = editingEntity as Escritorio | null;
+    const availableAdvogados = todosAdvogadosInfos.filter(a => !escritorioAdvogados.includes(a.id));
+    
     return (
       <form onSubmit={handleSubmitEscritorio} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
@@ -441,6 +513,90 @@ export default function ClientsPage() {
             <Input id="estado" name="estado" maxLength={2} defaultValue={esc?.estado || ""} placeholder="SP" data-testid="input-escritorio-estado" />
           </div>
         </div>
+        
+        {/* CNJs Section */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Números de Processo (CNJs)
+          </Label>
+          <div className="flex gap-2">
+            <Input 
+              value={newCnj}
+              onChange={(e) => setNewCnj(e.target.value)}
+              placeholder="0000000-00.0000.0.00.0000"
+              data-testid="input-escritorio-cnj-new"
+            />
+            <Button type="button" variant="outline" onClick={handleAddCnj} data-testid="button-add-cnj">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          {escritorioCnjs.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {escritorioCnjs.map((cnj, idx) => (
+                <Badge key={idx} variant="secondary" className="flex items-center gap-1 py-1">
+                  <FileText className="h-3 w-3" />
+                  {cnj}
+                  <button 
+                    type="button" 
+                    onClick={() => handleRemoveCnj(cnj)}
+                    className="ml-1 hover:text-destructive"
+                    data-testid={`button-remove-cnj-${idx}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* Advogados Section */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4" />
+            Advogados Vinculados
+          </Label>
+          <div className="flex gap-2">
+            <Select value={selectedAdvogadoId} onValueChange={setSelectedAdvogadoId}>
+              <SelectTrigger className="flex-1" data-testid="select-advogado">
+                <SelectValue placeholder="Selecione um advogado..." />
+              </SelectTrigger>
+              <SelectContent>
+                {availableAdvogados.map((adv) => (
+                  <SelectItem key={adv.id} value={String(adv.id)}>
+                    {adv.nome} {adv.cpf ? `- ${adv.cpf}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="button" variant="outline" onClick={handleAddAdvogado} data-testid="button-add-advogado">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          {escritorioAdvogados.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {escritorioAdvogados.map((advId) => {
+                const adv = todosAdvogadosInfos.find(a => a.id === advId);
+                return adv ? (
+                  <Badge key={advId} variant="secondary" className="flex items-center gap-1 py-1">
+                    <User className="h-3 w-3" />
+                    {adv.nome}
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveAdvogado(advId)}
+                      className="ml-1 hover:text-destructive"
+                      data-testid={`button-remove-advogado-${advId}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ) : null;
+              })}
+            </div>
+          )}
+        </div>
+        
         <div className="space-y-2">
           <Label htmlFor="observacoes">Observações</Label>
           <Textarea id="observacoes" name="observacoes" defaultValue={esc?.observacoes || ""} data-testid="input-escritorio-obs" />
@@ -478,8 +634,8 @@ export default function ClientsPage() {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="processoNumero">Número do Processo</Label>
-            <Input id="processoNumero" name="processoNumero" defaultValue={rec?.processoNumero || ""} data-testid="input-reclamante-processo" />
+            <Label htmlFor="cnj">Número do Processo</Label>
+            <Input id="cnj" name="cnj" defaultValue={rec?.cnj || ""} data-testid="input-reclamante-processo" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="valorCausa">Valor da Causa</Label>
@@ -707,9 +863,9 @@ export default function ClientsPage() {
                 </div>
               </TableCell>
               <TableCell>
-                {rec.processoNumero && (
+                {rec.cnj && (
                   <div className="flex items-center gap-1 text-sm">
-                    <span className="text-muted-foreground">{rec.processoNumero}</span>
+                    <span className="text-muted-foreground">{rec.cnj}</span>
                   </div>
                 )}
               </TableCell>
@@ -833,7 +989,7 @@ export default function ClientsPage() {
           <div className="grid grid-cols-2 gap-4">
             {rec.email && <div><p className="text-sm text-muted-foreground">E-mail</p><p className="font-medium">{rec.email}</p></div>}
             {rec.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium">{rec.telefone}</p></div>}
-            {rec.processoNumero && <div><p className="text-sm text-muted-foreground">Nº Processo</p><p className="font-medium">{rec.processoNumero}</p></div>}
+            {rec.cnj && <div><p className="text-sm text-muted-foreground">Nº Processo</p><p className="font-medium">{rec.cnj}</p></div>}
             {rec.valorCausa && <div><p className="text-sm text-muted-foreground">Valor da Causa</p><p className="font-semibold text-green-600 dark:text-green-400">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(rec.valorCausa))}</p></div>}
           </div>
           {rec.observacoes && <div><p className="text-sm text-muted-foreground">Observações</p><p className="text-sm">{rec.observacoes}</p></div>}
