@@ -149,6 +149,10 @@ export const leads = pgTable("leads", {
   formaPagamento: text("forma_pagamento"),
   observacoesFinanceiras: text("observacoes_financeiras"),
   
+  lawyerId: integer("lawyer_id"),
+  lawFirmId: varchar("law_firm_id"),
+  claimantId: varchar("claimant_id"),
+  
   vendedorId: varchar("vendedor_id").notNull(),
   ownerId: varchar("owner_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
