@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, numeric, boolean, pgEnum, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, numeric, boolean, pgEnum, unique, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -60,7 +60,7 @@ export const proposalStatusEnum = pgEnum("proposal_status", [
 
 // Lawyers (Advogados) - formerly todos_advogados_infos
 export const lawyers = pgTable("lawyers", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  id: serial("id").primaryKey(),
   cpf: varchar("cpf", { length: 14 }),
   nome: text("nome").notNull(),
   cnj: varchar("cnj", { length: 30 }),
