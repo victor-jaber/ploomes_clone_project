@@ -3,6 +3,8 @@ import {
   lawFirms,
   claimants,
   lawFirmLawyers,
+  lawsuits,
+  lawsuitLawyers,
   leads,
   activities,
   proposals,
@@ -120,6 +122,7 @@ export interface IStorage {
   // Sync functions
   syncLawyersToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
   syncClaimantsToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
+  syncLawsuitsFromApi(userId: string): Promise<{ total: number; linked: number; errors: number }>;
   
   // Backward compatibility
   getTodosAdvogadosInfos(ownerId: string): Promise<TodosAdvogadosInfos[]>;
@@ -519,6 +522,117 @@ export class DatabaseStorage implements IStorage {
       skipped: allClaimants.length - notSynced.length,
       leads: newLeads,
     };
+  }
+
+  // Sync Lawsuits from external API
+  async syncLawsuitsFromApi(userId: string): Promise<{ total: number; linked: number; errors: number }> {
+    const API_URL = "http://10.15.0.1:8005/api/v1/tese_advogado/tese_processos";
+    const API_USERNAME = "technologies";
+    const API_PASSWORD = "0WoOle0bfXRURWmApVkP";
+
+    // Helper to normalize CPF
+    const normalizeCpf = (cpf: string) => cpf?.replace(/[.\-\s]/g, '') || '';
+
+    // Get all lawyers with CPF
+    const allLawyers = await this.getLawyers(userId);
+    const lawyersWithCpf = allLawyers.filter(l => l.cpf);
+    
+    // Create CPF map
+    const lawyersMap: Record<string, number> = {};
+    for (const lawyer of lawyersWithCpf) {
+      const cpfNorm = normalizeCpf(lawyer.cpf!);
+      if (cpfNorm) lawyersMap[cpfNorm] = lawyer.id;
+    }
+
+    const processedCnjs = new Set<string>();
+    const allProcessos: any[] = [];
+    let totalProcessed = 0;
+    let totalLinked = 0;
+    let totalErrors = 0;
+
+    // Fetch processes for each lawyer
+    for (const lawyer of lawyersWithCpf) {
+      try {
+        const auth = Buffer.from(`${API_USERNAME}:${API_PASSWORD}`).toString('base64');
+        const response = await fetch(`${API_URL}?cpf=${encodeURIComponent(lawyer.cpf!)}`, {
+          headers: { 'Authorization': `Basic ${auth}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.data) {
+            for (const processo of data.data) {
+              const cnj = processo.cnj;
+              if (cnj && !processedCnjs.has(cnj)) {
+                processedCnjs.add(cnj);
+                allProcessos.push(processo);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching for CPF ${lawyer.cpf}:`, error);
+      }
+    }
+
+    // Process each unique lawsuit
+    for (const processo of allProcessos) {
+      try {
+        const cnj = processo.cnj;
+        const reclamantes = processo.reclamantes || [];
+        const autor = reclamantes.map((r: any) => r.nome).join(', ') || null;
+
+        // Insert or update lawsuit
+        const [existing] = await db.select().from(lawsuits).where(eq(lawsuits.cnj, cnj));
+        
+        let lawsuitId: string;
+        if (existing) {
+          await db.update(lawsuits).set({
+            valorCausa: processo.valor_causa?.toString(),
+            teseId: processo.tese_id?.toString(),
+            autor,
+            apiData: JSON.stringify(processo),
+            updatedAt: new Date(),
+          }).where(eq(lawsuits.cnj, cnj));
+          lawsuitId = existing.id;
+        } else {
+          const [newLawsuit] = await db.insert(lawsuits).values({
+            cnj,
+            valorCausa: processo.valor_causa?.toString(),
+            teseId: processo.tese_id?.toString(),
+            autor,
+            apiData: JSON.stringify(processo),
+            ownerId: userId,
+          }).returning();
+          lawsuitId = newLawsuit.id;
+        }
+
+        totalProcessed++;
+
+        // Link all lawyers from the process
+        const advogados = processo.advogados || [];
+        for (const adv of advogados) {
+          const cpfNorm = normalizeCpf(adv.cpf);
+          const lawyerId = lawyersMap[cpfNorm];
+          if (lawyerId) {
+            try {
+              await db.insert(lawsuitLawyers).values({
+                lawsuitId,
+                lawyerId,
+              }).onConflictDoNothing();
+              totalLinked++;
+            } catch (e) {
+              // Ignore duplicate errors
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing CNJ ${processo.cnj}:`, error);
+        totalErrors++;
+      }
+    }
+
+    return { total: totalProcessed, linked: totalLinked, errors: totalErrors };
   }
 
   // Backward compatibility methods

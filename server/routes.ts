@@ -632,6 +632,18 @@ export async function registerRoutes(
     }
   });
 
+  // Sync Lawsuits from external API
+  app.post("/api/sync-lawsuits", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const result = await storage.syncLawsuitsFromApi(userId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error syncing lawsuits:", error);
+      res.status(500).json({ message: "Failed to sync lawsuits", error: String(error) });
+    }
+  });
+
   // Leads
   app.get("/api/leads", isAuthenticated, async (req: Request, res: Response) => {
     try {
