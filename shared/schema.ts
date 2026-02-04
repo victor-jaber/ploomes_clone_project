@@ -171,6 +171,16 @@ export const lawFirmLawyers = pgTable("law_firm_lawyers", {
   unique("law_firm_lawyer_unique").on(table.lawFirmId, table.lawyerId),
 ]);
 
+// Tabela N:N entre lawsuits e lawyers (um processo pode ter múltiplos advogados)
+export const lawsuitLawyers = pgTable("lawsuit_lawyers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  lawsuitId: varchar("lawsuit_id").notNull().references(() => lawsuits.id, { onDelete: "cascade" }),
+  lawyerId: integer("lawyer_id").notNull().references(() => lawyers.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique("lawsuit_lawyer_unique").on(table.lawsuitId, table.lawyerId),
+]);
+
 // Leads (Cases no pipeline)
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -302,7 +312,7 @@ export const lawFirmLawyersRelations = relations(lawFirmLawyers, ({ one }) => ({
   }),
 }));
 
-export const lawsuitsRelations = relations(lawsuits, ({ one }) => ({
+export const lawsuitsRelations = relations(lawsuits, ({ one, many }) => ({
   lawyer: one(lawyers, {
     fields: [lawsuits.lawyerId],
     references: [lawyers.id],
@@ -314,6 +324,18 @@ export const lawsuitsRelations = relations(lawsuits, ({ one }) => ({
   lawFirm: one(lawFirms, {
     fields: [lawsuits.lawFirmId],
     references: [lawFirms.id],
+  }),
+  lawsuitLawyers: many(lawsuitLawyers),
+}));
+
+export const lawsuitLawyersRelations = relations(lawsuitLawyers, ({ one }) => ({
+  lawsuit: one(lawsuits, {
+    fields: [lawsuitLawyers.lawsuitId],
+    references: [lawsuits.id],
+  }),
+  lawyer: one(lawyers, {
+    fields: [lawsuitLawyers.lawyerId],
+    references: [lawyers.id],
   }),
 }));
 
