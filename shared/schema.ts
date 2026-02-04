@@ -121,6 +121,46 @@ export const claimants = pgTable("claimants", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Lawsuits (Processos)
+export const lawsuits = pgTable("lawsuits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cnj: varchar("cnj", { length: 30 }).unique(),
+  lawyerId: integer("lawyer_id").references(() => lawyers.id, { onDelete: "set null" }),
+  claimantId: varchar("claimant_id").references(() => claimants.id, { onDelete: "set null" }),
+  lawFirmId: varchar("law_firm_id").references(() => lawFirms.id, { onDelete: "set null" }),
+  
+  // Dados do processo
+  tribunal: varchar("tribunal", { length: 100 }),
+  vara: varchar("vara", { length: 200 }),
+  classe: varchar("classe", { length: 200 }),
+  assunto: text("assunto"),
+  status: varchar("status", { length: 100 }),
+  valorCausa: numeric("valor_causa", { precision: 12, scale: 2 }),
+  
+  // Partes
+  autor: text("autor"),
+  reu: text("reu"),
+  
+  // Datas
+  dataDistribuicao: timestamp("data_distribuicao"),
+  dataUltimaMovimentacao: timestamp("data_ultima_movimentacao"),
+  
+  // Dados da tese (API)
+  teseId: varchar("tese_id", { length: 100 }),
+  teseNome: text("tese_nome"),
+  teseDescricao: text("tese_descricao"),
+  probabilidadeSucesso: numeric("probabilidade_sucesso", { precision: 5, scale: 2 }),
+  valorEstimado: numeric("valor_estimado", { precision: 12, scale: 2 }),
+  
+  // Dados brutos da API (JSONB como text)
+  apiData: text("api_data"),
+  
+  // Metadados
+  ownerId: varchar("owner_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Law Firm Lawyers junction table (N:N)
 export const lawFirmLawyers = pgTable("law_firm_lawyers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -262,6 +302,21 @@ export const lawFirmLawyersRelations = relations(lawFirmLawyers, ({ one }) => ({
   }),
 }));
 
+export const lawsuitsRelations = relations(lawsuits, ({ one }) => ({
+  lawyer: one(lawyers, {
+    fields: [lawsuits.lawyerId],
+    references: [lawyers.id],
+  }),
+  claimant: one(claimants, {
+    fields: [lawsuits.claimantId],
+    references: [claimants.id],
+  }),
+  lawFirm: one(lawFirms, {
+    fields: [lawsuits.lawFirmId],
+    references: [lawFirms.id],
+  }),
+}));
+
 export const leadsRelations = relations(leads, ({ one, many }) => ({
   vendedor: one(users, {
     fields: [leads.vendedorId],
@@ -325,6 +380,7 @@ export const proposalItemsRelations = relations(proposalItems, ({ one }) => ({
 export const insertLawyerSchema = createInsertSchema(lawyers).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLawFirmSchema = createInsertSchema(lawFirms).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertClaimantSchema = createInsertSchema(claimants).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLawsuitSchema = createInsertSchema(lawsuits).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLawFirmLawyerSchema = createInsertSchema(lawFirmLawyers).omit({ id: true, createdAt: true });
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInteractionSchema = createInsertSchema(interactions).omit({ id: true, createdAt: true });
@@ -340,6 +396,8 @@ export type LawFirm = typeof lawFirms.$inferSelect;
 export type InsertLawFirm = z.infer<typeof insertLawFirmSchema>;
 export type Claimant = typeof claimants.$inferSelect;
 export type InsertClaimant = z.infer<typeof insertClaimantSchema>;
+export type Lawsuit = typeof lawsuits.$inferSelect;
+export type InsertLawsuit = z.infer<typeof insertLawsuitSchema>;
 export type LawFirmLawyer = typeof lawFirmLawyers.$inferSelect;
 export type InsertLawFirmLawyer = z.infer<typeof insertLawFirmLawyerSchema>;
 export type Lead = typeof leads.$inferSelect;
