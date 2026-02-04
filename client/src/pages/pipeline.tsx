@@ -1588,8 +1588,13 @@ export default function PipelinePage() {
 
   const isLoading = leadsLoading;
 
-  // Apply pipeline type filter first
-  const pipelineFilteredLeads = leads.filter(l => l.pipelineType === selectedPipeline);
+  // Check if there's a CNJ filter active - if so, show leads from ALL pipelines
+  const hasCnjFilter = activeFilters.some(f => f.type === "cnj");
+  
+  // Apply pipeline type filter first (skip if CNJ filter is active)
+  const pipelineFilteredLeads = hasCnjFilter 
+    ? leads 
+    : leads.filter(l => l.pipelineType === selectedPipeline);
   
   // Apply active filters
   const filteredLeads = pipelineFilteredLeads.filter(lead => {
@@ -1622,7 +1627,17 @@ export default function PipelinePage() {
     });
   });
   
-  const stages = PIPELINE_STAGES[selectedPipeline];
+  // Get unique pipeline types from filtered leads when CNJ filter is active
+  const uniquePipelineTypes = hasCnjFilter 
+    ? [...new Set(filteredLeads.map(l => l.pipelineType))] as (keyof typeof PIPELINE_STAGES)[]
+    : [selectedPipeline];
+  
+  // Combine all stages from active pipelines (removing duplicates by id)
+  const stages = hasCnjFilter
+    ? uniquePipelineTypes.flatMap(pt => PIPELINE_STAGES[pt]).filter((stage, index, self) => 
+        self.findIndex(s => s.id === stage.id) === index
+      )
+    : PIPELINE_STAGES[selectedPipeline];
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, stage, position }: { id: string; stage?: string; position?: number }) => {
