@@ -8,22 +8,32 @@ import {
   insertTodosAdvogadosInfosSchema,
   insertEscritorioSchema,
   insertReclamanteSchema,
-  insertLeadSchema,
+  insertCaseSchema,
+  insertProcessoSchema,
+  insertResultadoSchema,
   insertProductSchema,
   insertActivitySchema,
   insertProposalSchema,
   insertProposalItemSchema,
   insertPipelineTriggerSchema,
   insertInteractionSchema,
-  insertClientSchema,
-  insertOpportunitySchema,
-  type Lead,
+  insertLembreteSchema,
+  type Case,
   type TodosAdvogadosInfos,
   type Escritorio,
   type Reclamante,
 } from "@shared/schema";
 
-// Helper function to fire webhook triggers asynchronously
+// Backward compatibility
+const insertLeadSchema = insertCaseSchema;
+type Lead = Case;
+
+// Helper to extract params
+const getParam = (param: string | string[] | undefined): string => {
+  if (Array.isArray(param)) return param[0];
+  return param || '';
+};
+
 async function fireWebhookTriggers(
   ownerId: string,
   pipelineType: string,
@@ -101,7 +111,7 @@ export async function registerRoutes(
   wsManager.initialize(httpServer);
   registerAuthRoutes(app);
 
-  // Todos Advogados Infos - Dados compartilhados entre todos os usuários
+  // Advogados
   app.get("/api/todos-advogados-infos", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const infos = await storage.getTodosAdvogadosInfos();
@@ -114,7 +124,7 @@ export async function registerRoutes(
 
   app.get("/api/todos-advogados-infos/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id as string, 10);
+      const id = parseInt(getParam(req.params.id) as string, 10);
       const info = await storage.getTodosAdvogadosInfo(id);
       if (!info) {
         res.status(404).json({ message: "Todos advogados info not found" });
@@ -142,7 +152,6 @@ export async function registerRoutes(
         titulo,
         pipelineType: 'advogados',
         stage: 'novo_lead',
-        todosAdvogadosInfosId: info.id,
         valor: info.valorCausa,
         ownerId: userId,
         vendedorId: userId,
@@ -158,7 +167,7 @@ export async function registerRoutes(
 
   app.patch("/api/todos-advogados-infos/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id as string, 10);
+      const id = parseInt(getParam(req.params.id) as string, 10);
       const partial = insertTodosAdvogadosInfosSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
@@ -178,7 +187,7 @@ export async function registerRoutes(
 
   app.delete("/api/todos-advogados-infos/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id as string, 10);
+      const id = parseInt(getParam(req.params.id) as string, 10);
       const deleted = await storage.deleteTodosAdvogadosInfo(id);
       if (!deleted) {
         res.status(404).json({ message: "Todos advogados info not found" });
@@ -238,7 +247,7 @@ export async function registerRoutes(
   app.get("/api/escritorios/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const escritorio = await storage.getEscritorio(req.params.id, userId);
+      const escritorio = await storage.getEscritorio(getParam(req.params.id), userId);
       if (!escritorio) {
         res.status(404).json({ message: "Escritório not found" });
         return;
@@ -274,7 +283,7 @@ export async function registerRoutes(
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const escritorio = await storage.updateEscritorio(req.params.id, userId, partial.data);
+      const escritorio = await storage.updateEscritorio(getParam(req.params.id), userId, partial.data);
       if (!escritorio) {
         res.status(404).json({ message: "Escritório not found" });
         return;
@@ -289,7 +298,7 @@ export async function registerRoutes(
   app.delete("/api/escritorios/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteEscritorio(req.params.id, userId);
+      const deleted = await storage.deleteEscritorio(getParam(req.params.id), userId);
       if (!deleted) {
         res.status(404).json({ message: "Escritório not found" });
         return;
@@ -316,7 +325,7 @@ export async function registerRoutes(
   app.get("/api/reclamantes/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const reclamante = await storage.getReclamante(req.params.id, userId);
+      const reclamante = await storage.getReclamante(getParam(req.params.id), userId);
       if (!reclamante) {
         res.status(404).json({ message: "Reclamante not found" });
         return;
@@ -352,7 +361,7 @@ export async function registerRoutes(
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const reclamante = await storage.updateReclamante(req.params.id, userId, partial.data);
+      const reclamante = await storage.updateReclamante(getParam(req.params.id), userId, partial.data);
       if (!reclamante) {
         res.status(404).json({ message: "Reclamante not found" });
         return;
@@ -367,7 +376,7 @@ export async function registerRoutes(
   app.delete("/api/reclamantes/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteReclamante(req.params.id, userId);
+      const deleted = await storage.deleteReclamante(getParam(req.params.id), userId);
       if (!deleted) {
         res.status(404).json({ message: "Reclamante not found" });
         return;
@@ -379,7 +388,284 @@ export async function registerRoutes(
     }
   });
 
-  // Leads
+  // Processos
+  app.get("/api/processos", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const processos = await storage.getProcessos(userId);
+      res.json(processos);
+    } catch (error) {
+      console.error("Error fetching processos:", error);
+      res.status(500).json({ message: "Failed to fetch processos" });
+    }
+  });
+
+  app.get("/api/processos/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const processo = await storage.getProcesso(getParam(req.params.id), userId);
+      if (!processo) {
+        res.status(404).json({ message: "Processo not found" });
+        return;
+      }
+      res.json(processo);
+    } catch (error) {
+      console.error("Error fetching processo:", error);
+      res.status(500).json({ message: "Failed to fetch processo" });
+    }
+  });
+
+  app.post("/api/processos", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const parsed = insertProcessoSchema.safeParse({ ...req.body, ownerId: userId });
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const processo = await storage.createProcesso(parsed.data);
+      res.status(201).json(processo);
+    } catch (error) {
+      console.error("Error creating processo:", error);
+      res.status(500).json({ message: "Failed to create processo" });
+    }
+  });
+
+  app.patch("/api/processos/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const partial = insertProcessoSchema.partial().safeParse(req.body);
+      if (!partial.success) {
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
+      }
+      const processo = await storage.updateProcesso(getParam(req.params.id), userId, partial.data);
+      if (!processo) {
+        res.status(404).json({ message: "Processo not found" });
+        return;
+      }
+      res.json(processo);
+    } catch (error) {
+      console.error("Error updating processo:", error);
+      res.status(500).json({ message: "Failed to update processo" });
+    }
+  });
+
+  app.delete("/api/processos/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const deleted = await storage.deleteProcesso(getParam(req.params.id), userId);
+      if (!deleted) {
+        res.status(404).json({ message: "Processo not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting processo:", error);
+      res.status(500).json({ message: "Failed to delete processo" });
+    }
+  });
+
+  // Processo-Advogado N:N
+  const addAdvogadoSchema = z.object({ advogadoId: z.number().int().positive() });
+  
+  app.get("/api/processos/:id/advogados", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const processo = await storage.getProcesso(getParam(req.params.id), userId);
+      if (!processo) {
+        res.status(404).json({ message: "Processo not found" });
+        return;
+      }
+      const advogados = await storage.getProcessoAdvogados(getParam(req.params.id));
+      res.json(advogados);
+    } catch (error) {
+      console.error("Error fetching processo advogados:", error);
+      res.status(500).json({ message: "Failed to fetch processo advogados" });
+    }
+  });
+
+  app.post("/api/processos/:id/advogados", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const processo = await storage.getProcesso(getParam(req.params.id), userId);
+      if (!processo) {
+        res.status(404).json({ message: "Processo not found" });
+        return;
+      }
+      const parsed = addAdvogadoSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const relation = await storage.addAdvogadoToProcesso(getParam(req.params.id), parsed.data.advogadoId);
+      res.status(201).json(relation);
+    } catch (error) {
+      console.error("Error adding advogado to processo:", error);
+      res.status(500).json({ message: "Failed to add advogado to processo" });
+    }
+  });
+
+  app.delete("/api/processos/:id/advogados/:advogadoId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const processo = await storage.getProcesso(getParam(req.params.id), userId);
+      if (!processo) {
+        res.status(404).json({ message: "Processo not found" });
+        return;
+      }
+      const advogadoId = parseInt(getParam(req.params.advogadoId), 10);
+      const deleted = await storage.removeAdvogadoFromProcesso(getParam(req.params.id), advogadoId);
+      if (!deleted) {
+        res.status(404).json({ message: "Relation not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing advogado from processo:", error);
+      res.status(500).json({ message: "Failed to remove advogado from processo" });
+    }
+  });
+
+  // Processo-Reclamante N:N
+  const addReclamanteSchema = z.object({ reclamanteId: z.string().uuid() });
+
+  app.get("/api/processos/:id/reclamantes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const processo = await storage.getProcesso(getParam(req.params.id), userId);
+      if (!processo) {
+        res.status(404).json({ message: "Processo not found" });
+        return;
+      }
+      const reclamantes = await storage.getProcessoReclamantes(getParam(req.params.id));
+      res.json(reclamantes);
+    } catch (error) {
+      console.error("Error fetching processo reclamantes:", error);
+      res.status(500).json({ message: "Failed to fetch processo reclamantes" });
+    }
+  });
+
+  app.post("/api/processos/:id/reclamantes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const processo = await storage.getProcesso(getParam(req.params.id), userId);
+      if (!processo) {
+        res.status(404).json({ message: "Processo not found" });
+        return;
+      }
+      const parsed = addReclamanteSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const relation = await storage.addReclamanteToProcesso(getParam(req.params.id), parsed.data.reclamanteId);
+      res.status(201).json(relation);
+    } catch (error) {
+      console.error("Error adding reclamante to processo:", error);
+      res.status(500).json({ message: "Failed to add reclamante to processo" });
+    }
+  });
+
+  app.delete("/api/processos/:id/reclamantes/:reclamanteId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const processo = await storage.getProcesso(getParam(req.params.id), userId);
+      if (!processo) {
+        res.status(404).json({ message: "Processo not found" });
+        return;
+      }
+      const deleted = await storage.removeReclamanteFromProcesso(getParam(req.params.id), getParam(req.params.reclamanteId));
+      if (!deleted) {
+        res.status(404).json({ message: "Relation not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing reclamante from processo:", error);
+      res.status(500).json({ message: "Failed to remove reclamante from processo" });
+    }
+  });
+
+  // Resultados
+  app.get("/api/resultados", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const resultados = await storage.getResultados(userId);
+      res.json(resultados);
+    } catch (error) {
+      console.error("Error fetching resultados:", error);
+      res.status(500).json({ message: "Failed to fetch resultados" });
+    }
+  });
+
+  app.get("/api/resultados/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const resultado = await storage.getResultado(getParam(req.params.id), userId);
+      if (!resultado) {
+        res.status(404).json({ message: "Resultado not found" });
+        return;
+      }
+      res.json(resultado);
+    } catch (error) {
+      console.error("Error fetching resultado:", error);
+      res.status(500).json({ message: "Failed to fetch resultado" });
+    }
+  });
+
+  app.post("/api/resultados", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const parsed = insertResultadoSchema.safeParse({ ...req.body, ownerId: userId });
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const resultado = await storage.createResultado(parsed.data);
+      res.status(201).json(resultado);
+    } catch (error) {
+      console.error("Error creating resultado:", error);
+      res.status(500).json({ message: "Failed to create resultado" });
+    }
+  });
+
+  app.patch("/api/resultados/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const partial = insertResultadoSchema.partial().safeParse(req.body);
+      if (!partial.success) {
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
+      }
+      const resultado = await storage.updateResultado(getParam(req.params.id), userId, partial.data);
+      if (!resultado) {
+        res.status(404).json({ message: "Resultado not found" });
+        return;
+      }
+      res.json(resultado);
+    } catch (error) {
+      console.error("Error updating resultado:", error);
+      res.status(500).json({ message: "Failed to update resultado" });
+    }
+  });
+
+  app.delete("/api/resultados/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const deleted = await storage.deleteResultado(getParam(req.params.id), userId);
+      if (!deleted) {
+        res.status(404).json({ message: "Resultado not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting resultado:", error);
+      res.status(500).json({ message: "Failed to delete resultado" });
+    }
+  });
+
+  // Cases (Leads - backward compatible)
   app.get("/api/leads", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
@@ -395,7 +681,7 @@ export async function registerRoutes(
   app.get("/api/leads/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const lead = await storage.getLead(req.params.id, userId);
+      const lead = await storage.getLead(getParam(req.params.id), userId);
       if (!lead) {
         res.status(404).json({ message: "Lead not found" });
         return;
@@ -433,7 +719,7 @@ export async function registerRoutes(
         return;
       }
       
-      const currentLead = await storage.getLead(req.params.id, userId);
+      const currentLead = await storage.getLead(getParam(req.params.id), userId);
       if (!currentLead) {
         res.status(404).json({ message: "Lead not found" });
         return;
@@ -442,13 +728,12 @@ export async function registerRoutes(
       const fromStage = currentLead.stage;
       const toStage = partial.data.stage;
       
-      const lead = await storage.updateLead(req.params.id, userId, partial.data);
+      const lead = await storage.updateLead(getParam(req.params.id), userId, partial.data);
       if (!lead) {
         res.status(404).json({ message: "Lead not found" });
         return;
       }
       
-      // Fire triggers if stage changed
       if (toStage && fromStage !== toStage) {
         setImmediate(() => {
           fireWebhookTriggers(userId, lead.pipelineType, fromStage, toStage, lead);
@@ -466,12 +751,12 @@ export async function registerRoutes(
   app.delete("/api/leads/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteLead(req.params.id, userId);
+      const deleted = await storage.deleteLead(getParam(req.params.id), userId);
       if (!deleted) {
         res.status(404).json({ message: "Lead not found" });
         return;
       }
-      wsManager.broadcastLeadDeleted(req.params.id);
+      wsManager.broadcastLeadDeleted(getParam(req.params.id));
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting lead:", error);
@@ -479,154 +764,244 @@ export async function registerRoutes(
     }
   });
 
-  // Lead-Advogados N:N
-  const addAdvogadoSchema = z.object({ advogadoId: z.number().int().positive() });
-  const addReclamanteSchema = z.object({ reclamanteId: z.string().uuid() });
+  // Case-Processo N:N
+  const addProcessoSchema = z.object({ processoId: z.string().uuid() });
 
-  app.get("/api/leads/:id/advogados", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/leads/:id/processos", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const lead = await storage.getLeadById(req.params.id, userId);
+      const lead = await storage.getLead(getParam(req.params.id), userId);
       if (!lead) {
         res.status(404).json({ message: "Lead not found" });
         return;
       }
-      const advogados = await storage.getLeadAdvogados(req.params.id);
-      res.json(advogados);
+      const processos = await storage.getCaseProcessos(getParam(req.params.id));
+      res.json(processos);
     } catch (error) {
-      console.error("Error fetching lead advogados:", error);
-      res.status(500).json({ message: "Failed to fetch lead advogados" });
+      console.error("Error fetching case processos:", error);
+      res.status(500).json({ message: "Failed to fetch case processos" });
     }
   });
 
-  app.post("/api/leads/:id/advogados", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/leads/:id/processos", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const lead = await storage.getLeadById(req.params.id, userId);
+      const lead = await storage.getLead(getParam(req.params.id), userId);
       if (!lead) {
         res.status(404).json({ message: "Lead not found" });
         return;
       }
-      const parsed = addAdvogadoSchema.safeParse(req.body);
+      const parsed = addProcessoSchema.safeParse(req.body);
       if (!parsed.success) {
-        res.status(400).json({ message: "advogadoId (number) is required", errors: parsed.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
-      const result = await storage.addAdvogadoToLead(req.params.id, parsed.data.advogadoId);
-      res.status(201).json(result);
-    } catch (error: any) {
-      if (error?.code === "23505") {
-        res.status(409).json({ message: "Advogado already linked to this lead" });
-        return;
-      }
-      console.error("Error adding advogado to lead:", error);
-      res.status(500).json({ message: "Failed to add advogado to lead" });
+      const relation = await storage.addProcessoToCase(getParam(req.params.id), parsed.data.processoId);
+      res.status(201).json(relation);
+    } catch (error) {
+      console.error("Error adding processo to case:", error);
+      res.status(500).json({ message: "Failed to add processo to case" });
     }
   });
 
-  app.delete("/api/leads/:leadId/advogados/:advogadoId", isAuthenticated, async (req: Request, res: Response) => {
+  app.delete("/api/leads/:id/processos/:processoId", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const lead = await storage.getLeadById(req.params.leadId, userId);
+      const lead = await storage.getLead(getParam(req.params.id), userId);
       if (!lead) {
         res.status(404).json({ message: "Lead not found" });
         return;
       }
-      const deleted = await storage.removeAdvogadoFromLead(req.params.leadId, parseInt(req.params.advogadoId));
+      const deleted = await storage.removeProcessoFromCase(getParam(req.params.id), getParam(req.params.processoId));
       if (!deleted) {
-        res.status(404).json({ message: "Relationship not found" });
+        res.status(404).json({ message: "Relation not found" });
         return;
       }
       res.status(204).send();
     } catch (error) {
-      console.error("Error removing advogado from lead:", error);
-      res.status(500).json({ message: "Failed to remove advogado from lead" });
+      console.error("Error removing processo from case:", error);
+      res.status(500).json({ message: "Failed to remove processo from case" });
     }
   });
 
-  // Lead-Reclamantes N:N
-  app.get("/api/leads/:id/reclamantes", isAuthenticated, async (req: Request, res: Response) => {
+  // Case-Escritório N:N
+  const addEscritorioSchema = z.object({ escritorioId: z.string().uuid() });
+
+  app.get("/api/leads/:id/escritorios", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const lead = await storage.getLeadById(req.params.id, userId);
+      const lead = await storage.getLead(getParam(req.params.id), userId);
       if (!lead) {
         res.status(404).json({ message: "Lead not found" });
         return;
       }
-      const reclamantes = await storage.getLeadReclamantes(req.params.id);
-      res.json(reclamantes);
+      const escritorios = await storage.getCaseEscritorios(getParam(req.params.id));
+      res.json(escritorios);
     } catch (error) {
-      console.error("Error fetching lead reclamantes:", error);
-      res.status(500).json({ message: "Failed to fetch lead reclamantes" });
+      console.error("Error fetching case escritorios:", error);
+      res.status(500).json({ message: "Failed to fetch case escritorios" });
     }
   });
 
-  app.post("/api/leads/:id/reclamantes", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/leads/:id/escritorios", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const lead = await storage.getLeadById(req.params.id, userId);
+      const lead = await storage.getLead(getParam(req.params.id), userId);
       if (!lead) {
         res.status(404).json({ message: "Lead not found" });
         return;
       }
-      const parsed = addReclamanteSchema.safeParse(req.body);
+      const parsed = addEscritorioSchema.safeParse(req.body);
       if (!parsed.success) {
-        res.status(400).json({ message: "reclamanteId (uuid) is required", errors: parsed.error.errors });
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
-      const result = await storage.addReclamanteToLead(req.params.id, parsed.data.reclamanteId);
-      res.status(201).json(result);
-    } catch (error: any) {
-      if (error?.code === "23505") {
-        res.status(409).json({ message: "Reclamante already linked to this lead" });
-        return;
-      }
-      console.error("Error adding reclamante to lead:", error);
-      res.status(500).json({ message: "Failed to add reclamante to lead" });
+      const relation = await storage.addEscritorioToCase(getParam(req.params.id), parsed.data.escritorioId);
+      res.status(201).json(relation);
+    } catch (error) {
+      console.error("Error adding escritorio to case:", error);
+      res.status(500).json({ message: "Failed to add escritorio to case" });
     }
   });
 
-  app.delete("/api/leads/:leadId/reclamantes/:reclamanteId", isAuthenticated, async (req: Request, res: Response) => {
+  app.delete("/api/leads/:id/escritorios/:escritorioId", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const lead = await storage.getLeadById(req.params.leadId, userId);
+      const lead = await storage.getLead(getParam(req.params.id), userId);
       if (!lead) {
         res.status(404).json({ message: "Lead not found" });
         return;
       }
-      const deleted = await storage.removeReclamanteFromLead(req.params.leadId, req.params.reclamanteId);
+      const deleted = await storage.removeEscritorioFromCase(getParam(req.params.id), getParam(req.params.escritorioId));
       if (!deleted) {
-        res.status(404).json({ message: "Relationship not found" });
+        res.status(404).json({ message: "Relation not found" });
         return;
       }
       res.status(204).send();
     } catch (error) {
-      console.error("Error removing reclamante from lead:", error);
-      res.status(500).json({ message: "Failed to remove reclamante from lead" });
+      console.error("Error removing escritorio from case:", error);
+      res.status(500).json({ message: "Failed to remove escritorio from case" });
     }
   });
 
-  // Get all lead-advogado relationships for filtering
-  app.get("/api/leads-advogados", isAuthenticated, async (req: Request, res: Response) => {
+  // Interactions
+  app.get("/api/leads/:id/interactions", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const relationships = await storage.getAllLeadAdvogadosForUser(userId);
-      res.json(relationships);
+      const lead = await storage.getLead(getParam(req.params.id), userId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      const interactions = await storage.getInteractions(getParam(req.params.id));
+      res.json(interactions);
     } catch (error) {
-      console.error("Error fetching lead-advogado relationships:", error);
-      res.status(500).json({ message: "Failed to fetch lead-advogado relationships" });
+      console.error("Error fetching interactions:", error);
+      res.status(500).json({ message: "Failed to fetch interactions" });
     }
   });
 
-  // Get all lead-reclamante relationships for filtering
-  app.get("/api/leads-reclamantes", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/leads/:id/interactions", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const relationships = await storage.getAllLeadReclamantesForUser(userId);
-      res.json(relationships);
+      const lead = await storage.getLead(getParam(req.params.id), userId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      const parsed = insertInteractionSchema.safeParse({
+        ...req.body,
+        caseId: getParam(req.params.id),
+        vendedorId: userId,
+        ownerId: userId,
+      });
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const interaction = await storage.createInteraction(parsed.data);
+      res.status(201).json(interaction);
     } catch (error) {
-      console.error("Error fetching lead-reclamante relationships:", error);
-      res.status(500).json({ message: "Failed to fetch lead-reclamante relationships" });
+      console.error("Error creating interaction:", error);
+      res.status(500).json({ message: "Failed to create interaction" });
+    }
+  });
+
+  app.delete("/api/interactions/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const deleted = await storage.deleteInteraction(getParam(req.params.id), userId);
+      if (!deleted) {
+        res.status(404).json({ message: "Interaction not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting interaction:", error);
+      res.status(500).json({ message: "Failed to delete interaction" });
+    }
+  });
+
+  // Lembretes
+  app.get("/api/lembretes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const lembretes = await storage.getLembretes(userId);
+      res.json(lembretes);
+    } catch (error) {
+      console.error("Error fetching lembretes:", error);
+      res.status(500).json({ message: "Failed to fetch lembretes" });
+    }
+  });
+
+  app.post("/api/lembretes", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const parsed = insertLembreteSchema.safeParse({ ...req.body, ownerId: userId });
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const lembrete = await storage.createLembrete(parsed.data);
+      res.status(201).json(lembrete);
+    } catch (error) {
+      console.error("Error creating lembrete:", error);
+      res.status(500).json({ message: "Failed to create lembrete" });
+    }
+  });
+
+  app.patch("/api/lembretes/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const partial = insertLembreteSchema.partial().safeParse(req.body);
+      if (!partial.success) {
+        res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
+        return;
+      }
+      const lembrete = await storage.updateLembrete(getParam(req.params.id), userId, partial.data);
+      if (!lembrete) {
+        res.status(404).json({ message: "Lembrete not found" });
+        return;
+      }
+      res.json(lembrete);
+    } catch (error) {
+      console.error("Error updating lembrete:", error);
+      res.status(500).json({ message: "Failed to update lembrete" });
+    }
+  });
+
+  app.delete("/api/lembretes/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const deleted = await storage.deleteLembrete(getParam(req.params.id), userId);
+      if (!deleted) {
+        res.status(404).json({ message: "Lembrete not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting lembrete:", error);
+      res.status(500).json({ message: "Failed to delete lembrete" });
     }
   });
 
@@ -645,7 +1020,7 @@ export async function registerRoutes(
   app.get("/api/products/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const product = await storage.getProduct(req.params.id, userId);
+      const product = await storage.getProduct(getParam(req.params.id), userId);
       if (!product) {
         res.status(404).json({ message: "Product not found" });
         return;
@@ -681,7 +1056,7 @@ export async function registerRoutes(
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const product = await storage.updateProduct(req.params.id, userId, partial.data);
+      const product = await storage.updateProduct(getParam(req.params.id), userId, partial.data);
       if (!product) {
         res.status(404).json({ message: "Product not found" });
         return;
@@ -696,7 +1071,7 @@ export async function registerRoutes(
   app.delete("/api/products/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteProduct(req.params.id, userId);
+      const deleted = await storage.deleteProduct(getParam(req.params.id), userId);
       if (!deleted) {
         res.status(404).json({ message: "Product not found" });
         return;
@@ -723,7 +1098,7 @@ export async function registerRoutes(
   app.get("/api/activities/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const activity = await storage.getActivity(req.params.id, userId);
+      const activity = await storage.getActivity(getParam(req.params.id), userId);
       if (!activity) {
         res.status(404).json({ message: "Activity not found" });
         return;
@@ -759,7 +1134,7 @@ export async function registerRoutes(
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const activity = await storage.updateActivity(req.params.id, userId, partial.data);
+      const activity = await storage.updateActivity(getParam(req.params.id), userId, partial.data);
       if (!activity) {
         res.status(404).json({ message: "Activity not found" });
         return;
@@ -774,7 +1149,7 @@ export async function registerRoutes(
   app.delete("/api/activities/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteActivity(req.params.id, userId);
+      const deleted = await storage.deleteActivity(getParam(req.params.id), userId);
       if (!deleted) {
         res.status(404).json({ message: "Activity not found" });
         return;
@@ -801,7 +1176,7 @@ export async function registerRoutes(
   app.get("/api/proposals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const proposal = await storage.getProposal(req.params.id, userId);
+      const proposal = await storage.getProposal(getParam(req.params.id), userId);
       if (!proposal) {
         res.status(404).json({ message: "Proposal not found" });
         return;
@@ -837,7 +1212,7 @@ export async function registerRoutes(
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const proposal = await storage.updateProposal(req.params.id, userId, partial.data);
+      const proposal = await storage.updateProposal(getParam(req.params.id), userId, partial.data);
       if (!proposal) {
         res.status(404).json({ message: "Proposal not found" });
         return;
@@ -852,7 +1227,7 @@ export async function registerRoutes(
   app.delete("/api/proposals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteProposal(req.params.id, userId);
+      const deleted = await storage.deleteProposal(getParam(req.params.id), userId);
       if (!deleted) {
         res.status(404).json({ message: "Proposal not found" });
         return;
@@ -865,15 +1240,15 @@ export async function registerRoutes(
   });
 
   // Proposal Items
-  app.get("/api/proposals/:proposalId/items", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/proposals/:id/items", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const proposal = await storage.getProposal(req.params.proposalId, userId);
+      const proposal = await storage.getProposal(getParam(req.params.id), userId);
       if (!proposal) {
         res.status(404).json({ message: "Proposal not found" });
         return;
       }
-      const items = await storage.getProposalItems(req.params.proposalId);
+      const items = await storage.getProposalItems(getParam(req.params.id));
       res.json(items);
     } catch (error) {
       console.error("Error fetching proposal items:", error);
@@ -881,17 +1256,17 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/proposal-items", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/proposals/:id/items", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertProposalItemSchema.safeParse(req.body);
-      if (!parsed.success) {
-        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
-        return;
-      }
-      const proposal = await storage.getProposal(parsed.data.proposalId, userId);
+      const proposal = await storage.getProposal(getParam(req.params.id), userId);
       if (!proposal) {
         res.status(404).json({ message: "Proposal not found" });
+        return;
+      }
+      const parsed = insertProposalItemSchema.safeParse({ ...req.body, proposalId: getParam(req.params.id) });
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
       const item = await storage.createProposalItem(parsed.data);
@@ -904,23 +1279,16 @@ export async function registerRoutes(
 
   app.patch("/api/proposal-items/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const existingItem = await storage.getProposalItem(req.params.id);
-      if (!existingItem) {
-        res.status(404).json({ message: "Proposal item not found" });
-        return;
-      }
-      const proposal = await storage.getProposal(existingItem.proposalId, userId);
-      if (!proposal) {
-        res.status(404).json({ message: "Proposal item not found" });
-        return;
-      }
       const partial = insertProposalItemSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const item = await storage.updateProposalItem(req.params.id, partial.data);
+      const item = await storage.updateProposalItem(getParam(req.params.id), partial.data);
+      if (!item) {
+        res.status(404).json({ message: "Proposal item not found" });
+        return;
+      }
       res.json(item);
     } catch (error) {
       console.error("Error updating proposal item:", error);
@@ -930,18 +1298,7 @@ export async function registerRoutes(
 
   app.delete("/api/proposal-items/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const existingItem = await storage.getProposalItem(req.params.id);
-      if (!existingItem) {
-        res.status(404).json({ message: "Proposal item not found" });
-        return;
-      }
-      const proposal = await storage.getProposal(existingItem.proposalId, userId);
-      if (!proposal) {
-        res.status(404).json({ message: "Proposal item not found" });
-        return;
-      }
-      await storage.deleteProposalItem(req.params.id);
+      await storage.deleteProposalItem(getParam(req.params.id));
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting proposal item:", error);
@@ -958,6 +1315,21 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching pipeline triggers:", error);
       res.status(500).json({ message: "Failed to fetch pipeline triggers" });
+    }
+  });
+
+  app.get("/api/pipeline-triggers/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const trigger = await storage.getPipelineTrigger(getParam(req.params.id), userId);
+      if (!trigger) {
+        res.status(404).json({ message: "Pipeline trigger not found" });
+        return;
+      }
+      res.json(trigger);
+    } catch (error) {
+      console.error("Error fetching pipeline trigger:", error);
+      res.status(500).json({ message: "Failed to fetch pipeline trigger" });
     }
   });
 
@@ -985,7 +1357,7 @@ export async function registerRoutes(
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const trigger = await storage.updatePipelineTrigger(req.params.id, userId, partial.data);
+      const trigger = await storage.updatePipelineTrigger(getParam(req.params.id), userId, partial.data);
       if (!trigger) {
         res.status(404).json({ message: "Pipeline trigger not found" });
         return;
@@ -1000,7 +1372,7 @@ export async function registerRoutes(
   app.delete("/api/pipeline-triggers/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deletePipelineTrigger(req.params.id, userId);
+      const deleted = await storage.deletePipelineTrigger(getParam(req.params.id), userId);
       if (!deleted) {
         res.status(404).json({ message: "Pipeline trigger not found" });
         return;
@@ -1012,206 +1384,20 @@ export async function registerRoutes(
     }
   });
 
-  // Interactions
-  app.get("/api/leads/:leadId/interactions", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const lead = await storage.getLead(req.params.leadId, userId);
-      if (!lead) {
-        res.status(404).json({ message: "Lead not found" });
-        return;
-      }
-      const interactions = await storage.getInteractions(req.params.leadId);
-      res.json(interactions);
-    } catch (error) {
-      console.error("Error fetching interactions:", error);
-      res.status(500).json({ message: "Failed to fetch interactions" });
-    }
-  });
-
-  app.post("/api/interactions", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const userName = (req as AuthRequest).user!.name;
-      const parsed = insertInteractionSchema.safeParse({ ...req.body, ownerId: userId, vendedorId: userId });
-      if (!parsed.success) {
-        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
-        return;
-      }
-      const lead = await storage.getLead(parsed.data.leadId, userId);
-      if (!lead) {
-        res.status(404).json({ message: "Lead not found" });
-        return;
-      }
-      const interaction = await storage.createInteraction(parsed.data);
-      const interactionWithName = { ...interaction, vendedorName: userName };
-      wsManager.broadcastInteractionCreated(interactionWithName);
-      res.status(201).json(interactionWithName);
-    } catch (error) {
-      console.error("Error creating interaction:", error);
-      res.status(500).json({ message: "Failed to create interaction" });
-    }
-  });
-
-  app.delete("/api/interactions/:id", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteInteraction(req.params.id, userId);
-      if (!deleted) {
-        res.status(404).json({ message: "Interaction not found" });
-        return;
-      }
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting interaction:", error);
-      res.status(500).json({ message: "Failed to delete interaction" });
-    }
-  });
-
-  // Clients routes
-  app.get("/api/clients", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const clientsList = await storage.getClients(userId);
-      res.json(clientsList);
-    } catch (error) {
-      console.error("Error fetching clients:", error);
-      res.status(500).json({ message: "Failed to fetch clients" });
-    }
-  });
-
-  app.post("/api/clients", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const validated = insertClientSchema.parse({ ...req.body, ownerId: userId });
-      const client = await storage.createClient(validated);
-      res.status(201).json(client);
-    } catch (error) {
-      console.error("Error creating client:", error);
-      res.status(500).json({ message: "Failed to create client" });
-    }
-  });
-
-  app.patch("/api/clients/:id", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const client = await storage.updateClient(req.params.id, req.body, userId);
-      if (!client) {
-        res.status(404).json({ message: "Client not found" });
-        return;
-      }
-      res.json(client);
-    } catch (error) {
-      console.error("Error updating client:", error);
-      res.status(500).json({ message: "Failed to update client" });
-    }
-  });
-
-  app.delete("/api/clients/:id", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteClient(req.params.id, userId);
-      if (!deleted) {
-        res.status(404).json({ message: "Client not found" });
-        return;
-      }
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting client:", error);
-      res.status(500).json({ message: "Failed to delete client" });
-    }
-  });
-
-  // Opportunities routes
-  app.get("/api/opportunities", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const opportunitiesList = await storage.getOpportunities(userId);
-      res.json(opportunitiesList);
-    } catch (error) {
-      console.error("Error fetching opportunities:", error);
-      res.status(500).json({ message: "Failed to fetch opportunities" });
-    }
-  });
-
-  app.post("/api/opportunities", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const validated = insertOpportunitySchema.parse({ ...req.body, ownerId: userId });
-      const opportunity = await storage.createOpportunity(validated);
-      res.status(201).json(opportunity);
-    } catch (error) {
-      console.error("Error creating opportunity:", error);
-      res.status(500).json({ message: "Failed to create opportunity" });
-    }
-  });
-
-  app.patch("/api/opportunities/:id", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const opportunity = await storage.updateOpportunity(req.params.id, req.body, userId);
-      if (!opportunity) {
-        res.status(404).json({ message: "Opportunity not found" });
-        return;
-      }
-      res.json(opportunity);
-    } catch (error) {
-      console.error("Error updating opportunity:", error);
-      res.status(500).json({ message: "Failed to update opportunity" });
-    }
-  });
-
-  app.delete("/api/opportunities/:id", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteOpportunity(req.params.id, userId);
-      if (!deleted) {
-        res.status(404).json({ message: "Opportunity not found" });
-        return;
-      }
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting opportunity:", error);
-      res.status(500).json({ message: "Failed to delete opportunity" });
-    }
-  });
-
   // Users management
   app.get("/api/users", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const usersList = await storage.getUsers();
-      res.json(usersList);
+      const users = await storage.getUsers();
+      res.json(users);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 
-  app.post("/api/users", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const { name, email, password } = req.body;
-      if (!name || !email || !password) {
-        res.status(400).json({ message: "Name, email and password are required" });
-        return;
-      }
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        res.status(400).json({ message: "Email already in use" });
-        return;
-      }
-      const bcrypt = require("bcrypt");
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const newUser = await storage.createUser({ name, email, password: hashedPassword });
-      res.status(201).json({ id: newUser.id, name: newUser.name, email: newUser.email, createdAt: newUser.createdAt });
-    } catch (error) {
-      console.error("Error creating user:", error);
-      res.status(500).json({ message: "Failed to create user" });
-    }
-  });
-
   app.delete("/api/users/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const deleted = await storage.deleteUser(req.params.id);
+      const deleted = await storage.deleteUser(getParam(req.params.id));
       if (!deleted) {
         res.status(404).json({ message: "User not found" });
         return;

@@ -2,26 +2,33 @@ import {
   todosAdvogadosInfos,
   escritorios,
   reclamantes,
-  leads,
-  leadsAdvogados,
-  leadsReclamantes,
+  cases,
+  processos,
+  resultados,
+  processoAdvogado,
+  processoReclamante,
+  escritorioCase,
+  caseProcesso,
   activities,
   proposals,
   proposalItems,
   pipelineTriggers,
   interactions,
   products,
-  clients,
-  opportunities,
   users,
+  lembretes,
   type TodosAdvogadosInfos,
   type InsertTodosAdvogadosInfos,
   type Escritorio,
   type InsertEscritorio,
   type Reclamante,
   type InsertReclamante,
-  type Lead,
-  type InsertLead,
+  type Case,
+  type InsertCase,
+  type Processo,
+  type InsertProcesso,
+  type Resultado,
+  type InsertResultado,
   type Activity,
   type InsertActivity,
   type Proposal,
@@ -34,20 +41,27 @@ import {
   type InsertInteraction,
   type Product,
   type InsertProduct,
-  type Client,
-  type InsertClient,
-  type Opportunity,
-  type InsertOpportunity,
-  type LeadAdvogado,
-  type InsertLeadAdvogado,
-  type LeadReclamante,
-  type InsertLeadReclamante,
+  type ProcessoAdvogado,
+  type InsertProcessoAdvogado,
+  type ProcessoReclamante,
+  type InsertProcessoReclamante,
+  type EscritorioCase,
+  type InsertEscritorioCase,
+  type CaseProcesso,
+  type InsertCaseProcesso,
+  type Lembrete,
+  type InsertLembrete,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
 
+// Backward compatibility aliases
+type Lead = Case;
+type InsertLead = InsertCase;
+const leads = cases;
+
 export interface IStorage {
-  // Todos Advogados Infos - Dados compartilhados entre todos os usuários
+  // Advogados
   getTodosAdvogadosInfos(): Promise<TodosAdvogadosInfos[]>;
   getTodosAdvogadosInfo(id: number): Promise<TodosAdvogadosInfos | undefined>;
   createTodosAdvogadosInfo(info: InsertTodosAdvogadosInfos): Promise<TodosAdvogadosInfos>;
@@ -68,12 +82,55 @@ export interface IStorage {
   updateReclamante(id: string, ownerId: string, reclamante: Partial<InsertReclamante>): Promise<Reclamante | undefined>;
   deleteReclamante(id: string, ownerId: string): Promise<boolean>;
 
-  // Leads
+  // Processos
+  getProcessos(ownerId: string): Promise<Processo[]>;
+  getProcesso(id: string, ownerId: string): Promise<Processo | undefined>;
+  getProcessoByCnj(cnj: string, ownerId: string): Promise<Processo | undefined>;
+  createProcesso(processo: InsertProcesso): Promise<Processo>;
+  updateProcesso(id: string, ownerId: string, processo: Partial<InsertProcesso>): Promise<Processo | undefined>;
+  deleteProcesso(id: string, ownerId: string): Promise<boolean>;
+
+  // Resultados
+  getResultados(ownerId: string): Promise<Resultado[]>;
+  getResultado(id: string, ownerId: string): Promise<Resultado | undefined>;
+  getResultadoByProcesso(processoId: string): Promise<Resultado | undefined>;
+  createResultado(resultado: InsertResultado): Promise<Resultado>;
+  updateResultado(id: string, ownerId: string, resultado: Partial<InsertResultado>): Promise<Resultado | undefined>;
+  deleteResultado(id: string, ownerId: string): Promise<boolean>;
+
+  // Cases (formerly Leads)
+  getCases(ownerId: string, pipelineType?: string): Promise<Case[]>;
+  getCase(id: string, ownerId: string): Promise<Case | undefined>;
+  createCase(caseData: InsertCase): Promise<Case>;
+  updateCase(id: string, ownerId: string, caseData: Partial<InsertCase>): Promise<Case | undefined>;
+  deleteCase(id: string, ownerId: string): Promise<boolean>;
+
+  // Backward compatibility: Leads = Cases
   getLeads(ownerId: string, pipelineType?: string): Promise<Lead[]>;
   getLead(id: string, ownerId: string): Promise<Lead | undefined>;
   createLead(lead: InsertLead): Promise<Lead>;
   updateLead(id: string, ownerId: string, lead: Partial<InsertLead>): Promise<Lead | undefined>;
   deleteLead(id: string, ownerId: string): Promise<boolean>;
+
+  // Processo-Advogado N:N
+  getProcessoAdvogados(processoId: string): Promise<TodosAdvogadosInfos[]>;
+  addAdvogadoToProcesso(processoId: string, advogadoId: number): Promise<ProcessoAdvogado>;
+  removeAdvogadoFromProcesso(processoId: string, advogadoId: number): Promise<boolean>;
+
+  // Processo-Reclamante N:N
+  getProcessoReclamantes(processoId: string): Promise<Reclamante[]>;
+  addReclamanteToProcesso(processoId: string, reclamanteId: string): Promise<ProcessoReclamante>;
+  removeReclamanteFromProcesso(processoId: string, reclamanteId: string): Promise<boolean>;
+
+  // Escritorio-Case N:N
+  getCaseEscritorios(caseId: string): Promise<Escritorio[]>;
+  addEscritorioToCase(caseId: string, escritorioId: string): Promise<EscritorioCase>;
+  removeEscritorioFromCase(caseId: string, escritorioId: string): Promise<boolean>;
+
+  // Case-Processo N:N
+  getCaseProcessos(caseId: string): Promise<Processo[]>;
+  addProcessoToCase(caseId: string, processoId: string): Promise<CaseProcesso>;
+  removeProcessoFromCase(caseId: string, processoId: string): Promise<boolean>;
 
   // Products
   getProducts(ownerId: string): Promise<Product[]>;
@@ -112,21 +169,16 @@ export interface IStorage {
   getMatchingTriggers(ownerId: string, pipelineType: string, fromStage: string | null, toStage: string): Promise<PipelineTrigger[]>;
 
   // Interactions
-  getInteractions(leadId: string): Promise<(Interaction & { vendedorName?: string | null })[]>;
+  getInteractions(caseId: string): Promise<(Interaction & { vendedorName?: string | null })[]>;
   createInteraction(interaction: InsertInteraction): Promise<Interaction>;
   deleteInteraction(id: string, ownerId: string): Promise<boolean>;
 
-  // Clients
-  getClients(ownerId: string): Promise<Client[]>;
-  createClient(client: InsertClient): Promise<Client>;
-  updateClient(id: string, client: Partial<InsertClient>, ownerId: string): Promise<Client | undefined>;
-  deleteClient(id: string, ownerId: string): Promise<boolean>;
-
-  // Opportunities
-  getOpportunities(ownerId: string): Promise<Opportunity[]>;
-  createOpportunity(opportunity: InsertOpportunity): Promise<Opportunity>;
-  updateOpportunity(id: string, opportunity: Partial<InsertOpportunity>, ownerId: string): Promise<Opportunity | undefined>;
-  deleteOpportunity(id: string, ownerId: string): Promise<boolean>;
+  // Lembretes
+  getLembretes(ownerId: string): Promise<Lembrete[]>;
+  getLembrete(id: string, ownerId: string): Promise<Lembrete | undefined>;
+  createLembrete(lembrete: InsertLembrete): Promise<Lembrete>;
+  updateLembrete(id: string, ownerId: string, lembrete: Partial<InsertLembrete>): Promise<Lembrete | undefined>;
+  deleteLembrete(id: string, ownerId: string): Promise<boolean>;
 
   // Users
   getUsers(): Promise<{ id: string; name: string; email: string; createdAt: Date | null }[]>;
@@ -134,27 +186,13 @@ export interface IStorage {
   createUser(user: { name: string; email: string; password: string }): Promise<{ id: string; name: string; email: string; createdAt: Date | null }>;
   deleteUser(id: string): Promise<boolean>;
 
-  // Sync Advogados to Leads
+  // Sync functions
   syncAdvogadosToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
-  
-  // Sync Reclamantes to Leads
   syncReclamantesToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
-
-  // Lead-Advogados N:N
-  getLeadAdvogados(leadId: string): Promise<TodosAdvogadosInfos[]>;
-  addAdvogadoToLead(leadId: string, advogadoId: number): Promise<LeadAdvogado>;
-  removeAdvogadoFromLead(leadId: string, advogadoId: number): Promise<boolean>;
-  getAllLeadAdvogadosForUser(ownerId: string): Promise<{ leadId: string; advogadoId: number }[]>;
-
-  // Lead-Reclamantes N:N
-  getLeadReclamantes(leadId: string): Promise<Reclamante[]>;
-  addReclamanteToLead(leadId: string, reclamanteId: string): Promise<LeadReclamante>;
-  removeReclamanteFromLead(leadId: string, reclamanteId: string): Promise<boolean>;
-  getAllLeadReclamantesForUser(ownerId: string): Promise<{ leadId: string; reclamanteId: string }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
-  // Todos Advogados Infos - Dados compartilhados entre todos os usuários
+  // Advogados
   async getTodosAdvogadosInfos(): Promise<TodosAdvogadosInfos[]> {
     return db.select().from(todosAdvogadosInfos).orderBy(desc(todosAdvogadosInfos.createdAt));
   }
@@ -241,37 +279,214 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Leads
-  async getLeads(ownerId: string, pipelineType?: string): Promise<Lead[]> {
-    if (pipelineType) {
-      return db.select().from(leads).where(
-        and(eq(leads.ownerId, ownerId), eq(leads.pipelineType, pipelineType as any))
-      ).orderBy(desc(leads.createdAt));
-    }
-    return db.select().from(leads).where(eq(leads.ownerId, ownerId)).orderBy(desc(leads.createdAt));
+  // Processos
+  async getProcessos(ownerId: string): Promise<Processo[]> {
+    return db.select().from(processos).where(eq(processos.ownerId, ownerId)).orderBy(desc(processos.createdAt));
   }
 
-  async getLead(id: string, ownerId: string): Promise<Lead | undefined> {
-    const [lead] = await db.select().from(leads).where(and(eq(leads.id, id), eq(leads.ownerId, ownerId)));
-    return lead;
+  async getProcesso(id: string, ownerId: string): Promise<Processo | undefined> {
+    const [processo] = await db.select().from(processos).where(and(eq(processos.id, id), eq(processos.ownerId, ownerId)));
+    return processo;
   }
 
-  async createLead(lead: InsertLead): Promise<Lead> {
-    const [newLead] = await db.insert(leads).values(lead).returning();
-    return newLead;
+  async getProcessoByCnj(cnj: string, ownerId: string): Promise<Processo | undefined> {
+    const [processo] = await db.select().from(processos).where(and(eq(processos.cnj, cnj), eq(processos.ownerId, ownerId)));
+    return processo;
   }
 
-  async updateLead(id: string, ownerId: string, lead: Partial<InsertLead>): Promise<Lead | undefined> {
+  async createProcesso(processo: InsertProcesso): Promise<Processo> {
+    const [newProcesso] = await db.insert(processos).values(processo).returning();
+    return newProcesso;
+  }
+
+  async updateProcesso(id: string, ownerId: string, processo: Partial<InsertProcesso>): Promise<Processo | undefined> {
     const [updated] = await db
-      .update(leads)
-      .set({ ...lead, updatedAt: new Date() })
-      .where(and(eq(leads.id, id), eq(leads.ownerId, ownerId)))
+      .update(processos)
+      .set({ ...processo, updatedAt: new Date() })
+      .where(and(eq(processos.id, id), eq(processos.ownerId, ownerId)))
       .returning();
     return updated;
   }
 
+  async deleteProcesso(id: string, ownerId: string): Promise<boolean> {
+    const result = await db.delete(processos).where(and(eq(processos.id, id), eq(processos.ownerId, ownerId))).returning();
+    return result.length > 0;
+  }
+
+  // Resultados
+  async getResultados(ownerId: string): Promise<Resultado[]> {
+    return db.select().from(resultados).where(eq(resultados.ownerId, ownerId)).orderBy(desc(resultados.createdAt));
+  }
+
+  async getResultado(id: string, ownerId: string): Promise<Resultado | undefined> {
+    const [resultado] = await db.select().from(resultados).where(and(eq(resultados.id, id), eq(resultados.ownerId, ownerId)));
+    return resultado;
+  }
+
+  async getResultadoByProcesso(processoId: string): Promise<Resultado | undefined> {
+    const [resultado] = await db.select().from(resultados).where(eq(resultados.processoId, processoId));
+    return resultado;
+  }
+
+  async createResultado(resultado: InsertResultado): Promise<Resultado> {
+    const [newResultado] = await db.insert(resultados).values(resultado).returning();
+    return newResultado;
+  }
+
+  async updateResultado(id: string, ownerId: string, resultado: Partial<InsertResultado>): Promise<Resultado | undefined> {
+    const [updated] = await db
+      .update(resultados)
+      .set({ ...resultado, updatedAt: new Date() })
+      .where(and(eq(resultados.id, id), eq(resultados.ownerId, ownerId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteResultado(id: string, ownerId: string): Promise<boolean> {
+    const result = await db.delete(resultados).where(and(eq(resultados.id, id), eq(resultados.ownerId, ownerId))).returning();
+    return result.length > 0;
+  }
+
+  // Cases
+  async getCases(ownerId: string, pipelineType?: string): Promise<Case[]> {
+    if (pipelineType) {
+      return db.select().from(cases).where(
+        and(eq(cases.ownerId, ownerId), eq(cases.pipelineType, pipelineType as any))
+      ).orderBy(desc(cases.createdAt));
+    }
+    return db.select().from(cases).where(eq(cases.ownerId, ownerId)).orderBy(desc(cases.createdAt));
+  }
+
+  async getCase(id: string, ownerId: string): Promise<Case | undefined> {
+    const [caseData] = await db.select().from(cases).where(and(eq(cases.id, id), eq(cases.ownerId, ownerId)));
+    return caseData;
+  }
+
+  async createCase(caseData: InsertCase): Promise<Case> {
+    const [newCase] = await db.insert(cases).values(caseData).returning();
+    return newCase;
+  }
+
+  async updateCase(id: string, ownerId: string, caseData: Partial<InsertCase>): Promise<Case | undefined> {
+    const [updated] = await db
+      .update(cases)
+      .set({ ...caseData, updatedAt: new Date() })
+      .where(and(eq(cases.id, id), eq(cases.ownerId, ownerId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteCase(id: string, ownerId: string): Promise<boolean> {
+    const result = await db.delete(cases).where(and(eq(cases.id, id), eq(cases.ownerId, ownerId))).returning();
+    return result.length > 0;
+  }
+
+  // Backward compatibility: Leads = Cases
+  async getLeads(ownerId: string, pipelineType?: string): Promise<Lead[]> {
+    return this.getCases(ownerId, pipelineType);
+  }
+
+  async getLead(id: string, ownerId: string): Promise<Lead | undefined> {
+    return this.getCase(id, ownerId);
+  }
+
+  async createLead(lead: InsertLead): Promise<Lead> {
+    return this.createCase(lead);
+  }
+
+  async updateLead(id: string, ownerId: string, lead: Partial<InsertLead>): Promise<Lead | undefined> {
+    return this.updateCase(id, ownerId, lead);
+  }
+
   async deleteLead(id: string, ownerId: string): Promise<boolean> {
-    const result = await db.delete(leads).where(and(eq(leads.id, id), eq(leads.ownerId, ownerId))).returning();
+    return this.deleteCase(id, ownerId);
+  }
+
+  // Processo-Advogado N:N
+  async getProcessoAdvogados(processoId: string): Promise<TodosAdvogadosInfos[]> {
+    const result = await db
+      .select({ advogado: todosAdvogadosInfos })
+      .from(processoAdvogado)
+      .innerJoin(todosAdvogadosInfos, eq(processoAdvogado.advogadoId, todosAdvogadosInfos.id))
+      .where(eq(processoAdvogado.processoId, processoId));
+    return result.map(r => r.advogado);
+  }
+
+  async addAdvogadoToProcesso(processoId: string, advogadoId: number): Promise<ProcessoAdvogado> {
+    const [newRelation] = await db.insert(processoAdvogado).values({ processoId, advogadoId }).returning();
+    return newRelation;
+  }
+
+  async removeAdvogadoFromProcesso(processoId: string, advogadoId: number): Promise<boolean> {
+    const result = await db.delete(processoAdvogado)
+      .where(and(eq(processoAdvogado.processoId, processoId), eq(processoAdvogado.advogadoId, advogadoId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Processo-Reclamante N:N
+  async getProcessoReclamantes(processoId: string): Promise<Reclamante[]> {
+    const result = await db
+      .select({ reclamante: reclamantes })
+      .from(processoReclamante)
+      .innerJoin(reclamantes, eq(processoReclamante.reclamanteId, reclamantes.id))
+      .where(eq(processoReclamante.processoId, processoId));
+    return result.map(r => r.reclamante);
+  }
+
+  async addReclamanteToProcesso(processoId: string, reclamanteId: string): Promise<ProcessoReclamante> {
+    const [newRelation] = await db.insert(processoReclamante).values({ processoId, reclamanteId }).returning();
+    return newRelation;
+  }
+
+  async removeReclamanteFromProcesso(processoId: string, reclamanteId: string): Promise<boolean> {
+    const result = await db.delete(processoReclamante)
+      .where(and(eq(processoReclamante.processoId, processoId), eq(processoReclamante.reclamanteId, reclamanteId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Escritorio-Case N:N
+  async getCaseEscritorios(caseId: string): Promise<Escritorio[]> {
+    const result = await db
+      .select({ escritorio: escritorios })
+      .from(escritorioCase)
+      .innerJoin(escritorios, eq(escritorioCase.escritorioId, escritorios.id))
+      .where(eq(escritorioCase.caseId, caseId));
+    return result.map(r => r.escritorio);
+  }
+
+  async addEscritorioToCase(caseId: string, escritorioId: string): Promise<EscritorioCase> {
+    const [newRelation] = await db.insert(escritorioCase).values({ caseId, escritorioId }).returning();
+    return newRelation;
+  }
+
+  async removeEscritorioFromCase(caseId: string, escritorioId: string): Promise<boolean> {
+    const result = await db.delete(escritorioCase)
+      .where(and(eq(escritorioCase.caseId, caseId), eq(escritorioCase.escritorioId, escritorioId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Case-Processo N:N
+  async getCaseProcessos(caseId: string): Promise<Processo[]> {
+    const result = await db
+      .select({ processo: processos })
+      .from(caseProcesso)
+      .innerJoin(processos, eq(caseProcesso.processoId, processos.id))
+      .where(eq(caseProcesso.caseId, caseId));
+    return result.map(r => r.processo);
+  }
+
+  async addProcessoToCase(caseId: string, processoId: string): Promise<CaseProcesso> {
+    const [newRelation] = await db.insert(caseProcesso).values({ caseId, processoId }).returning();
+    return newRelation;
+  }
+
+  async removeProcessoFromCase(caseId: string, processoId: string): Promise<boolean> {
+    const result = await db.delete(caseProcesso)
+      .where(and(eq(caseProcesso.caseId, caseId), eq(caseProcesso.processoId, processoId)))
+      .returning();
     return result.length > 0;
   }
 
@@ -429,11 +644,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Interactions
-  async getInteractions(leadId: string): Promise<(Interaction & { vendedorName?: string | null })[]> {
+  async getInteractions(caseId: string): Promise<(Interaction & { vendedorName?: string | null })[]> {
     const result = await db
       .select({
         id: interactions.id,
-        leadId: interactions.leadId,
+        caseId: interactions.caseId,
         vendedorId: interactions.vendedorId,
         ownerId: interactions.ownerId,
         type: interactions.type,
@@ -447,7 +662,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(interactions)
       .leftJoin(users, eq(interactions.vendedorId, users.id))
-      .where(eq(interactions.leadId, leadId))
+      .where(eq(interactions.caseId, caseId))
       .orderBy(desc(interactions.createdAt));
     return result;
   }
@@ -462,51 +677,32 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Clients
-  async getClients(ownerId: string): Promise<Client[]> {
-    return db.select().from(clients).where(eq(clients.ownerId, ownerId)).orderBy(desc(clients.createdAt));
+  // Lembretes
+  async getLembretes(ownerId: string): Promise<Lembrete[]> {
+    return db.select().from(lembretes).where(eq(lembretes.ownerId, ownerId)).orderBy(desc(lembretes.dataLembrete));
   }
 
-  async createClient(client: InsertClient): Promise<Client> {
-    const [newClient] = await db.insert(clients).values(client).returning();
-    return newClient;
+  async getLembrete(id: string, ownerId: string): Promise<Lembrete | undefined> {
+    const [lembrete] = await db.select().from(lembretes).where(and(eq(lembretes.id, id), eq(lembretes.ownerId, ownerId)));
+    return lembrete;
   }
 
-  async updateClient(id: string, client: Partial<InsertClient>, ownerId: string): Promise<Client | undefined> {
+  async createLembrete(lembrete: InsertLembrete): Promise<Lembrete> {
+    const [newLembrete] = await db.insert(lembretes).values(lembrete).returning();
+    return newLembrete;
+  }
+
+  async updateLembrete(id: string, ownerId: string, lembrete: Partial<InsertLembrete>): Promise<Lembrete | undefined> {
     const [updated] = await db
-      .update(clients)
-      .set({ ...client, updatedAt: new Date() })
-      .where(and(eq(clients.id, id), eq(clients.ownerId, ownerId)))
+      .update(lembretes)
+      .set(lembrete)
+      .where(and(eq(lembretes.id, id), eq(lembretes.ownerId, ownerId)))
       .returning();
     return updated;
   }
 
-  async deleteClient(id: string, ownerId: string): Promise<boolean> {
-    const result = await db.delete(clients).where(and(eq(clients.id, id), eq(clients.ownerId, ownerId))).returning();
-    return result.length > 0;
-  }
-
-  // Opportunities
-  async getOpportunities(ownerId: string): Promise<Opportunity[]> {
-    return db.select().from(opportunities).where(eq(opportunities.ownerId, ownerId)).orderBy(desc(opportunities.createdAt));
-  }
-
-  async createOpportunity(opportunity: InsertOpportunity): Promise<Opportunity> {
-    const [newOpportunity] = await db.insert(opportunities).values(opportunity).returning();
-    return newOpportunity;
-  }
-
-  async updateOpportunity(id: string, opportunity: Partial<InsertOpportunity>, ownerId: string): Promise<Opportunity | undefined> {
-    const [updated] = await db
-      .update(opportunities)
-      .set({ ...opportunity, updatedAt: new Date() })
-      .where(and(eq(opportunities.id, id), eq(opportunities.ownerId, ownerId)))
-      .returning();
-    return updated;
-  }
-
-  async deleteOpportunity(id: string, ownerId: string): Promise<boolean> {
-    const result = await db.delete(opportunities).where(and(eq(opportunities.id, id), eq(opportunities.ownerId, ownerId))).returning();
+  async deleteLembrete(id: string, ownerId: string): Promise<boolean> {
+    const result = await db.delete(lembretes).where(and(eq(lembretes.id, id), eq(lembretes.ownerId, ownerId))).returning();
     return result.length > 0;
   }
 
@@ -545,6 +741,7 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
+  // Sync advogados to cases
   async syncAdvogadosToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }> {
     const advogadosToSync = await db.select().from(todosAdvogadosInfos).where(eq(todosAdvogadosInfos.enviadoParaPipeline, false));
     
@@ -555,31 +752,30 @@ export class DatabaseStorage implements IStorage {
     for (const advogado of advogadosToSync) {
       const titulo = `${advogado.nome} - ${advogado.cpf || 'Sem CPF'}`;
       
-      const [newLead] = await db.insert(leads).values({
+      const [newCase] = await db.insert(cases).values({
         titulo,
         pipelineType: 'advogados',
         stage: 'novo_lead',
-        todosAdvogadosInfosId: advogado.id,
+        position: 0,
         valor: advogado.valorCausa,
-        ownerId: userId,
         vendedorId: userId,
+        ownerId: userId,
       }).returning();
       
       await db.update(todosAdvogadosInfos)
         .set({ enviadoParaPipeline: true })
         .where(eq(todosAdvogadosInfos.id, advogado.id));
       
-      createdLeads.push(newLead);
+      createdLeads.push(newCase);
       synced++;
     }
     
     return { synced, skipped, leads: createdLeads };
   }
 
+  // Sync reclamantes to cases
   async syncReclamantesToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }> {
-    const reclamantesToSync = await db.select().from(reclamantes).where(
-      eq(reclamantes.enviadoParaPipeline, false)
-    );
+    const reclamantesToSync = await db.select().from(reclamantes).where(eq(reclamantes.enviadoParaPipeline, false));
     
     let synced = 0;
     let skipped = 0;
@@ -588,85 +784,25 @@ export class DatabaseStorage implements IStorage {
     for (const reclamante of reclamantesToSync) {
       const titulo = `${reclamante.nome} - ${reclamante.cpf || 'Sem CPF'}`;
       
-      const [newLead] = await db.insert(leads).values({
+      const [newCase] = await db.insert(cases).values({
         titulo,
         pipelineType: 'reclamantes',
         stage: 'novo_lead',
-        reclamanteId: reclamante.id,
+        position: 0,
         valor: reclamante.valorCausa,
-        ownerId: userId,
         vendedorId: userId,
+        ownerId: userId,
       }).returning();
       
       await db.update(reclamantes)
         .set({ enviadoParaPipeline: true })
         .where(eq(reclamantes.id, reclamante.id));
       
-      createdLeads.push(newLead);
+      createdLeads.push(newCase);
       synced++;
     }
     
     return { synced, skipped, leads: createdLeads };
-  }
-
-  // Lead-Advogados N:N
-  async getLeadAdvogados(leadId: string): Promise<TodosAdvogadosInfos[]> {
-    const result = await db
-      .select({ advogado: todosAdvogadosInfos })
-      .from(leadsAdvogados)
-      .innerJoin(todosAdvogadosInfos, eq(leadsAdvogados.advogadoId, todosAdvogadosInfos.id))
-      .where(eq(leadsAdvogados.leadId, leadId));
-    return result.map(r => r.advogado);
-  }
-
-  async addAdvogadoToLead(leadId: string, advogadoId: number): Promise<LeadAdvogado> {
-    const [result] = await db.insert(leadsAdvogados).values({ leadId, advogadoId }).returning();
-    return result;
-  }
-
-  async removeAdvogadoFromLead(leadId: string, advogadoId: number): Promise<boolean> {
-    const result = await db.delete(leadsAdvogados)
-      .where(and(eq(leadsAdvogados.leadId, leadId), eq(leadsAdvogados.advogadoId, advogadoId)));
-    return (result.rowCount ?? 0) > 0;
-  }
-
-  // Lead-Reclamantes N:N
-  async getLeadReclamantes(leadId: string): Promise<Reclamante[]> {
-    const result = await db
-      .select({ reclamante: reclamantes })
-      .from(leadsReclamantes)
-      .innerJoin(reclamantes, eq(leadsReclamantes.reclamanteId, reclamantes.id))
-      .where(eq(leadsReclamantes.leadId, leadId));
-    return result.map(r => r.reclamante);
-  }
-
-  async addReclamanteToLead(leadId: string, reclamanteId: string): Promise<LeadReclamante> {
-    const [result] = await db.insert(leadsReclamantes).values({ leadId, reclamanteId }).returning();
-    return result;
-  }
-
-  async removeReclamanteFromLead(leadId: string, reclamanteId: string): Promise<boolean> {
-    const result = await db.delete(leadsReclamantes)
-      .where(and(eq(leadsReclamantes.leadId, leadId), eq(leadsReclamantes.reclamanteId, reclamanteId)));
-    return (result.rowCount ?? 0) > 0;
-  }
-
-  async getAllLeadAdvogadosForUser(ownerId: string): Promise<{ leadId: string; advogadoId: number }[]> {
-    const result = await db
-      .select({ leadId: leadsAdvogados.leadId, advogadoId: leadsAdvogados.advogadoId })
-      .from(leadsAdvogados)
-      .innerJoin(leads, eq(leadsAdvogados.leadId, leads.id))
-      .where(eq(leads.ownerId, ownerId));
-    return result;
-  }
-
-  async getAllLeadReclamantesForUser(ownerId: string): Promise<{ leadId: string; reclamanteId: string }[]> {
-    const result = await db
-      .select({ leadId: leadsReclamantes.leadId, reclamanteId: leadsReclamantes.reclamanteId })
-      .from(leadsReclamantes)
-      .innerJoin(leads, eq(leadsReclamantes.leadId, leads.id))
-      .where(eq(leads.ownerId, ownerId));
-    return result;
   }
 }
 
