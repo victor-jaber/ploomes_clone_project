@@ -1152,34 +1152,40 @@ function LeadCard({
               </div>
             )}
 
-            {pipelineType === "reclamantes" && lead.claimantId && (() => {
+            {lead.claimantId && (() => {
               const linkedReclamante = reclamantes.find(r => r.id === lead.claimantId);
               return linkedReclamante ? (
-                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  {linkedReclamante.email && (
-                    <div className="flex items-center gap-1 min-w-0">
-                      <Mail className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{linkedReclamante.email}</span>
-                    </div>
-                  )}
-                  {linkedReclamante.telefone && (
-                    <div className="flex items-center gap-1 min-w-0">
-                      <Phone className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{linkedReclamante.telefone}</span>
-                    </div>
-                  )}
-                  {linkedReclamante.cnj && (
-                    <div className="flex items-center gap-1 min-w-0">
-                      <FileText className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{linkedReclamante.cnj}</span>
-                    </div>
-                  )}
-                  {linkedReclamante.cpf && (
-                    <div className="flex items-center gap-1 min-w-0">
-                      <User className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{linkedReclamante.cpf}</span>
-                    </div>
-                  )}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-xs">
+                    <User className="h-3 w-3 text-purple-500 shrink-0" />
+                    <span className="font-medium text-muted-foreground">Reclamante:</span>
+                    <span className="truncate">{linkedReclamante.nome}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground pl-4">
+                    {linkedReclamante.cnj && (
+                      <div className="flex items-center gap-1 min-w-0">
+                        <FileText className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{linkedReclamante.cnj}</span>
+                      </div>
+                    )}
+                    {linkedReclamante.cpf && (
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="truncate">CPF: {linkedReclamante.cpf}</span>
+                      </div>
+                    )}
+                    {linkedReclamante.telefone && (
+                      <div className="flex items-center gap-1 min-w-0">
+                        <Phone className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{linkedReclamante.telefone}</span>
+                      </div>
+                    )}
+                    {linkedReclamante.email && (
+                      <div className="flex items-center gap-1 min-w-0">
+                        <Mail className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{linkedReclamante.email}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : null;
             })()}
