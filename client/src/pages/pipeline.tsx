@@ -1520,7 +1520,13 @@ export default function PipelinePage() {
   // Inline entity creation states
   const [showInlineCreate, setShowInlineCreate] = useState(false);
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
-  const [newEntityData, setNewEntityData] = useState({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "" });
+  const [newEntityData, setNewEntityData] = useState({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
+  
+  // Escritório inline creation - CNJs and Advogados
+  const [inlineEscritorioCnjs, setInlineEscritorioCnjs] = useState<string[]>([]);
+  const [inlineEscritorioAdvogados, setInlineEscritorioAdvogados] = useState<number[]>([]);
+  const [inlineNewCnj, setInlineNewCnj] = useState("");
+  const [inlineSelectedAdvogadoId, setInlineSelectedAdvogadoId] = useState<string>("");
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDraggingScroll, setIsDraggingScroll] = useState(false);
@@ -1684,7 +1690,7 @@ export default function PipelinePage() {
       setIsDialogOpen(false);
       setSelectedEntityId("");
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "" });
+      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
       toast({
         title: "Sucesso",
         description: "Lead criado com sucesso",
@@ -1766,7 +1772,7 @@ export default function PipelinePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
       setSelectedEntityId(created.id.toString());
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "" });
+      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
       toast({ title: "Advogado criado" });
     },
     onError: () => {
@@ -1775,15 +1781,35 @@ export default function PipelinePage() {
   });
 
   const createInlineEscritorioMutation = useMutation({
-    mutationFn: async (data: { nome: string; cnpj: string; telefone: string; email: string; numeroCaso: string }) => {
-      const response = await apiRequest("POST", "/api/escritorios", data);
-      return response.json();
+    mutationFn: async (data: { nome: string; cnpj: string; telefone: string; email: string; endereco: string; cidade: string; estado: string; cnjs: string[]; advogadoIds: number[] }) => {
+      const response = await apiRequest("POST", "/api/escritorios", {
+        nome: data.nome,
+        cnpj: data.cnpj,
+        telefone: data.telefone,
+        email: data.email,
+        endereco: data.endereco,
+        cidade: data.cidade,
+        estado: data.estado,
+        cnjs: data.cnjs,
+      });
+      const created = await response.json();
+      // Add lawyers to the law firm
+      if (data.advogadoIds.length > 0) {
+        for (const advId of data.advogadoIds) {
+          await apiRequest("POST", `/api/law-firms/${created.id}/lawyers`, { lawyerId: advId });
+        }
+      }
+      return created;
     },
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ["/api/escritorios"] });
       setSelectedEntityId(created.id);
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "" });
+      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
+      setInlineEscritorioCnjs([]);
+      setInlineEscritorioAdvogados([]);
+      setInlineNewCnj("");
+      setInlineSelectedAdvogadoId("");
       toast({ title: "Escritório criado" });
     },
     onError: () => {
@@ -1800,7 +1826,7 @@ export default function PipelinePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/reclamantes"] });
       setSelectedEntityId(created.id);
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "" });
+      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
       toast({ title: "Reclamante criado" });
     },
     onError: () => {
@@ -1823,7 +1849,11 @@ export default function PipelinePage() {
         cnpj: newEntityData.cnpj,
         telefone: newEntityData.telefone,
         email: newEntityData.email,
-        numeroCaso: newEntityData.numeroCaso,
+        endereco: newEntityData.endereco,
+        cidade: newEntityData.cidade,
+        estado: newEntityData.estado,
+        cnjs: inlineEscritorioCnjs,
+        advogadoIds: inlineEscritorioAdvogados,
       });
     } else if (selectedPipeline === "reclamantes") {
       createInlineReclamanteMutation.mutate({
@@ -2087,11 +2117,133 @@ export default function PipelinePage() {
                               data-testid="input-inline-cnpj"
                             />
                             <Input
-                              placeholder="Nº do Caso"
-                              value={newEntityData.numeroCaso}
-                              onChange={(e) => setNewEntityData({ ...newEntityData, numeroCaso: e.target.value })}
-                              data-testid="input-inline-numero-caso"
+                              placeholder="Endereço"
+                              value={newEntityData.endereco}
+                              onChange={(e) => setNewEntityData({ ...newEntityData, endereco: e.target.value })}
+                              data-testid="input-inline-endereco"
                             />
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input
+                                placeholder="Cidade"
+                                value={newEntityData.cidade}
+                                onChange={(e) => setNewEntityData({ ...newEntityData, cidade: e.target.value })}
+                                data-testid="input-inline-cidade"
+                              />
+                              <Input
+                                placeholder="Estado"
+                                maxLength={2}
+                                value={newEntityData.estado}
+                                onChange={(e) => setNewEntityData({ ...newEntityData, estado: e.target.value })}
+                                data-testid="input-inline-estado"
+                              />
+                            </div>
+                            
+                            {/* CNJs Section */}
+                            <div className="space-y-2">
+                              <Label className="text-sm flex items-center gap-1">
+                                <FileText className="h-3 w-3" />
+                                Números de Processo (CNJs)
+                              </Label>
+                              <div className="flex gap-2">
+                                <Input 
+                                  value={inlineNewCnj}
+                                  onChange={(e) => setInlineNewCnj(e.target.value)}
+                                  placeholder="0000000-00.0000.0.00.0000"
+                                  data-testid="input-inline-cnj-new"
+                                />
+                                <Button 
+                                  type="button" 
+                                  variant="outline" 
+                                  size="icon"
+                                  onClick={() => {
+                                    if (inlineNewCnj.trim() && !inlineEscritorioCnjs.includes(inlineNewCnj.trim())) {
+                                      setInlineEscritorioCnjs([...inlineEscritorioCnjs, inlineNewCnj.trim()]);
+                                      setInlineNewCnj("");
+                                    }
+                                  }} 
+                                  data-testid="button-inline-add-cnj"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              {inlineEscritorioCnjs.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {inlineEscritorioCnjs.map((cnj, idx) => (
+                                    <Badge key={idx} variant="secondary" className="flex items-center gap-1 text-xs py-0.5">
+                                      <FileText className="h-3 w-3" />
+                                      {cnj}
+                                      <button 
+                                        type="button" 
+                                        onClick={() => setInlineEscritorioCnjs(inlineEscritorioCnjs.filter(c => c !== cnj))}
+                                        className="ml-1 hover:text-destructive"
+                                        data-testid={`button-inline-remove-cnj-${idx}`}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Advogados Section */}
+                            <div className="space-y-2">
+                              <Label className="text-sm flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                Advogados Vinculados
+                              </Label>
+                              <div className="flex gap-2">
+                                <Select value={inlineSelectedAdvogadoId} onValueChange={setInlineSelectedAdvogadoId}>
+                                  <SelectTrigger data-testid="select-inline-advogado">
+                                    <SelectValue placeholder="Selecione um advogado" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {(todosAdvogadosInfos || [])
+                                      .filter((a: any) => !inlineEscritorioAdvogados.includes(a.id))
+                                      .map((adv: any) => (
+                                        <SelectItem key={adv.id} value={String(adv.id)}>
+                                          {adv.nome}
+                                        </SelectItem>
+                                      ))}
+                                  </SelectContent>
+                                </Select>
+                                <Button 
+                                  type="button" 
+                                  variant="outline" 
+                                  size="icon"
+                                  onClick={() => {
+                                    if (inlineSelectedAdvogadoId) {
+                                      setInlineEscritorioAdvogados([...inlineEscritorioAdvogados, parseInt(inlineSelectedAdvogadoId)]);
+                                      setInlineSelectedAdvogadoId("");
+                                    }
+                                  }} 
+                                  data-testid="button-inline-add-advogado"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              {inlineEscritorioAdvogados.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {inlineEscritorioAdvogados.map((advId, idx) => {
+                                    const adv = (todosAdvogadosInfos || []).find((a: any) => a.id === advId);
+                                    return (
+                                      <Badge key={idx} variant="outline" className="flex items-center gap-1 text-xs py-0.5">
+                                        <User className="h-3 w-3" />
+                                        {adv?.nome || `ID: ${advId}`}
+                                        <button 
+                                          type="button" 
+                                          onClick={() => setInlineEscritorioAdvogados(inlineEscritorioAdvogados.filter(id => id !== advId))}
+                                          className="ml-1 hover:text-destructive"
+                                          data-testid={`button-inline-remove-advogado-${idx}`}
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </button>
+                                      </Badge>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
                           </>
                         )}
                         {selectedPipeline === "reclamantes" && (
