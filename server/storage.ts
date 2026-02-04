@@ -47,10 +47,10 @@ type InsertCase = InsertLead;
 export interface IStorage {
   // Lawyers (Advogados)
   getLawyers(ownerId: string): Promise<Lawyer[]>;
-  getLawyer(id: number): Promise<Lawyer | undefined>;
+  getLawyer(id: number, ownerId: string): Promise<Lawyer | undefined>;
   createLawyer(lawyer: InsertLawyer): Promise<Lawyer>;
-  updateLawyer(id: number, lawyer: Partial<InsertLawyer>): Promise<Lawyer | undefined>;
-  deleteLawyer(id: number): Promise<boolean>;
+  updateLawyer(id: number, ownerId: string, lawyer: Partial<InsertLawyer>): Promise<Lawyer | undefined>;
+  deleteLawyer(id: number, ownerId: string): Promise<boolean>;
 
   // Law Firms (Escritórios)
   getLawFirms(ownerId: string): Promise<LawFirm[]>;
@@ -122,11 +122,11 @@ export interface IStorage {
   syncClaimantsToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
   
   // Backward compatibility
-  getTodosAdvogadosInfos(): Promise<TodosAdvogadosInfos[]>;
-  getTodosAdvogadosInfo(id: number): Promise<TodosAdvogadosInfos | undefined>;
+  getTodosAdvogadosInfos(ownerId: string): Promise<TodosAdvogadosInfos[]>;
+  getTodosAdvogadosInfo(id: number, ownerId: string): Promise<TodosAdvogadosInfos | undefined>;
   createTodosAdvogadosInfo(info: InsertTodosAdvogadosInfos): Promise<TodosAdvogadosInfos>;
-  updateTodosAdvogadosInfo(id: number, info: Partial<InsertTodosAdvogadosInfos>): Promise<TodosAdvogadosInfos | undefined>;
-  deleteTodosAdvogadosInfo(id: number): Promise<boolean>;
+  updateTodosAdvogadosInfo(id: number, ownerId: string, info: Partial<InsertTodosAdvogadosInfos>): Promise<TodosAdvogadosInfos | undefined>;
+  deleteTodosAdvogadosInfo(id: number, ownerId: string): Promise<boolean>;
   
   getEscritorios(ownerId: string): Promise<Escritorio[]>;
   getEscritorio(id: string, ownerId: string): Promise<Escritorio | undefined>;
@@ -147,8 +147,8 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(lawyers).where(eq(lawyers.ownerId, ownerId)).orderBy(desc(lawyers.createdAt));
   }
 
-  async getLawyer(id: number): Promise<Lawyer | undefined> {
-    const [lawyer] = await db.select().from(lawyers).where(eq(lawyers.id, id));
+  async getLawyer(id: number, ownerId: string): Promise<Lawyer | undefined> {
+    const [lawyer] = await db.select().from(lawyers).where(and(eq(lawyers.id, id), eq(lawyers.ownerId, ownerId)));
     return lawyer;
   }
 
@@ -157,17 +157,17 @@ export class DatabaseStorage implements IStorage {
     return newLawyer;
   }
 
-  async updateLawyer(id: number, lawyer: Partial<InsertLawyer>): Promise<Lawyer | undefined> {
+  async updateLawyer(id: number, ownerId: string, lawyer: Partial<InsertLawyer>): Promise<Lawyer | undefined> {
     const [updated] = await db
       .update(lawyers)
       .set({ ...lawyer, updatedAt: new Date() })
-      .where(eq(lawyers.id, id))
+      .where(and(eq(lawyers.id, id), eq(lawyers.ownerId, ownerId)))
       .returning();
     return updated;
   }
 
-  async deleteLawyer(id: number): Promise<boolean> {
-    const result = await db.delete(lawyers).where(eq(lawyers.id, id)).returning();
+  async deleteLawyer(id: number, ownerId: string): Promise<boolean> {
+    const result = await db.delete(lawyers).where(and(eq(lawyers.id, id), eq(lawyers.ownerId, ownerId))).returning();
     return result.length > 0;
   }
 
@@ -520,24 +520,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Backward compatibility methods
-  async getTodosAdvogadosInfos(): Promise<TodosAdvogadosInfos[]> {
-    return db.select().from(lawyers).orderBy(desc(lawyers.createdAt));
+  async getTodosAdvogadosInfos(ownerId: string): Promise<TodosAdvogadosInfos[]> {
+    return this.getLawyers(ownerId);
   }
 
-  async getTodosAdvogadosInfo(id: number): Promise<TodosAdvogadosInfos | undefined> {
-    return this.getLawyer(id);
+  async getTodosAdvogadosInfo(id: number, ownerId: string): Promise<TodosAdvogadosInfos | undefined> {
+    return this.getLawyer(id, ownerId);
   }
 
   async createTodosAdvogadosInfo(info: InsertTodosAdvogadosInfos): Promise<TodosAdvogadosInfos> {
     return this.createLawyer(info);
   }
 
-  async updateTodosAdvogadosInfo(id: number, info: Partial<InsertTodosAdvogadosInfos>): Promise<TodosAdvogadosInfos | undefined> {
-    return this.updateLawyer(id, info);
+  async updateTodosAdvogadosInfo(id: number, ownerId: string, info: Partial<InsertTodosAdvogadosInfos>): Promise<TodosAdvogadosInfos | undefined> {
+    return this.updateLawyer(id, ownerId, info);
   }
 
-  async deleteTodosAdvogadosInfo(id: number): Promise<boolean> {
-    return this.deleteLawyer(id);
+  async deleteTodosAdvogadosInfo(id: number, ownerId: string): Promise<boolean> {
+    return this.deleteLawyer(id, ownerId);
   }
 
   async getEscritorios(ownerId: string): Promise<Escritorio[]> {
