@@ -479,9 +479,10 @@ export class DatabaseStorage implements IStorage {
         probabilidade: 0,
         vendedorId: userId,
         ownerId: userId,
+        lawyerId: lawyer.id,
       });
       newLeads.push(lead);
-      await this.updateLawyer(lawyer.id, { enviadoParaPipeline: true });
+      await this.updateLawyer(lawyer.id, userId, { enviadoParaPipeline: true });
     }
     
     return {
@@ -507,6 +508,7 @@ export class DatabaseStorage implements IStorage {
         probabilidade: 0,
         vendedorId: userId,
         ownerId: userId,
+        claimantId: claimant.id,
       });
       newLeads.push(lead);
       await this.updateClaimant(claimant.id, userId, { enviadoParaPipeline: true });
