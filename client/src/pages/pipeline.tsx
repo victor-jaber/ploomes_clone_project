@@ -248,16 +248,6 @@ function LeadDetailPanel({
     queryKey: [`/api/leads/${lead.id}/interactions`],
   });
 
-  // Fetch related advogados (N:N)
-  const { data: leadAdvogados = [] } = useQuery<TodosAdvogadosInfos[]>({
-    queryKey: [`/api/leads/${lead.id}/advogados`],
-  });
-
-  // Fetch related reclamantes (N:N)
-  const { data: leadReclamantes = [] } = useQuery<Reclamante[]>({
-    queryKey: [`/api/leads/${lead.id}/reclamantes`],
-  });
-
   const updateFieldMutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
       return apiRequest("PATCH", `/api/leads/${lead.id}`, data);
@@ -351,59 +341,6 @@ function LeadDetailPanel({
     },
     onError: () => {
       toast({ title: "Erro ao criar reclamante", variant: "destructive" });
-    },
-  });
-
-  // Mutations for N:N relationships
-  const addAdvogadoToLeadMutation = useMutation({
-    mutationFn: async (advogadoId: number) => {
-      return apiRequest("POST", `/api/leads/${lead.id}/advogados`, { advogadoId });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/advogados`] });
-      toast({ title: "Advogado vinculado ao lead" });
-    },
-    onError: () => {
-      toast({ title: "Erro ao vincular advogado", variant: "destructive" });
-    },
-  });
-
-  const removeAdvogadoFromLeadMutation = useMutation({
-    mutationFn: async (advogadoId: number) => {
-      return apiRequest("DELETE", `/api/leads/${lead.id}/advogados/${advogadoId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/advogados`] });
-      toast({ title: "Advogado desvinculado do lead" });
-    },
-    onError: () => {
-      toast({ title: "Erro ao desvincular advogado", variant: "destructive" });
-    },
-  });
-
-  const addReclamanteToLeadMutation = useMutation({
-    mutationFn: async (claimantId: string) => {
-      return apiRequest("POST", `/api/leads/${lead.id}/reclamantes`, { claimantId });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/reclamantes`] });
-      toast({ title: "Reclamante vinculado ao lead" });
-    },
-    onError: () => {
-      toast({ title: "Erro ao vincular reclamante", variant: "destructive" });
-    },
-  });
-
-  const removeReclamanteFromLeadMutation = useMutation({
-    mutationFn: async (claimantId: string) => {
-      return apiRequest("DELETE", `/api/leads/${lead.id}/reclamantes/${claimantId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/reclamantes`] });
-      toast({ title: "Reclamante desvinculado do lead" });
-    },
-    onError: () => {
-      toast({ title: "Erro ao desvincular reclamante", variant: "destructive" });
     },
   });
 
@@ -882,128 +819,6 @@ function LeadDetailPanel({
                       </div>
                     )}
                   </>
-                )}
-              </Card>
-            </div>
-
-            {/* Advogados Vinculados (N:N) */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Advogados Vinculados ({leadAdvogados.length})
-                </h3>
-              </div>
-              <Card className="p-4 space-y-3" data-testid="card-advogados-vinculados">
-                <Select 
-                  value=""
-                  onValueChange={(v) => {
-                    if (v) {
-                      addAdvogadoToLeadMutation.mutate(parseInt(v));
-                    }
-                  }}
-                  disabled={addAdvogadoToLeadMutation.isPending}
-                >
-                  <SelectTrigger data-testid="select-add-advogado">
-                    <SelectValue placeholder={addAdvogadoToLeadMutation.isPending ? "Adicionando..." : "Adicionar advogado..."} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {todosAdvogadosInfos
-                      .filter(a => !leadAdvogados.some(la => la.id === a.id))
-                      .map((a) => (
-                        <SelectItem key={a.id} value={a.id.toString()} data-testid={`select-item-advogado-${a.id}`}>
-                          {a.nome}{a.cnj ? ` (${a.cnj})` : ""}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {leadAdvogados.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t">
-                    {leadAdvogados.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md" data-testid={`card-linked-advogado-${a.id}`}>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate" data-testid={`text-advogado-nome-${a.id}`}>{a.nome}</div>
-                          {a.cnj && <div className="text-xs text-muted-foreground truncate">CNJ: {a.cnj}</div>}
-                          {a.cpf && <div className="text-xs text-muted-foreground">CPF: {a.cpf}</div>}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 shrink-0"
-                          onClick={() => removeAdvogadoFromLeadMutation.mutate(a.id)}
-                          disabled={removeAdvogadoFromLeadMutation.isPending}
-                          data-testid={`button-remove-advogado-${a.id}`}
-                        >
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {leadAdvogados.length === 0 && (
-                  <div className="text-xs text-muted-foreground text-center py-2" data-testid="text-no-advogados-linked">
-                    Nenhum advogado vinculado
-                  </div>
-                )}
-              </Card>
-            </div>
-
-            {/* Reclamantes Vinculados (N:N) */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Reclamantes Vinculados ({leadReclamantes.length})
-                </h3>
-              </div>
-              <Card className="p-4 space-y-3" data-testid="card-reclamantes-vinculados">
-                <Select 
-                  value=""
-                  onValueChange={(v) => {
-                    if (v) {
-                      addReclamanteToLeadMutation.mutate(v);
-                    }
-                  }}
-                  disabled={addReclamanteToLeadMutation.isPending}
-                >
-                  <SelectTrigger data-testid="select-add-reclamante">
-                    <SelectValue placeholder={addReclamanteToLeadMutation.isPending ? "Adicionando..." : "Adicionar reclamante..."} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {reclamantes
-                      .filter(r => !leadReclamantes.some(lr => lr.id === r.id))
-                      .map((r) => (
-                        <SelectItem key={r.id} value={r.id} data-testid={`select-item-reclamante-${r.id}`}>
-                          {r.nome}{r.cnj ? ` (${r.cnj})` : ""}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {leadReclamantes.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t">
-                    {leadReclamantes.map((r) => (
-                      <div key={r.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md" data-testid={`card-linked-reclamante-${r.id}`}>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate" data-testid={`text-reclamante-nome-${r.id}`}>{r.nome}</div>
-                          {r.cnj && <div className="text-xs text-muted-foreground truncate">CNJ: {r.cnj}</div>}
-                          {r.cpf && <div className="text-xs text-muted-foreground">CPF: {r.cpf}</div>}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 shrink-0"
-                          onClick={() => removeReclamanteFromLeadMutation.mutate(r.id)}
-                          disabled={removeReclamanteFromLeadMutation.isPending}
-                          data-testid={`button-remove-reclamante-${r.id}`}
-                        >
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {leadReclamantes.length === 0 && (
-                  <div className="text-xs text-muted-foreground text-center py-2" data-testid="text-no-reclamantes-linked">
-                    Nenhum reclamante vinculado
-                  </div>
                 )}
               </Card>
             </div>
@@ -2391,7 +2206,7 @@ export default function PipelinePage() {
                   </SelectTrigger>
                   <SelectContent>
                     {todosAdvogadosInfos.map((advogado) => (
-                      <SelectItem key={advogado.id} value={String(advogado.id)}>
+                      <SelectItem key={advogado.id} value={String(advogado.id)} data-testid={`select-item-filter-advogado-${advogado.id}`}>
                         {advogado.nome} {advogado.cnj ? `(${advogado.cnj})` : ''}
                       </SelectItem>
                     ))}
@@ -2420,7 +2235,7 @@ export default function PipelinePage() {
                   </SelectTrigger>
                   <SelectContent>
                     {reclamantes.map((reclamante) => (
-                      <SelectItem key={reclamante.id} value={reclamante.id}>
+                      <SelectItem key={reclamante.id} value={reclamante.id} data-testid={`select-item-filter-reclamante-${reclamante.id}`}>
                         {reclamante.nome} {reclamante.cnj ? `(${reclamante.cnj})` : ''}
                       </SelectItem>
                     ))}
@@ -2449,7 +2264,7 @@ export default function PipelinePage() {
                   </SelectTrigger>
                   <SelectContent>
                     {escritorios.map((escritorio) => (
-                      <SelectItem key={escritorio.id} value={escritorio.id}>
+                      <SelectItem key={escritorio.id} value={escritorio.id} data-testid={`select-item-filter-escritorio-${escritorio.id}`}>
                         {escritorio.nome}
                       </SelectItem>
                     ))}
@@ -2458,10 +2273,10 @@ export default function PipelinePage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Filtrar por CNJ</Label>
+                <Label className="text-sm font-medium">Filtrar por CNJ (Advogado)</Label>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Digite o número CNJ..."
+                    placeholder="Digite o número CNJ do advogado..."
                     data-testid="input-filter-cnj"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -2470,7 +2285,31 @@ export default function PipelinePage() {
                           addFilter({
                             type: "cnj",
                             value: value,
-                            label: `CNJ: ${value}`
+                            label: `CNJ Advogado: ${value}`
+                          });
+                          (e.target as HTMLInputElement).value = '';
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Pressione Enter para aplicar</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Filtrar por CNJ (Reclamante)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Digite o número CNJ do reclamante..."
+                    data-testid="input-filter-reclamante-cnj"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const value = (e.target as HTMLInputElement).value.trim();
+                        if (value) {
+                          addFilter({
+                            type: "reclamante_cnj",
+                            value: value,
+                            label: `CNJ Reclamante: ${value}`
                           });
                           (e.target as HTMLInputElement).value = '';
                         }
