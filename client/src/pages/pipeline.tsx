@@ -78,7 +78,7 @@ const PIPELINE_LABELS: Record<PipelineType, { label: string; icon: JSX.Element; 
 };
 
 type PipelineFilter = {
-  type: "advogado" | "reclamante" | "cnj" | "escritorio" | "reclamante_cnj";
+  type: "advogado" | "reclamante" | "cnj" | "escritorio";
   id?: number | string;
   value: string;
   label: string;
@@ -1277,7 +1277,7 @@ function LeadCard({
                 <ContextMenuItem 
                   onClick={(e) => {
                     e.stopPropagation();
-                    onFilter({ type: "reclamante_cnj", value: reclamante.cnj!, label: `CNJ: ${reclamante.cnj}` });
+                    onFilter({ type: "cnj", value: reclamante.cnj!, label: `CNJ: ${reclamante.cnj}` });
                   }}
                   data-testid="context-menu-filter-reclamante-cnj"
                 >
@@ -1607,18 +1607,14 @@ export default function PipelinePage() {
           return lead.lawFirmId === filter.id;
         
         case "cnj":
-          // Check CNJ on lead's linked advogado
+          // Check CNJ on both advogado AND reclamante
           const linkedAdvogado = lead.lawyerId 
             ? todosAdvogadosInfos.find(a => a.id === lead.lawyerId)
             : null;
-          return linkedAdvogado?.cnj === filter.value;
-        
-        case "reclamante_cnj":
-          // Check CNJ on lead's linked reclamante
           const linkedReclamante = lead.claimantId 
             ? reclamantes.find(r => r.id === lead.claimantId)
             : null;
-          return linkedReclamante?.cnj === filter.value;
+          return linkedAdvogado?.cnj === filter.value || linkedReclamante?.cnj === filter.value;
         
         default:
           return true;
@@ -2311,10 +2307,10 @@ export default function PipelinePage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Filtrar por CNJ (Advogado)</Label>
+                <Label className="text-sm font-medium">Filtrar por CNJ</Label>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Digite o número CNJ do advogado..."
+                    placeholder="Digite o número CNJ..."
                     data-testid="input-filter-cnj"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -2323,7 +2319,7 @@ export default function PipelinePage() {
                           addFilter({
                             type: "cnj",
                             value: value,
-                            label: `CNJ Advogado: ${value}`
+                            label: `CNJ: ${value}`
                           });
                           (e.target as HTMLInputElement).value = '';
                         }
@@ -2331,31 +2327,7 @@ export default function PipelinePage() {
                     }}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">Pressione Enter para aplicar</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Filtrar por CNJ (Reclamante)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Digite o número CNJ do reclamante..."
-                    data-testid="input-filter-reclamante-cnj"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        const value = (e.target as HTMLInputElement).value.trim();
-                        if (value) {
-                          addFilter({
-                            type: "reclamante_cnj",
-                            value: value,
-                            label: `CNJ Reclamante: ${value}`
-                          });
-                          (e.target as HTMLInputElement).value = '';
-                        }
-                      }
-                    }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">Pressione Enter para aplicar</p>
+                <p className="text-xs text-muted-foreground">Busca em advogados e reclamantes</p>
               </div>
 
               {activeFilters.length > 0 && (
