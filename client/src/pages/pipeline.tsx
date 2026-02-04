@@ -1151,6 +1151,38 @@ function LeadCard({
                 )}
               </div>
             )}
+
+            {pipelineType === "reclamantes" && lead.claimantId && (() => {
+              const linkedReclamante = reclamantes.find(r => r.id === lead.claimantId);
+              return linkedReclamante ? (
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  {linkedReclamante.email && (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Mail className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{linkedReclamante.email}</span>
+                    </div>
+                  )}
+                  {linkedReclamante.telefone && (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Phone className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{linkedReclamante.telefone}</span>
+                    </div>
+                  )}
+                  {linkedReclamante.cnj && (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <FileText className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{linkedReclamante.cnj}</span>
+                    </div>
+                  )}
+                  {linkedReclamante.cpf && (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <User className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{linkedReclamante.cpf}</span>
+                    </div>
+                  )}
+                </div>
+              ) : null;
+            })()}
             
             <div className="flex items-center justify-between pt-2 border-t border-dashed">
               <div className="flex items-center gap-1.5">
