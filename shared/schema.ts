@@ -258,8 +258,8 @@ export const leads = pgTable("leads", {
   lawFirmId: varchar("law_firm_id").references(() => lawFirms.id, { onDelete: "set null" }),
   claimantId: varchar("claimant_id").references(() => claimants.id, { onDelete: "set null" }),
   
-  vendedorId: varchar("vendedor_id").notNull(),
-  ownerId: varchar("owner_id").notNull(),
+  vendedorId: varchar("vendedor_id"),
+  ownerId: varchar("owner_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
