@@ -641,9 +641,9 @@ export default function CalendarPage() {
         <SheetContent className="sm:max-w-md p-0 flex flex-col [&>button]:hidden">
           {selectedEvent && (
             <>
-              <div className="relative h-32 bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 shrink-0">
+              <div className="relative h-32 bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 shrink-0 overflow-hidden">
                 <div className="absolute inset-0 bg-black/10" />
-                <div className="absolute bottom-4 left-4 right-4">
+                <div className="absolute bottom-4 left-4 right-12">
                   <Badge className="bg-white/20 text-white border-0 backdrop-blur-sm mb-2">
                     {selectedEvent.isOnlineMeeting ? "Reunião Online" : "Evento"}
                   </Badge>
@@ -651,15 +651,14 @@ export default function CalendarPage() {
                     {selectedEvent.subject}
                   </h2>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-3 right-3 text-white hover:bg-white/20"
+                <button
+                  type="button"
+                  className="absolute top-3 right-3 h-8 w-8 rounded-full flex items-center justify-center text-white bg-white/20 hover:bg-white/30 transition-colors"
                   onClick={() => setSelectedEvent(null)}
                   data-testid="button-close-event"
                 >
-                  <X className="h-5 w-5" />
-                </Button>
+                  <X className="h-4 w-4" />
+                </button>
               </div>
 
               <ScrollArea className="flex-1 w-full">
