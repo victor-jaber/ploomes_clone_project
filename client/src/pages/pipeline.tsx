@@ -225,6 +225,9 @@ function LeadDetailPanel({
   onClose,
   onAdvanceStage,
   isPending,
+  lawyersWithLawsuits,
+  claimantsWithLawsuits,
+  lawFirmsWithLawsuits,
 }: {
   lead: Lead;
   todosAdvogadosInfos: TodosAdvogadosInfos[];
@@ -235,6 +238,9 @@ function LeadDetailPanel({
   onClose: () => void;
   onAdvanceStage: () => void;
   isPending: boolean;
+  lawyersWithLawsuits: LawyerWithLawsuits[];
+  claimantsWithLawsuits: ClaimantWithLawsuits[];
+  lawFirmsWithLawsuits: LawFirmWithLawsuits[];
 }) {
   const { toast } = useToast();
   const [commentText, setCommentText] = useState("");
@@ -829,6 +835,57 @@ function LeadDetailPanel({
                 )}
               </Card>
             </div>
+
+            {(() => {
+              const linkedLawsuits = (() => {
+                if (pipelineType === "advogados" && lead.lawyerId) {
+                  return lawyersWithLawsuits.find(a => a.id === lead.lawyerId)?.lawsuits || [];
+                }
+                if (pipelineType === "reclamantes" && lead.claimantId) {
+                  return claimantsWithLawsuits.find(c => c.id === lead.claimantId)?.lawsuits || [];
+                }
+                if (pipelineType === "escritorios" && lead.lawFirmId) {
+                  return lawFirmsWithLawsuits.find(l => l.id === lead.lawFirmId)?.lawsuits || [];
+                }
+                return [];
+              })();
+              
+              if (linkedLawsuits.length === 0) return null;
+              
+              const totalValue = linkedLawsuits.reduce((acc, l) => acc + Number(l.valorCausa || 0), 0);
+              
+              return (
+                <div>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Processos Vinculados ({linkedLawsuits.length})
+                  </h3>
+                  <Card className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">Total de Processos:</span>
+                        <span>{linkedLawsuits.length}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">Valor Total:</span>
+                        <span className="text-green-600 font-semibold">
+                          {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalValue)}
+                        </span>
+                      </div>
+                      <div className="border-t pt-3">
+                        <span className="text-xs font-medium text-muted-foreground mb-2 block">CNJs:</span>
+                        <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto">
+                          {linkedLawsuits.map((lawsuit, idx) => (
+                            <Badge key={lawsuit.id || idx} variant="secondary" className="text-xs">
+                              {lawsuit.cnj || "Sem CNJ"}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              );
+            })()}
 
             {lead.descricao && (
               <div>
@@ -1989,14 +2046,18 @@ export default function PipelinePage() {
           return lead.lawFirmId === filter.id;
         
         case "cnj":
-          // Check CNJ on both advogado AND reclamante
-          const linkedAdvogado = lead.lawyerId 
-            ? todosAdvogadosInfos.find(a => a.id === lead.lawyerId)
-            : null;
-          const linkedReclamante = lead.claimantId 
-            ? reclamantes.find(r => r.id === lead.claimantId)
-            : null;
-          return linkedAdvogado?.cnj === filter.value || linkedReclamante?.cnj === filter.value;
+          // Check CNJ on linked lawsuits via junction tables
+          const lawyerLawsuits = lead.lawyerId 
+            ? lawyersWithLawsuits.find(a => a.id === lead.lawyerId)?.lawsuits || []
+            : [];
+          const claimantLawsuits = lead.claimantId 
+            ? claimantsWithLawsuits.find(c => c.id === lead.claimantId)?.lawsuits || []
+            : [];
+          const lawFirmLawsuits = lead.lawFirmId 
+            ? lawFirmsWithLawsuits.find(l => l.id === lead.lawFirmId)?.lawsuits || []
+            : [];
+          const allLawsuits = [...lawyerLawsuits, ...claimantLawsuits, ...lawFirmLawsuits];
+          return allLawsuits.some(lawsuit => lawsuit.cnj === filter.value);
         
         default:
           return true;
@@ -3013,6 +3074,9 @@ export default function PipelinePage() {
                 onClose={() => setSelectedLeadId(null)}
                 onAdvanceStage={handleAdvanceStage}
                 isPending={updateMutation.isPending}
+                lawyersWithLawsuits={lawyersWithLawsuits}
+                claimantsWithLawsuits={claimantsWithLawsuits}
+                lawFirmsWithLawsuits={lawFirmsWithLawsuits}
               />
             </SheetContent>
           </Sheet>
