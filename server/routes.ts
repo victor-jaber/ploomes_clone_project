@@ -18,7 +18,55 @@ import {
   type Lawyer,
   type LawFirm,
   type Claimant,
+  type Lawsuit,
 } from "@shared/schema";
+
+// Simple in-memory cache with TTL
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+class SimpleCache {
+  private cache = new Map<string, CacheEntry<any>>();
+  private ttl: number; // TTL in milliseconds
+
+  constructor(ttlSeconds: number = 30) {
+    this.ttl = ttlSeconds * 1000;
+  }
+
+  get<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    
+    if (Date.now() - entry.timestamp > this.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return entry.data as T;
+  }
+
+  set<T>(key: string, data: T): void {
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
+  invalidate(pattern?: string): void {
+    if (!pattern) {
+      this.cache.clear();
+      return;
+    }
+    
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
+// Cache for aggregated data (30 second TTL)
+const aggregationCache = new SimpleCache(30);
 
 // Backward compatibility aliases
 const insertTodosAdvogadosInfosSchema = insertLawyerSchema;
@@ -76,6 +124,7 @@ export async function registerRoutes(
         return;
       }
       const lawyer = await storage.createLawyer(parsed.data);
+      aggregationCache.invalidate('lawyers-with-lawsuits');
       
       const titulo = `${lawyer.nome} - ${lawyer.cpf || 'Sem CPF'}`;
       const lead = await storage.createLead({
@@ -109,6 +158,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Lawyer not found" });
         return;
       }
+      aggregationCache.invalidate('lawyers-with-lawsuits');
       res.json(lawyer);
     } catch (error) {
       console.error("Error updating lawyer:", error);
@@ -125,6 +175,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Lawyer not found" });
         return;
       }
+      aggregationCache.invalidate('lawyers-with-lawsuits');
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting lawyer:", error);
@@ -169,6 +220,7 @@ export async function registerRoutes(
         return;
       }
       const lawyer = await storage.createLawyer(parsed.data);
+      aggregationCache.invalidate('lawyers-with-lawsuits');
       
       const titulo = `${lawyer.nome} - ${lawyer.cpf || 'Sem CPF'}`;
       const lead = await storage.createLead({
@@ -202,6 +254,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Lawyer not found" });
         return;
       }
+      aggregationCache.invalidate('lawyers-with-lawsuits');
       res.json(lawyer);
     } catch (error) {
       console.error("Error updating lawyer:", error);
@@ -218,6 +271,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Lawyer not found" });
         return;
       }
+      aggregationCache.invalidate('lawyers-with-lawsuits');
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting lawyer:", error);
@@ -278,6 +332,7 @@ export async function registerRoutes(
         return;
       }
       const lawFirm = await storage.createLawFirm(parsed.data);
+      aggregationCache.invalidate('law-firms-with-lawsuits');
       res.status(201).json(lawFirm);
     } catch (error) {
       console.error("Error creating law firm:", error);
@@ -298,6 +353,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Law firm not found" });
         return;
       }
+      aggregationCache.invalidate('law-firms-with-lawsuits');
       res.json(lawFirm);
     } catch (error) {
       console.error("Error updating law firm:", error);
@@ -313,6 +369,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Law firm not found" });
         return;
       }
+      aggregationCache.invalidate('law-firms-with-lawsuits');
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting law firm:", error);
@@ -417,6 +474,7 @@ export async function registerRoutes(
         return;
       }
       const lawFirm = await storage.createLawFirm(parsed.data);
+      aggregationCache.invalidate('law-firms-with-lawsuits');
       res.status(201).json(lawFirm);
     } catch (error) {
       console.error("Error creating law firm:", error);
@@ -437,6 +495,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Law firm not found" });
         return;
       }
+      aggregationCache.invalidate('law-firms-with-lawsuits');
       res.json(lawFirm);
     } catch (error) {
       console.error("Error updating law firm:", error);
@@ -452,6 +511,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Law firm not found" });
         return;
       }
+      aggregationCache.invalidate('law-firms-with-lawsuits');
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting law firm:", error);
@@ -495,6 +555,7 @@ export async function registerRoutes(
         return;
       }
       const claimant = await storage.createClaimant(parsed.data);
+      aggregationCache.invalidate('claimants-with-lawsuits');
       res.status(201).json(claimant);
     } catch (error) {
       console.error("Error creating claimant:", error);
@@ -515,6 +576,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Claimant not found" });
         return;
       }
+      aggregationCache.invalidate('claimants-with-lawsuits');
       res.json(claimant);
     } catch (error) {
       console.error("Error updating claimant:", error);
@@ -530,6 +592,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Claimant not found" });
         return;
       }
+      aggregationCache.invalidate('claimants-with-lawsuits');
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting claimant:", error);
@@ -573,6 +636,7 @@ export async function registerRoutes(
         return;
       }
       const claimant = await storage.createClaimant(parsed.data);
+      aggregationCache.invalidate('claimants-with-lawsuits');
       res.status(201).json(claimant);
     } catch (error) {
       console.error("Error creating claimant:", error);
@@ -593,6 +657,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Claimant not found" });
         return;
       }
+      aggregationCache.invalidate('claimants-with-lawsuits');
       res.json(claimant);
     } catch (error) {
       console.error("Error updating claimant:", error);
@@ -608,6 +673,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Claimant not found" });
         return;
       }
+      aggregationCache.invalidate('claimants-with-lawsuits');
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting claimant:", error);
@@ -637,6 +703,8 @@ export async function registerRoutes(
     try {
       const userId = (req as AuthRequest).user!.id;
       const result = await storage.syncLawsuitsFromApi(userId);
+      // Invalidate all aggregation caches after sync
+      aggregationCache.invalidate();
       res.json(result);
     } catch (error) {
       console.error("Error syncing lawsuits:", error);
@@ -686,6 +754,7 @@ export async function registerRoutes(
       const lawsuitId = req.params.lawsuitId as string;
       const lawyerId = parseInt(req.params.lawyerId as string);
       const link = await storage.addLawyerToLawsuit(lawsuitId, lawyerId);
+      aggregationCache.invalidate('lawyers-with-lawsuits');
       res.status(201).json(link);
     } catch (error) {
       console.error("Error linking lawyer to lawsuit:", error);
@@ -699,6 +768,7 @@ export async function registerRoutes(
       const lawsuitId = req.params.lawsuitId as string;
       const lawyerId = parseInt(req.params.lawyerId as string);
       const removed = await storage.removeLawyerFromLawsuit(lawsuitId, lawyerId);
+      aggregationCache.invalidate('lawyers-with-lawsuits');
       res.json({ removed });
     } catch (error) {
       console.error("Error unlinking lawyer from lawsuit:", error);
@@ -712,6 +782,7 @@ export async function registerRoutes(
       const lawsuitId = req.params.lawsuitId as string;
       const claimantId = req.params.claimantId as string;
       const link = await storage.addClaimantToLawsuit(lawsuitId, claimantId);
+      aggregationCache.invalidate('claimants-with-lawsuits');
       res.status(201).json(link);
     } catch (error) {
       console.error("Error linking claimant to lawsuit:", error);
@@ -725,6 +796,7 @@ export async function registerRoutes(
       const lawsuitId = req.params.lawsuitId as string;
       const claimantId = req.params.claimantId as string;
       const removed = await storage.removeClaimantFromLawsuit(lawsuitId, claimantId);
+      aggregationCache.invalidate('claimants-with-lawsuits');
       res.json({ removed });
     } catch (error) {
       console.error("Error unlinking claimant from lawsuit:", error);
@@ -738,6 +810,7 @@ export async function registerRoutes(
       const lawsuitId = req.params.lawsuitId as string;
       const lawFirmId = req.params.lawFirmId as string;
       const link = await storage.addLawFirmToLawsuit(lawsuitId, lawFirmId);
+      aggregationCache.invalidate('law-firms-with-lawsuits');
       res.status(201).json(link);
     } catch (error) {
       console.error("Error linking law firm to lawsuit:", error);
@@ -751,6 +824,7 @@ export async function registerRoutes(
       const lawsuitId = req.params.lawsuitId as string;
       const lawFirmId = req.params.lawFirmId as string;
       const removed = await storage.removeLawFirmFromLawsuit(lawsuitId, lawFirmId);
+      aggregationCache.invalidate('law-firms-with-lawsuits');
       res.json({ removed });
     } catch (error) {
       console.error("Error unlinking law firm from lawsuit:", error);
@@ -760,11 +834,20 @@ export async function registerRoutes(
 
   // === Aggregated data for pipeline (entities with their lawsuits) ===
   
-  // Get lawyers with their linked lawsuits (aggregated for pipeline cards)
+  // Get lawyers with their linked lawsuits (aggregated for pipeline cards) - CACHED
   app.get("/api/lawyers-with-lawsuits", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
+      const cacheKey = `lawyers-with-lawsuits:${userId}`;
+      
+      // Try cache first
+      const cached = aggregationCache.get<(Lawyer & { lawsuits: Lawsuit[] })[]>(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+      
       const lawyersWithLawsuits = await storage.getLawyersWithLawsuits(userId);
+      aggregationCache.set(cacheKey, lawyersWithLawsuits);
       res.json(lawyersWithLawsuits);
     } catch (error) {
       console.error("Error fetching lawyers with lawsuits:", error);
@@ -772,11 +855,20 @@ export async function registerRoutes(
     }
   });
 
-  // Get claimants with their linked lawsuits (aggregated for pipeline cards)
+  // Get claimants with their linked lawsuits (aggregated for pipeline cards) - CACHED
   app.get("/api/claimants-with-lawsuits", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
+      const cacheKey = `claimants-with-lawsuits:${userId}`;
+      
+      // Try cache first
+      const cached = aggregationCache.get<(Claimant & { lawsuits: Lawsuit[] })[]>(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+      
       const claimantsWithLawsuits = await storage.getClaimantsWithLawsuits(userId);
+      aggregationCache.set(cacheKey, claimantsWithLawsuits);
       res.json(claimantsWithLawsuits);
     } catch (error) {
       console.error("Error fetching claimants with lawsuits:", error);
@@ -784,11 +876,20 @@ export async function registerRoutes(
     }
   });
 
-  // Get law firms with their linked lawsuits (aggregated for pipeline cards)
+  // Get law firms with their linked lawsuits (aggregated for pipeline cards) - CACHED
   app.get("/api/law-firms-with-lawsuits", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
+      const cacheKey = `law-firms-with-lawsuits:${userId}`;
+      
+      // Try cache first
+      const cached = aggregationCache.get<(LawFirm & { lawsuits: Lawsuit[] })[]>(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+      
       const lawFirmsWithLawsuits = await storage.getLawFirmsWithLawsuits(userId);
+      aggregationCache.set(cacheKey, lawFirmsWithLawsuits);
       res.json(lawFirmsWithLawsuits);
     } catch (error) {
       console.error("Error fetching law firms with lawsuits:", error);
