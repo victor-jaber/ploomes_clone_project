@@ -117,7 +117,7 @@ function InlineEditField({
 }: { 
   value: string; 
   onSave: (val: string) => void;
-  type?: "text" | "number" | "currency" | "textarea";
+  type?: "text" | "number" | "currency" | "textarea" | "date";
   className?: string;
   placeholder?: string;
 }) {
@@ -160,10 +160,11 @@ function InlineEditField({
         />
       );
     }
+    const inputType = type === "currency" ? "number" : type === "date" ? "date" : type;
     return (
       <Input
         autoFocus
-        type={type === "currency" ? "number" : type}
+        type={inputType}
         value={tempValue}
         onChange={(e) => setTempValue(e.target.value)}
         onBlur={handleBlur}
@@ -177,6 +178,8 @@ function InlineEditField({
 
   const displayValue = type === "currency" 
     ? formatCurrency(Number(value) || 0)
+    : type === "date" && value
+    ? new Date(value).toLocaleDateString("pt-BR")
     : value || placeholder || "—";
 
   return (
@@ -869,6 +872,271 @@ function LeadDetailPanel({
                 </Card>
               </div>
             )}
+
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Checklist - Partes
+              </h3>
+              <Card className="p-4">
+                <div className="space-y-3 text-sm">
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <User className="h-3 w-3 text-green-500" />
+                      Reclamante
+                    </Label>
+                    <InlineEditField
+                      value={lead.reclamante || ""}
+                      onSave={(val) => handleUpdateField("reclamante", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <Building2 className="h-3 w-3 text-red-500" />
+                      Reclamado
+                    </Label>
+                    <InlineEditField
+                      value={lead.reclamado || ""}
+                      onSave={(val) => handleUpdateField("reclamado", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Checklist - Valores
+              </h3>
+              <Card className="p-4">
+                <div className="space-y-3 text-sm">
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <DollarSign className="h-3 w-3 text-blue-500" />
+                      Liquidação Indicada
+                    </Label>
+                    <InlineEditField
+                      value={lead.liquidacaoIndicada || ""}
+                      type="currency"
+                      onSave={(val) => handleUpdateField("liquidacaoIndicada", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <DollarSign className="h-3 w-3 text-red-500" />
+                      Valor Bruto
+                    </Label>
+                    <InlineEditField
+                      value={lead.valorBruto || ""}
+                      type="currency"
+                      onSave={(val) => handleUpdateField("valorBruto", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <DollarSign className="h-3 w-3 text-green-500" />
+                      Valor Líquido
+                    </Label>
+                    <InlineEditField
+                      value={lead.valorLiquido || ""}
+                      type="currency"
+                      onSave={(val) => handleUpdateField("valorLiquido", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <DollarSign className="h-3 w-3 text-orange-500" />
+                      Valor Controverso
+                    </Label>
+                    <InlineEditField
+                      value={lead.valorControverso || ""}
+                      type="currency"
+                      onSave={(val) => handleUpdateField("valorControverso", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <Scale className="h-3 w-3 text-purple-500" />
+                      Sucumbente
+                    </Label>
+                    <InlineEditField
+                      value={lead.sucumbente || ""}
+                      onSave={(val) => handleUpdateField("sucumbente", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <DollarSign className="h-3 w-3 text-cyan-500" />
+                      FGTS
+                    </Label>
+                    <InlineEditField
+                      value={lead.fgts || ""}
+                      type="currency"
+                      onSave={(val) => handleUpdateField("fgts", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <Clock className="h-3 w-3 text-amber-500" />
+                      Data da Planilha
+                    </Label>
+                    <InlineEditField
+                      value={lead.dataPlanilha ? new Date(lead.dataPlanilha).toISOString().split('T')[0] : ""}
+                      type="date"
+                      onSave={(val) => handleUpdateField("dataPlanilha", val ? new Date(val) : null)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <DollarSign className="h-3 w-3 text-gray-500" />
+                      Valor Outros
+                    </Label>
+                    <InlineEditField
+                      value={lead.valorOutros || ""}
+                      type="currency"
+                      onSave={(val) => handleUpdateField("valorOutros", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <Clock className="h-3 w-3 text-red-500" />
+                      Prazo do Caso
+                    </Label>
+                    <InlineEditField
+                      value={lead.prazoCaso ? new Date(lead.prazoCaso).toISOString().split('T')[0] : ""}
+                      type="date"
+                      onSave={(val) => handleUpdateField("prazoCaso", val ? new Date(val) : null)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Responsáveis
+              </h3>
+              <Card className="p-4">
+                <div className="space-y-3 text-sm">
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <User className="h-3 w-3 text-blue-500" />
+                      Comercial Responsável
+                    </Label>
+                    <InlineEditField
+                      value={lead.comercialResponsavel || ""}
+                      onSave={(val) => handleUpdateField("comercialResponsavel", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
+                      <Scale className="h-3 w-3 text-purple-500" />
+                      Advogado Responsável
+                    </Label>
+                    <InlineEditField
+                      value={lead.advogadoResponsavel || ""}
+                      onSave={(val) => handleUpdateField("advogadoResponsavel", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Dados Básicos Extras
+              </h3>
+              <Card className="p-4">
+                <div className="space-y-3 text-sm">
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Cliente</Label>
+                    <InlineEditField
+                      value={lead.cliente || ""}
+                      onSave={(val) => handleUpdateField("cliente", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Abordagem</Label>
+                    <InlineEditField
+                      value={lead.abordagem || ""}
+                      onSave={(val) => handleUpdateField("abordagem", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Origem</Label>
+                    <InlineEditField
+                      value={lead.origem || ""}
+                      onSave={(val) => handleUpdateField("origem", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Dados do Caso
+              </h3>
+              <Card className="p-4">
+                <div className="space-y-3 text-sm">
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">CNJ</Label>
+                    <InlineEditField
+                      value={lead.cnj || ""}
+                      onSave={(val) => handleUpdateField("cnj", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Tribunal</Label>
+                    <InlineEditField
+                      value={lead.tribunal || ""}
+                      onSave={(val) => handleUpdateField("tribunal", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Assunto Principal</Label>
+                    <InlineEditField
+                      value={lead.assuntoPrincipal || ""}
+                      onSave={(val) => handleUpdateField("assuntoPrincipal", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Assuntos</Label>
+                    <InlineEditField
+                      value={lead.assuntos || ""}
+                      onSave={(val) => handleUpdateField("assuntos", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Órgão Julgador</Label>
+                    <InlineEditField
+                      value={lead.orgaoJulgador || ""}
+                      onSave={(val) => handleUpdateField("orgaoJulgador", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
         </div>
 
