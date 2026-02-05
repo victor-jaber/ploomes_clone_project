@@ -396,8 +396,7 @@ function LeadDetailPanel({
 
   const createInteractionMutation = useMutation({
     mutationFn: async (data: { type: string; content: string }) => {
-      return apiRequest("POST", "/api/interactions", {
-        leadId: lead.id,
+      return apiRequest("POST", `/api/leads/${lead.id}/interactions`, {
         type: data.type,
         content: data.content,
       });
