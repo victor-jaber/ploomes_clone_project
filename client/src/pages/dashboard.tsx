@@ -40,7 +40,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import type { Lead, Advogado, Escritorio, Reclamante, Activity as ActivityType } from "@shared/schema";
+import type { Lead, Lawyer, LawFirm, Claimant, Activity as ActivityType } from "@shared/schema";
 
 const PIPELINE_COLORS = {
   advogados: "#8b5cf6",
@@ -172,23 +172,23 @@ export default function DashboardPage() {
     queryKey: ["/api/leads"],
   });
 
-  const { data: advogados = [], isLoading: advogadosLoading } = useQuery<Advogado[]>({
-    queryKey: ["/api/advogados"],
+  const { data: lawyers = [], isLoading: lawyersLoading } = useQuery<Lawyer[]>({
+    queryKey: ["/api/lawyers"],
   });
 
-  const { data: escritorios = [], isLoading: escritoriosLoading } = useQuery<Escritorio[]>({
-    queryKey: ["/api/escritorios"],
+  const { data: lawFirms = [], isLoading: lawFirmsLoading } = useQuery<LawFirm[]>({
+    queryKey: ["/api/law-firms"],
   });
 
-  const { data: reclamantes = [], isLoading: reclamantesLoading } = useQuery<Reclamante[]>({
-    queryKey: ["/api/reclamantes"],
+  const { data: claimants = [], isLoading: claimantsLoading } = useQuery<Claimant[]>({
+    queryKey: ["/api/claimants"],
   });
 
   const { data: activities = [], isLoading: activitiesLoading } = useQuery<ActivityType[]>({
     queryKey: ["/api/activities"],
   });
 
-  const isLoading = leadsLoading || advogadosLoading || escritoriosLoading || reclamantesLoading;
+  const isLoading = leadsLoading || lawyersLoading || lawFirmsLoading || claimantsLoading;
 
   const totalLeads = leads.length;
   const totalValue = leads.reduce((acc, l) => acc + Number(l.valor || 0), 0);
@@ -261,17 +261,17 @@ export default function DashboardPage() {
   };
 
   const getEntityName = (lead: Lead) => {
-    if (lead.advogadoId) {
-      const adv = advogados.find(a => a.id === lead.advogadoId);
-      return adv?.nome || "Advogado";
+    if (lead.lawyerId) {
+      const lawyer = lawyers.find(a => a.id === lead.lawyerId);
+      return lawyer?.nome || "Advogado";
     }
-    if (lead.escritorioId) {
-      const esc = escritorios.find(e => e.id === lead.escritorioId);
-      return esc?.nome || "Escritório";
+    if (lead.lawFirmId) {
+      const lawFirm = lawFirms.find(e => e.id === lead.lawFirmId);
+      return lawFirm?.nome || "Escritório";
     }
-    if (lead.reclamanteId) {
-      const rec = reclamantes.find(r => r.id === lead.reclamanteId);
-      return rec?.nome || "Reclamante";
+    if (lead.claimantId) {
+      const claimant = claimants.find(r => r.id === lead.claimantId);
+      return claimant?.nome || "Reclamante";
     }
     return "-";
   };
@@ -314,7 +314,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Advogados"
-          value={advogados.length}
+          value={lawyers.length}
           subtitle={`${leadsByPipeline.advogados.length} leads ativos`}
           icon={Scale}
           iconColor="bg-gradient-to-br from-violet-500 to-purple-500"
@@ -322,7 +322,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Escritórios"
-          value={escritorios.length}
+          value={lawFirms.length}
           subtitle={`${leadsByPipeline.escritorios.length} leads ativos`}
           icon={Building2}
           iconColor="bg-gradient-to-br from-blue-500 to-cyan-500"
@@ -333,7 +333,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Reclamantes"
-          value={reclamantes.length}
+          value={claimants.length}
           subtitle={`${leadsByPipeline.reclamantes.length} leads ativos`}
           icon={User}
           iconColor="bg-gradient-to-br from-teal-500 to-green-500"
@@ -680,15 +680,15 @@ export default function DashboardPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="text-center p-3 rounded-lg bg-muted/30">
-                <p className="text-xl font-bold">{advogados.length}</p>
+                <p className="text-xl font-bold">{lawyers.length}</p>
                 <p className="text-xs text-muted-foreground">Advogados</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-muted/30">
-                <p className="text-xl font-bold">{escritorios.length}</p>
+                <p className="text-xl font-bold">{lawFirms.length}</p>
                 <p className="text-xs text-muted-foreground">Escritórios</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-muted/30">
-                <p className="text-xl font-bold">{reclamantes.length}</p>
+                <p className="text-xl font-bold">{claimants.length}</p>
                 <p className="text-xs text-muted-foreground">Reclamantes</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-muted/30">

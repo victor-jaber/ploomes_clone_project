@@ -272,7 +272,7 @@ export default function ClientsPage() {
       ownerId: "",
     };
     if (editingEntity) {
-      updateTodosAdvogadosInfosMutation.mutate({ id: editingEntity.id, data });
+      updateTodosAdvogadosInfosMutation.mutate({ id: String(editingEntity.id), data });
     } else {
       createTodosAdvogadosInfosMutation.mutate(data);
     }
@@ -294,7 +294,7 @@ export default function ClientsPage() {
       ownerId: "",
     };
     if (editingEntity) {
-      updateEscritorioMutation.mutate({ id: editingEntity.id, data, advogadoIds: escritorioAdvogados });
+      updateEscritorioMutation.mutate({ id: String(editingEntity.id), data, advogadoIds: escritorioAdvogados });
     } else {
       createEscritorioMutation.mutate({ ...data, advogadoIds: escritorioAdvogados } as InsertEscritorio & { advogadoIds: number[] });
     }
@@ -336,7 +336,7 @@ export default function ClientsPage() {
       ownerId: "",
     };
     if (editingEntity) {
-      updateReclamanteMutation.mutate({ id: editingEntity.id, data });
+      updateReclamanteMutation.mutate({ id: String(editingEntity.id), data });
     } else {
       createReclamanteMutation.mutate(data);
     }
@@ -730,7 +730,7 @@ export default function ClientsPage() {
                     <DropdownMenuItem onClick={() => openEditDialog(adv)}>
                       <Pencil className="h-4 w-4 mr-2" /> Editar
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDelete(adv.id)} className="text-destructive">
+                    <DropdownMenuItem onClick={() => handleDelete(String(adv.id))} className="text-destructive">
                       <Trash2 className="h-4 w-4 mr-2" /> Excluir
                     </DropdownMenuItem>
                   </DropdownMenuContent>
