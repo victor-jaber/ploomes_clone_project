@@ -1,89 +1,222 @@
 import { Client } from "@microsoft/microsoft-graph-client";
 import logger from "./logger";
+import { db } from "./db";
+import { userOAuthTokens } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
-let connectionSettings: any;
+const MICROSOFT_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID;
+const MICROSOFT_CLIENT_SECRET = process.env.MICROSOFT_CLIENT_SECRET;
+const MICROSOFT_REDIRECT_URI = process.env.MICROSOFT_REDIRECT_URI;
 
-async function getAccessToken(): Promise<string> {
-  if (connectionSettings && connectionSettings.settings?.expires_at && 
-      new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
-    return connectionSettings.settings.access_token;
+const MICROSOFT_AUTH_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
+const MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+const SCOPES = [
+  "offline_access",
+  "User.Read",
+  "Calendars.ReadWrite",
+  "OnlineMeetings.ReadWrite"
+].join(" ");
+
+export function getOAuthConfig() {
+  return {
+    clientId: MICROSOFT_CLIENT_ID,
+    redirectUri: MICROSOFT_REDIRECT_URI,
+    configured: !!(MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET && MICROSOFT_REDIRECT_URI)
+  };
+}
+
+export function getAuthorizationUrl(state: string): string {
+  if (!MICROSOFT_CLIENT_ID || !MICROSOFT_REDIRECT_URI) {
+    throw new Error("Microsoft OAuth não configurado");
   }
   
-  const hostname = process.env.CONNECTORS_HOSTNAME || process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
+  const params = new URLSearchParams({
+    client_id: MICROSOFT_CLIENT_ID,
+    response_type: "code",
+    redirect_uri: MICROSOFT_REDIRECT_URI,
+    response_mode: "query",
+    scope: SCOPES,
+    state: state,
+    prompt: "consent"
+  });
+  
+  return `${MICROSOFT_AUTH_URL}?${params.toString()}`;
+}
 
-  if (!xReplitToken) {
-    throw new Error('Token de autenticação Replit não encontrado');
+export async function exchangeCodeForTokens(code: string): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}> {
+  if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET || !MICROSOFT_REDIRECT_URI) {
+    throw new Error("Microsoft OAuth não configurado");
   }
-
-  const response = await fetch(
-    `https://${hostname}/api/v2/connection?include_secrets=true&connector_names=outlook`,
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  );
+  
+  const params = new URLSearchParams({
+    client_id: MICROSOFT_CLIENT_ID,
+    client_secret: MICROSOFT_CLIENT_SECRET,
+    code: code,
+    redirect_uri: MICROSOFT_REDIRECT_URI,
+    grant_type: "authorization_code",
+    scope: SCOPES
+  });
+  
+  const response = await fetch(MICROSOFT_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: params.toString()
+  });
+  
+  if (!response.ok) {
+    const error = await response.text();
+    logger.error("Erro ao trocar código por token: " + error);
+    throw new Error("Falha na autenticação com Microsoft");
+  }
   
   const data = await response.json();
-  connectionSettings = data.items?.[0];
+  
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token,
+    expiresIn: data.expires_in
+  };
+}
 
-  const accessToken = connectionSettings?.settings?.access_token || 
-                      connectionSettings?.settings?.oauth?.credentials?.access_token;
-
-  if (!connectionSettings || !accessToken) {
-    throw new Error('Outlook não conectado');
+export async function refreshAccessToken(refreshToken: string): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}> {
+  if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET) {
+    throw new Error("Microsoft OAuth não configurado");
   }
   
-  return accessToken;
+  const params = new URLSearchParams({
+    client_id: MICROSOFT_CLIENT_ID,
+    client_secret: MICROSOFT_CLIENT_SECRET,
+    refresh_token: refreshToken,
+    grant_type: "refresh_token",
+    scope: SCOPES
+  });
+  
+  const response = await fetch(MICROSOFT_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: params.toString()
+  });
+  
+  if (!response.ok) {
+    const error = await response.text();
+    logger.error("Erro ao renovar token: " + error);
+    throw new Error("Falha ao renovar token Microsoft");
+  }
+  
+  const data = await response.json();
+  
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token || refreshToken,
+    expiresIn: data.expires_in
+  };
 }
 
-export async function getConnectionAuthUrl(): Promise<string | null> {
-  const hostname = process.env.CONNECTORS_HOSTNAME || process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
+export async function saveUserTokens(userId: string, tokens: {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}): Promise<void> {
+  const expiresAt = new Date(Date.now() + tokens.expiresIn * 1000);
+  
+  const existing = await db.select()
+    .from(userOAuthTokens)
+    .where(eq(userOAuthTokens.userId, userId))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    await db.update(userOAuthTokens)
+      .set({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: expiresAt,
+        updatedAt: new Date()
+      })
+      .where(eq(userOAuthTokens.userId, userId));
+  } else {
+    await db.insert(userOAuthTokens).values({
+      userId: userId,
+      provider: "microsoft",
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresAt: expiresAt,
+      scope: SCOPES
+    });
+  }
+  
+  logger.success("Tokens Microsoft salvos para usuário", { prefix: "OAuth" });
+}
 
-  if (!hostname || !xReplitToken) {
-    logger.warn("Missing connector env vars - hostname: " + !!hostname + ", token: " + !!xReplitToken);
+export async function getUserTokens(userId: string): Promise<{
+  accessToken: string;
+  refreshToken: string | null;
+  expiresAt: Date | null;
+} | null> {
+  const tokens = await db.select()
+    .from(userOAuthTokens)
+    .where(eq(userOAuthTokens.userId, userId))
+    .limit(1);
+  
+  if (tokens.length === 0) {
     return null;
   }
+  
+  return {
+    accessToken: tokens[0].accessToken,
+    refreshToken: tokens[0].refreshToken,
+    expiresAt: tokens[0].expiresAt
+  };
+}
 
+export async function deleteUserTokens(userId: string): Promise<void> {
+  await db.delete(userOAuthTokens)
+    .where(eq(userOAuthTokens.userId, userId));
+  
+  logger.info("Tokens Microsoft removidos para usuário", { prefix: "OAuth" });
+}
+
+async function getValidAccessToken(userId: string): Promise<string> {
+  const tokens = await getUserTokens(userId);
+  
+  if (!tokens) {
+    throw new Error("Calendário não conectado");
+  }
+  
+  const now = new Date();
+  const expiresAt = tokens.expiresAt;
+  
+  if (expiresAt && expiresAt > now) {
+    return tokens.accessToken;
+  }
+  
+  if (!tokens.refreshToken) {
+    throw new Error("Token expirado, reconecte o calendário");
+  }
+  
   try {
-    const response = await fetch(
-      `https://${hostname}/api/v2/connector?connector_names=outlook`,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'X_REPLIT_TOKEN': xReplitToken
-        }
-      }
-    );
-    
-    const data = await response.json();
-    logger.info("Connector response received");
-    const connector = data.items?.[0];
-    
-    if (connector?.auth_url) {
-      return connector.auth_url;
-    }
-    
-    return `https://${hostname}/oauth/outlook/authorize`;
+    const newTokens = await refreshAccessToken(tokens.refreshToken);
+    await saveUserTokens(userId, newTokens);
+    return newTokens.accessToken;
   } catch (error) {
-    logger.error("getting connection auth url", error as Error);
-    return null;
+    await deleteUserTokens(userId);
+    throw new Error("Sessão expirada, reconecte o calendário");
   }
 }
 
-export async function getOutlookClient(): Promise<Client> {
-  const accessToken = await getAccessToken();
+export async function getOutlookClientForUser(userId: string): Promise<Client> {
+  const accessToken = await getValidAccessToken(userId);
 
   return Client.initWithMiddleware({
     authProvider: {
@@ -106,9 +239,9 @@ export interface CalendarEvent {
   onlineMeetingProvider?: string;
 }
 
-export async function getCalendarEvents(startDate?: string, endDate?: string): Promise<CalendarEvent[]> {
+export async function getCalendarEvents(userId: string, startDate?: string, endDate?: string): Promise<CalendarEvent[]> {
   try {
-    const client = await getOutlookClient();
+    const client = await getOutlookClientForUser(userId);
     
     let response;
     
@@ -141,9 +274,9 @@ export async function getCalendarEvents(startDate?: string, endDate?: string): P
   }
 }
 
-export async function createCalendarEvent(event: CalendarEvent): Promise<CalendarEvent> {
+export async function createCalendarEvent(userId: string, event: CalendarEvent): Promise<CalendarEvent> {
   try {
-    const client = await getOutlookClient();
+    const client = await getOutlookClientForUser(userId);
     
     let eventToCreate = { ...event };
     
@@ -188,9 +321,9 @@ export async function createCalendarEvent(event: CalendarEvent): Promise<Calenda
   }
 }
 
-export async function updateCalendarEvent(eventId: string, event: Partial<CalendarEvent>): Promise<CalendarEvent> {
+export async function updateCalendarEvent(userId: string, eventId: string, event: Partial<CalendarEvent>): Promise<CalendarEvent> {
   try {
-    const client = await getOutlookClient();
+    const client = await getOutlookClientForUser(userId);
     
     const updatedEvent = await client.api(`/me/calendar/events/${eventId}`).patch(event);
     logger.success(`Evento atualizado: ${eventId}`, { prefix: "Outlook" });
@@ -202,9 +335,9 @@ export async function updateCalendarEvent(eventId: string, event: Partial<Calend
   }
 }
 
-export async function deleteCalendarEvent(eventId: string): Promise<void> {
+export async function deleteCalendarEvent(userId: string, eventId: string): Promise<void> {
   try {
-    const client = await getOutlookClient();
+    const client = await getOutlookClientForUser(userId);
     
     await client.api(`/me/calendar/events/${eventId}`).delete();
     logger.success(`Evento excluído: ${eventId}`, { prefix: "Outlook" });
@@ -214,9 +347,9 @@ export async function deleteCalendarEvent(eventId: string): Promise<void> {
   }
 }
 
-export async function checkOutlookConnection(): Promise<boolean> {
+export async function checkOutlookConnection(userId: string): Promise<boolean> {
   try {
-    const client = await getOutlookClient();
+    const client = await getOutlookClientForUser(userId);
     await client.api('/me').get();
     return true;
   } catch {

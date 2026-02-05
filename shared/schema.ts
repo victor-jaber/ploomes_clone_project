@@ -12,6 +12,23 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// OAuth tokens for Microsoft Calendar (per-user)
+export const userOAuthTokens = pgTable("user_oauth_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 50 }).notNull().default("microsoft"),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  expiresAt: timestamp("expires_at"),
+  scope: text("scope"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertUserOAuthTokenSchema = createInsertSchema(userOAuthTokens).omit({ id: true, createdAt: true, updatedAt: true });
+export type UserOAuthToken = typeof userOAuthTokens.$inferSelect;
+export type InsertUserOAuthToken = z.infer<typeof insertUserOAuthTokenSchema>;
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const loginSchema = z.object({
   email: z.string().email(),
