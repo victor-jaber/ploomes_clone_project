@@ -30,7 +30,7 @@ import {
   User,
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Lead, Advogado, Escritorio, Reclamante } from "@shared/schema";
+import type { Lead, Lawyer, LawFirm, Claimant } from "@shared/schema";
 import { PIPELINE_STAGES } from "@shared/schema";
 
 const PIPELINE_LABELS: Record<string, { label: string; icon: any }> = {
@@ -150,16 +150,16 @@ export default function OpportunitiesPage() {
     queryKey: ["/api/leads"],
   });
 
-  const { data: advogados = [] } = useQuery<Advogado[]>({
-    queryKey: ["/api/advogados"],
+  const { data: lawyers = [] } = useQuery<Lawyer[]>({
+    queryKey: ["/api/lawyers"],
   });
 
-  const { data: escritorios = [] } = useQuery<Escritorio[]>({
-    queryKey: ["/api/escritorios"],
+  const { data: lawFirms = [] } = useQuery<LawFirm[]>({
+    queryKey: ["/api/law-firms"],
   });
 
-  const { data: reclamantes = [] } = useQuery<Reclamante[]>({
-    queryKey: ["/api/reclamantes"],
+  const { data: claimants = [] } = useQuery<Claimant[]>({
+    queryKey: ["/api/claimants"],
   });
 
   const updateLeadMutation = useMutation({
@@ -176,14 +176,14 @@ export default function OpportunitiesPage() {
   });
 
   const getEntityName = (lead: Lead) => {
-    if (lead.advogadoId) {
-      return advogados.find(a => a.id === lead.advogadoId)?.nome || "-";
+    if (lead.lawyerId) {
+      return lawyers.find(a => a.id === lead.lawyerId)?.nome || "-";
     }
-    if (lead.escritorioId) {
-      return escritorios.find(e => e.id === lead.escritorioId)?.nome || "-";
+    if (lead.lawFirmId) {
+      return lawFirms.find(e => e.id === lead.lawFirmId)?.nome || "-";
     }
-    if (lead.reclamanteId) {
-      return reclamantes.find(r => r.id === lead.reclamanteId)?.nome || "-";
+    if (lead.claimantId) {
+      return claimants.find(r => r.id === lead.claimantId)?.nome || "-";
     }
     return "-";
   };
