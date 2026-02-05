@@ -558,86 +558,136 @@ export default function CalendarPage() {
       </div>
 
       <Sheet open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle className="text-left">{selectedEvent?.subject}</SheetTitle>
-            <SheetDescription className="text-left">
-              Detalhes do evento
-            </SheetDescription>
-          </SheetHeader>
+        <SheetContent className="sm:max-w-md p-0 overflow-hidden">
           {selectedEvent && (
-            <div className="mt-6 space-y-6">
-              <div className="flex items-start gap-3">
-                <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="font-medium">
-                    {new Date(selectedEvent.start.dateTime).toLocaleDateString("pt-BR", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                    })}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatTime(selectedEvent.start.dateTime)} - {formatTime(selectedEvent.end.dateTime)}
-                  </p>
+            <>
+              <div className="relative h-32 bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500">
+                <div className="absolute inset-0 bg-black/10" />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <Badge className="bg-white/20 text-white border-0 backdrop-blur-sm mb-2">
+                    {selectedEvent.isOnlineMeeting ? "Reunião Online" : "Evento"}
+                  </Badge>
+                  <h2 className="text-xl font-bold text-white line-clamp-2">
+                    {selectedEvent.subject}
+                  </h2>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-3 right-3 text-white hover:bg-white/20"
+                  onClick={() => setSelectedEvent(null)}
+                  data-testid="button-close-event"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
               </div>
 
-              {selectedEvent.location?.displayName && (
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <p>{selectedEvent.location.displayName}</p>
+              <div className="p-6 space-y-6">
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border">
+                  <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white">
+                    <CalendarIcon className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <p className="font-semibold capitalize">
+                      {new Date(selectedEvent.start.dateTime).toLocaleDateString("pt-BR", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })}
+                    </p>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span>{formatTime(selectedEvent.start.dateTime)} - {formatTime(selectedEvent.end.dateTime)}</span>
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              {selectedEvent.isOnlineMeeting && (selectedEvent.onlineMeeting?.joinUrl || selectedEvent.onlineMeetingUrl) && (
-                <div className="flex items-start gap-3">
-                  <Video className="h-5 w-5 text-violet-500 mt-0.5" />
+                {selectedEvent.isOnlineMeeting && (selectedEvent.onlineMeeting?.joinUrl || selectedEvent.onlineMeetingUrl) && (
                   <a
                     href={selectedEvent.onlineMeeting?.joinUrl || selectedEvent.onlineMeetingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-violet-500 hover:underline font-medium"
+                    className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 hover:border-violet-500/40 transition-colors group"
+                    data-testid="link-join-meeting"
                   >
-                    Entrar na reunião do Teams
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white group-hover:scale-105 transition-transform">
+                      <Video className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-violet-600 dark:text-violet-400">Entrar na Reunião</p>
+                      <p className="text-sm text-muted-foreground">Microsoft Teams</p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-violet-500" />
                   </a>
-                </div>
-              )}
+                )}
 
-              {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
-                <div className="flex items-start gap-3">
-                  <Users className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div className="space-y-1">
-                    {selectedEvent.attendees.map((attendee, i) => (
-                      <p key={i} className="text-sm">
-                        {attendee.emailAddress.name || attendee.emailAddress.address}
-                      </p>
-                    ))}
+                {selectedEvent.location?.displayName && (
+                  <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 border">
+                    <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                      <MapPin className="h-5 w-5 text-emerald-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Local</p>
+                      <p className="font-medium">{selectedEvent.location.displayName}</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {selectedEvent.body?.content && (
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {selectedEvent.body.content.replace(/<[^>]*>/g, "")}
-                  </p>
-                </div>
-              )}
+                {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Participantes ({selectedEvent.attendees.length})
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {selectedEvent.attendees.map((attendee, i) => (
+                        <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-xs font-semibold">
+                            {(attendee.emailAddress.name || attendee.emailAddress.address).charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {attendee.emailAddress.name || attendee.emailAddress.address}
+                            </p>
+                            {attendee.emailAddress.name && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {attendee.emailAddress.address}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-              <div className="flex gap-2 pt-4">
-                <Button
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={() => selectedEvent.id && deleteEventMutation.mutate(selectedEvent.id)}
-                  disabled={deleteEventMutation.isPending}
-                  data-testid="button-delete-event"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {deleteEventMutation.isPending ? "Excluindo..." : "Excluir"}
-                </Button>
+                {selectedEvent.body?.content && selectedEvent.body.content.replace(/<[^>]*>/g, "").trim() && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Descrição</p>
+                    <div className="p-4 rounded-xl bg-muted/30 border">
+                      <p className="text-sm whitespace-pre-wrap">
+                        {selectedEvent.body.content.replace(/<[^>]*>/g, "").trim()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t space-y-3">
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    onClick={() => selectedEvent.id && deleteEventMutation.mutate(selectedEvent.id)}
+                    disabled={deleteEventMutation.isPending}
+                    data-testid="button-delete-event"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deleteEventMutation.isPending ? "Excluindo..." : "Excluir Evento"}
+                  </Button>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </SheetContent>
       </Sheet>
