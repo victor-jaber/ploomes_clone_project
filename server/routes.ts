@@ -1626,7 +1626,12 @@ export async function registerRoutes(
       if (!userId) {
         return res.status(401).json({ message: "Não autenticado" });
       }
-      const state = Buffer.from(JSON.stringify({ userId })).toString("base64");
+      const crypto = await import("crypto");
+      const timestamp = Date.now();
+      const secret = process.env.JWT_SECRET || "hermes-crm-secret";
+      const data = JSON.stringify({ userId, timestamp });
+      const signature = crypto.createHmac("sha256", secret).update(data).digest("hex");
+      const state = Buffer.from(JSON.stringify({ userId, timestamp, signature })).toString("base64");
       const authUrl = getAuthorizationUrl(state);
       res.json({ authUrl });
     } catch (error) {
@@ -1649,10 +1654,25 @@ export async function registerRoutes(
       }
       
       const stateData = JSON.parse(Buffer.from(state as string, "base64").toString());
-      const userId = stateData.userId;
+      const { userId, timestamp, signature } = stateData;
       
-      if (!userId) {
+      if (!userId || !timestamp || !signature) {
         return res.redirect("/calendario?error=invalid_state");
+      }
+      
+      const crypto = await import("crypto");
+      const secret = process.env.JWT_SECRET || "hermes-crm-secret";
+      const expectedSignature = crypto.createHmac("sha256", secret).update(JSON.stringify({ userId, timestamp })).digest("hex");
+      
+      if (signature !== expectedSignature) {
+        logger.warn("Invalid OAuth state signature");
+        return res.redirect("/calendario?error=invalid_state");
+      }
+      
+      const stateAge = Date.now() - timestamp;
+      if (stateAge > 10 * 60 * 1000) {
+        logger.warn("OAuth state expired");
+        return res.redirect("/calendario?error=state_expired");
       }
       
       const tokens = await exchangeCodeForTokens(code as string);
