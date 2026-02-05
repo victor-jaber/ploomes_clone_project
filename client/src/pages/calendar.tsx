@@ -53,6 +53,7 @@ interface CalendarEvent {
   isOnlineMeeting?: boolean;
   onlineMeeting?: { joinUrl: string };
   onlineMeetingUrl?: string;
+  onlineMeetingProvider?: string;
 }
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -159,6 +160,7 @@ export default function CalendarPage() {
     endTime: "",
     location: "",
     description: "",
+    isOnlineMeeting: false,
   });
 
   const weekDates = useMemo(() => getWeekDates(currentDate), [currentDate]);
@@ -226,6 +228,7 @@ export default function CalendarPage() {
       endTime: "",
       location: "",
       description: "",
+      isOnlineMeeting: false,
     });
   };
 
@@ -247,6 +250,10 @@ export default function CalendarPage() {
       end: { dateTime: endDateTime, timeZone: "America/Sao_Paulo" },
       ...(newEvent.location && { location: { displayName: newEvent.location } }),
       ...(newEvent.description && { body: { contentType: "text", content: newEvent.description } }),
+      ...(newEvent.isOnlineMeeting && { 
+        isOnlineMeeting: true,
+        onlineMeetingProvider: "teamsForBusiness",
+      }),
     };
 
     createEventMutation.mutate(eventData);
@@ -585,6 +592,40 @@ export default function CalendarPage() {
                       onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                       data-testid="input-event-description"
                     />
+                  </div>
+                  <div 
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all",
+                      newEvent.isOnlineMeeting 
+                        ? "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border-violet-500/30" 
+                        : "bg-muted/30 hover:bg-muted/50"
+                    )}
+                    onClick={() => setNewEvent({ ...newEvent, isOnlineMeeting: !newEvent.isOnlineMeeting })}
+                    data-testid="toggle-online-meeting"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
+                        newEvent.isOnlineMeeting ? "bg-violet-500 text-white" : "bg-muted"
+                      )}>
+                        <Video className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Reunião do Teams</p>
+                        <p className="text-sm text-muted-foreground">
+                          {newEvent.isOnlineMeeting ? "Link será gerado automaticamente" : "Adicionar link de videoconferência"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={cn(
+                      "h-6 w-11 rounded-full transition-colors relative",
+                      newEvent.isOnlineMeeting ? "bg-violet-500" : "bg-muted-foreground/30"
+                    )}>
+                      <div className={cn(
+                        "absolute top-1 h-4 w-4 rounded-full bg-white transition-all shadow-sm",
+                        newEvent.isOnlineMeeting ? "left-6" : "left-1"
+                      )} />
+                    </div>
                   </div>
                   <div className="flex justify-end gap-2 pt-2">
                     <Button variant="outline" onClick={() => setShowNewEvent(false)} data-testid="button-cancel-event">
