@@ -264,6 +264,63 @@ export const leads = pgTable("leads", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Lead Financials (Valores de fechamento) - Normalização 1:1
+export const leadFinancials = pgTable("lead_financials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }).unique(),
+  valorFechamento: numeric("valor_fechamento", { precision: 12, scale: 2 }),
+  percentualComissao: numeric("percentual_comissao", { precision: 5, scale: 2 }),
+  formaPagamento: text("forma_pagamento"),
+  observacoesFinanceiras: text("observacoes_financeiras"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Lead Case Details (Dados do processo) - Normalização 1:1
+export const leadCaseDetails = pgTable("lead_case_details", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }).unique(),
+  tribunal: text("tribunal"),
+  assuntoPrincipal: text("assunto_principal"),
+  assuntos: text("assuntos"),
+  orgaoJulgador: text("orgao_julgador"),
+  cnj: varchar("cnj", { length: 30 }),
+  cliente: text("cliente"),
+  abordagem: text("abordagem"),
+  origem: text("origem"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Lead Checklist (Partes e valores específicos) - Normalização 1:1
+export const leadChecklist = pgTable("lead_checklist", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }).unique(),
+  reclamante: text("reclamante"),
+  reclamado: text("reclamado"),
+  liquidacaoIndicada: numeric("liquidacao_indicada", { precision: 12, scale: 2 }),
+  valorBruto: numeric("valor_bruto", { precision: 12, scale: 2 }),
+  valorLiquido: numeric("valor_liquido", { precision: 12, scale: 2 }),
+  valorControverso: numeric("valor_controverso", { precision: 12, scale: 2 }),
+  sucumbente: text("sucumbente"),
+  fgts: numeric("fgts", { precision: 12, scale: 2 }),
+  dataPlanilha: timestamp("data_planilha"),
+  valorOutros: numeric("valor_outros", { precision: 12, scale: 2 }),
+  prazoCaso: timestamp("prazo_caso"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Lead Assignments (Responsáveis) - Normalização 1:1
+export const leadAssignments = pgTable("lead_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }).unique(),
+  comercialResponsavel: text("comercial_responsavel"),
+  advogadoResponsavel: text("advogado_responsavel"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Interaction Types
 export const interactionTypeEnum = pgEnum("interaction_type", [
   "comment",
@@ -462,6 +519,10 @@ export const insertLawsuitLawyerSchema = createInsertSchema(lawsuitLawyers).omit
 export const insertLawsuitClaimantSchema = createInsertSchema(lawsuitClaimants).omit({ id: true, createdAt: true });
 export const insertLawsuitLawFirmSchema = createInsertSchema(lawsuitLawFirms).omit({ id: true, createdAt: true });
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLeadFinancialsSchema = createInsertSchema(leadFinancials).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLeadCaseDetailsSchema = createInsertSchema(leadCaseDetails).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLeadChecklistSchema = createInsertSchema(leadChecklist).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLeadAssignmentsSchema = createInsertSchema(leadAssignments).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInteractionSchema = createInsertSchema(interactions).omit({ id: true, createdAt: true });
 export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, createdAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true, updatedAt: true });
@@ -487,6 +548,14 @@ export type LawsuitLawFirm = typeof lawsuitLawFirms.$inferSelect;
 export type InsertLawsuitLawFirm = z.infer<typeof insertLawsuitLawFirmSchema>;
 export type Lead = typeof leads.$inferSelect;
 export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type LeadFinancials = typeof leadFinancials.$inferSelect;
+export type InsertLeadFinancials = z.infer<typeof insertLeadFinancialsSchema>;
+export type LeadCaseDetails = typeof leadCaseDetails.$inferSelect;
+export type InsertLeadCaseDetails = z.infer<typeof insertLeadCaseDetailsSchema>;
+export type LeadChecklist = typeof leadChecklist.$inferSelect;
+export type InsertLeadChecklist = z.infer<typeof insertLeadChecklistSchema>;
+export type LeadAssignments = typeof leadAssignments.$inferSelect;
+export type InsertLeadAssignments = z.infer<typeof insertLeadAssignmentsSchema>;
 export type Interaction = typeof interactions.$inferSelect;
 export type InsertInteraction = z.infer<typeof insertInteractionSchema>;
 export type Activity = typeof activities.$inferSelect;
