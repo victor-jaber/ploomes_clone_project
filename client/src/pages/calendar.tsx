@@ -17,6 +17,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -38,6 +44,8 @@ import {
   Trash2,
   Edit,
   X,
+  MoreVertical,
+  Unplug,
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
@@ -571,6 +579,30 @@ export default function CalendarPage() {
             >
               <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" data-testid="button-calendar-menu">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    window.open("/__repl", "_blank");
+                    toast({
+                      title: "Gerenciar conexão",
+                      description: "Use o painel do Replit para desconectar sua conta Microsoft",
+                    });
+                  }}
+                  data-testid="button-disconnect-calendar"
+                >
+                  <Unplug className="h-4 w-4 mr-2" />
+                  Desconectar Calendário
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <Dialog open={showNewEvent} onOpenChange={setShowNewEvent}>
               <DialogTrigger asChild>
