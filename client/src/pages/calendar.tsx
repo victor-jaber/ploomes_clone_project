@@ -195,6 +195,22 @@ export default function CalendarPage() {
     queryKey: ["/api/calendar/status"],
   });
 
+  const { data: connectUrlData } = useQuery<{ authUrl: string | null }>({
+    queryKey: ["/api/calendar/connect-url"],
+  });
+
+  const handleConnectCalendar = () => {
+    if (connectUrlData?.authUrl) {
+      window.open(connectUrlData.authUrl, "_blank");
+    } else {
+      toast({
+        title: "Conexão não disponível",
+        description: "A integração com Microsoft Calendar precisa ser configurada pelo administrador do sistema.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const { data: events = [], isLoading, refetch } = useQuery<CalendarEvent[]>({
     queryKey: ["/api/calendar/events", startOfRange, endOfRange],
     queryFn: async () => {
@@ -491,9 +507,7 @@ export default function CalendarPage() {
                   <Button 
                     size="sm"
                     className="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 shadow-lg shadow-violet-500/20"
-                    onClick={() => {
-                      window.open("/__repl", "_blank");
-                    }}
+                    onClick={handleConnectCalendar}
                     data-testid="button-connect-microsoft"
                   >
                     <svg viewBox="0 0 23 23" className="h-4 w-4 mr-2">
@@ -590,16 +604,18 @@ export default function CalendarPage() {
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onClick={() => {
-                    window.open("/__repl", "_blank");
+                    if (connectUrlData?.authUrl) {
+                      window.open(connectUrlData.authUrl, "_blank");
+                    }
                     toast({
                       title: "Gerenciar conexão",
-                      description: "Use o painel do Replit para desconectar sua conta Microsoft",
+                      description: "Gerencie sua conexão Microsoft na nova aba que foi aberta",
                     });
                   }}
                   data-testid="button-disconnect-calendar"
                 >
                   <Unplug className="h-4 w-4 mr-2" />
-                  Desconectar Calendário
+                  Gerenciar Conexão
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
