@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { queryClient } from "@/lib/queryClient";
+import clientLogger from "@/lib/logger";
 import type { Lead } from "@shared/schema";
 
 interface WebSocketMessage {
@@ -19,7 +20,7 @@ export function useWebSocket() {
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
-        console.log("[WS] Connected to Hermes CRM");
+        clientLogger.success("WebSocket", "Conectado ao Hermes CRM");
       };
 
       wsRef.current.onmessage = (event) => {
@@ -27,20 +28,20 @@ export function useWebSocket() {
           const message: WebSocketMessage = JSON.parse(event.data);
           handleMessage(message);
         } catch (error) {
-          console.error("[WS] Error parsing message:", error);
+          clientLogger.error("WebSocket", "Erro ao processar mensagem");
         }
       };
 
       wsRef.current.onclose = () => {
-        console.log("[WS] Connection closed, reconnecting in 3s...");
+        clientLogger.warn("WebSocket", "Desconectado, reconectando em 3s...");
         reconnectTimeoutRef.current = setTimeout(connect, 3000);
       };
 
-      wsRef.current.onerror = (error) => {
-        console.error("[WS] Error:", error);
+      wsRef.current.onerror = () => {
+        clientLogger.error("WebSocket", "Erro na conexão");
       };
     } catch (error) {
-      console.error("[WS] Failed to connect:", error);
+      clientLogger.error("WebSocket", "Falha ao conectar");
       reconnectTimeoutRef.current = setTimeout(connect, 3000);
     }
   }, []);
@@ -48,7 +49,7 @@ export function useWebSocket() {
   const handleMessage = useCallback((message: WebSocketMessage) => {
     switch (message.type) {
       case "connected":
-        console.log("[WS]", message.payload.message);
+        clientLogger.info("WebSocket", message.payload.message);
         break;
 
       case "lead_created":
@@ -89,7 +90,7 @@ export function useWebSocket() {
         break;
 
       default:
-        console.log("[WS] Unknown message type:", message.type);
+        clientLogger.debug("WebSocket", `Tipo de mensagem desconhecido: ${message.type}`);
     }
   }, []);
 
