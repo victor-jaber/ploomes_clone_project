@@ -201,7 +201,7 @@ export const lawsuitLawFirms = pgTable("lawsuit_law_firms", {
   unique("lawsuit_law_firm_unique").on(table.lawsuitId, table.lawFirmId),
 ]);
 
-// Leads (Cases no pipeline)
+// Leads (Cases no pipeline) - Tabela simplificada, dados detalhados em tabelas auxiliares 1:1
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   titulo: text("titulo").notNull(),
@@ -209,55 +209,19 @@ export const leads = pgTable("leads", {
   stage: text("stage").notNull().default("novo_lead"),
   position: integer("position").default(0),
   
-  // Valores principais
+  // Valores principais (mantidos na tabela principal para performance)
   valor: numeric("valor", { precision: 12, scale: 2 }),
   probabilidade: integer("probabilidade").default(0),
   previsaoFechamento: timestamp("previsao_fechamento"),
   descricao: text("descricao"),
   motivoPerda: text("motivo_perda"),
   
-  // Valores de fechamento
-  valorFechamento: numeric("valor_fechamento", { precision: 12, scale: 2 }),
-  percentualComissao: numeric("percentual_comissao", { precision: 5, scale: 2 }),
-  formaPagamento: text("forma_pagamento"),
-  observacoesFinanceiras: text("observacoes_financeiras"),
-  
-  // Checklist - Partes
-  reclamante: text("reclamante"),
-  reclamado: text("reclamado"),
-  
-  // Checklist - Valores do Caso
-  liquidacaoIndicada: numeric("liquidacao_indicada", { precision: 12, scale: 2 }),
-  valorBruto: numeric("valor_bruto", { precision: 12, scale: 2 }),
-  valorLiquido: numeric("valor_liquido", { precision: 12, scale: 2 }),
-  valorControverso: numeric("valor_controverso", { precision: 12, scale: 2 }),
-  sucumbente: text("sucumbente"),
-  fgts: numeric("fgts", { precision: 12, scale: 2 }),
-  dataPlanilha: timestamp("data_planilha"),
-  valorOutros: numeric("valor_outros", { precision: 12, scale: 2 }),
-  prazoCaso: timestamp("prazo_caso"),
-  
-  // Responsáveis
-  comercialResponsavel: text("comercial_responsavel"),
-  advogadoResponsavel: text("advogado_responsavel"),
-  
-  // Dados Básicos
-  cliente: text("cliente"),
-  abordagem: text("abordagem"),
-  origem: text("origem"),
-  
-  // Dados do Caso
-  tribunal: text("tribunal"),
-  assuntoPrincipal: text("assunto_principal"),
-  assuntos: text("assuntos"),
-  orgaoJulgador: text("orgao_julgador"),
-  cnj: varchar("cnj", { length: 30 }),
-  
-  // Relacionamentos
+  // Relacionamentos com entidades principais
   lawyerId: integer("lawyer_id").references(() => lawyers.id, { onDelete: "set null" }),
   lawFirmId: varchar("law_firm_id").references(() => lawFirms.id, { onDelete: "set null" }),
   claimantId: varchar("claimant_id").references(() => claimants.id, { onDelete: "set null" }),
   
+  // Metadados
   vendedorId: varchar("vendedor_id"),
   ownerId: varchar("owner_id"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -467,9 +431,55 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
     fields: [leads.claimantId],
     references: [claimants.id],
   }),
+  // Tabelas normalizadas 1:1
+  financials: one(leadFinancials, {
+    fields: [leads.id],
+    references: [leadFinancials.leadId],
+  }),
+  caseDetails: one(leadCaseDetails, {
+    fields: [leads.id],
+    references: [leadCaseDetails.leadId],
+  }),
+  checklist: one(leadChecklist, {
+    fields: [leads.id],
+    references: [leadChecklist.leadId],
+  }),
+  assignments: one(leadAssignments, {
+    fields: [leads.id],
+    references: [leadAssignments.leadId],
+  }),
   interactions: many(interactions),
   activities: many(activities),
   proposals: many(proposals),
+}));
+
+// Relations para tabelas normalizadas
+export const leadFinancialsRelations = relations(leadFinancials, ({ one }) => ({
+  lead: one(leads, {
+    fields: [leadFinancials.leadId],
+    references: [leads.id],
+  }),
+}));
+
+export const leadCaseDetailsRelations = relations(leadCaseDetails, ({ one }) => ({
+  lead: one(leads, {
+    fields: [leadCaseDetails.leadId],
+    references: [leads.id],
+  }),
+}));
+
+export const leadChecklistRelations = relations(leadChecklist, ({ one }) => ({
+  lead: one(leads, {
+    fields: [leadChecklist.leadId],
+    references: [leads.id],
+  }),
+}));
+
+export const leadAssignmentsRelations = relations(leadAssignments, ({ one }) => ({
+  lead: one(leads, {
+    fields: [leadAssignments.leadId],
+    references: [leads.id],
+  }),
 }));
 
 export const interactionsRelations = relations(interactions, ({ one }) => ({
