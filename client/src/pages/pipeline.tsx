@@ -1855,8 +1855,9 @@ function PipelineColumn({
   isMinimized,
   onToggleMinimize,
   cardsLimit,
-  isExpanded,
-  onToggleExpand,
+  currentLimit,
+  onLoadMore,
+  onShowLess,
 }: {
   stage: { id: string; label: string; color: string };
   leads: Lead[];
