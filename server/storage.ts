@@ -40,7 +40,7 @@ import {
   type InsertProduct,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 
 // Backward compatibility aliases
 type TodosAdvogadosInfos = Lawyer;
@@ -348,39 +348,96 @@ export class DatabaseStorage implements IStorage {
 
   // Aggregated data for pipeline - retorna entidades com seus processos agrupados
   async getLawyersWithLawsuits(ownerId: string): Promise<(Lawyer & { lawsuits: Lawsuit[] })[]> {
+    // Otimizado: uma única query com LEFT JOIN em vez de N+1 queries
     const allLawyers = await this.getLawyers(ownerId);
-    const result: (Lawyer & { lawsuits: Lawsuit[] })[] = [];
     
-    for (const lawyer of allLawyers) {
-      const lawyerLawsuits = await this.getLawsuitsByLawyer(lawyer.id);
-      result.push({ ...lawyer, lawsuits: lawyerLawsuits });
+    if (allLawyers.length === 0) return [];
+    
+    // Buscar todos os vínculos de uma vez
+    const lawyerIds = allLawyers.map(l => l.id);
+    const allLinks = await db.select({
+      lawyerId: lawsuitLawyers.lawyerId,
+      lawsuit: lawsuits,
+    })
+    .from(lawsuitLawyers)
+    .innerJoin(lawsuits, eq(lawsuitLawyers.lawsuitId, lawsuits.id))
+    .where(inArray(lawsuitLawyers.lawyerId, lawyerIds));
+    
+    // Agrupar por lawyer
+    const lawsuitsByLawyer = new Map<number, Lawsuit[]>();
+    for (const link of allLinks) {
+      if (!lawsuitsByLawyer.has(link.lawyerId)) {
+        lawsuitsByLawyer.set(link.lawyerId, []);
+      }
+      lawsuitsByLawyer.get(link.lawyerId)!.push(link.lawsuit);
     }
     
-    return result;
+    return allLawyers.map(lawyer => ({
+      ...lawyer,
+      lawsuits: lawsuitsByLawyer.get(lawyer.id) || [],
+    }));
   }
 
   async getClaimantsWithLawsuits(ownerId: string): Promise<(Claimant & { lawsuits: Lawsuit[] })[]> {
+    // Otimizado: uma única query com LEFT JOIN em vez de N+1 queries
     const allClaimants = await this.getClaimants(ownerId);
-    const result: (Claimant & { lawsuits: Lawsuit[] })[] = [];
     
-    for (const claimant of allClaimants) {
-      const claimantLawsuits = await this.getLawsuitsByClaimant(claimant.id);
-      result.push({ ...claimant, lawsuits: claimantLawsuits });
+    if (allClaimants.length === 0) return [];
+    
+    // Buscar todos os vínculos de uma vez
+    const claimantIds = allClaimants.map(c => c.id);
+    const allLinks = await db.select({
+      claimantId: lawsuitClaimants.claimantId,
+      lawsuit: lawsuits,
+    })
+    .from(lawsuitClaimants)
+    .innerJoin(lawsuits, eq(lawsuitClaimants.lawsuitId, lawsuits.id))
+    .where(inArray(lawsuitClaimants.claimantId, claimantIds));
+    
+    // Agrupar por claimant
+    const lawsuitsByClaimant = new Map<string, Lawsuit[]>();
+    for (const link of allLinks) {
+      if (!lawsuitsByClaimant.has(link.claimantId)) {
+        lawsuitsByClaimant.set(link.claimantId, []);
+      }
+      lawsuitsByClaimant.get(link.claimantId)!.push(link.lawsuit);
     }
     
-    return result;
+    return allClaimants.map(claimant => ({
+      ...claimant,
+      lawsuits: lawsuitsByClaimant.get(claimant.id) || [],
+    }));
   }
 
   async getLawFirmsWithLawsuits(ownerId: string): Promise<(LawFirm & { lawsuits: Lawsuit[] })[]> {
+    // Otimizado: uma única query com LEFT JOIN em vez de N+1 queries
     const allLawFirms = await this.getLawFirms(ownerId);
-    const result: (LawFirm & { lawsuits: Lawsuit[] })[] = [];
     
-    for (const lawFirm of allLawFirms) {
-      const lawFirmLawsuitsData = await this.getLawsuitsByLawFirm(lawFirm.id);
-      result.push({ ...lawFirm, lawsuits: lawFirmLawsuitsData });
+    if (allLawFirms.length === 0) return [];
+    
+    // Buscar todos os vínculos de uma vez
+    const lawFirmIds = allLawFirms.map(l => l.id);
+    const allLinks = await db.select({
+      lawFirmId: lawsuitLawFirms.lawFirmId,
+      lawsuit: lawsuits,
+    })
+    .from(lawsuitLawFirms)
+    .innerJoin(lawsuits, eq(lawsuitLawFirms.lawsuitId, lawsuits.id))
+    .where(inArray(lawsuitLawFirms.lawFirmId, lawFirmIds));
+    
+    // Agrupar por lawFirm
+    const lawsuitsByLawFirm = new Map<string, Lawsuit[]>();
+    for (const link of allLinks) {
+      if (!lawsuitsByLawFirm.has(link.lawFirmId)) {
+        lawsuitsByLawFirm.set(link.lawFirmId, []);
+      }
+      lawsuitsByLawFirm.get(link.lawFirmId)!.push(link.lawsuit);
     }
     
-    return result;
+    return allLawFirms.map(lawFirm => ({
+      ...lawFirm,
+      lawsuits: lawsuitsByLawFirm.get(lawFirm.id) || [],
+    }));
   }
 
   // Leads
