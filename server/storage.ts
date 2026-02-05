@@ -8,6 +8,10 @@ import {
   lawsuitClaimants,
   lawsuitLawFirms,
   leads,
+  leadFinancials,
+  leadCaseDetails,
+  leadChecklist,
+  leadAssignments,
   activities,
   proposals,
   proposalItems,
@@ -28,6 +32,14 @@ import {
   type LawsuitLawFirm,
   type Lead,
   type InsertLead,
+  type LeadFinancials,
+  type InsertLeadFinancials,
+  type LeadCaseDetails,
+  type InsertLeadCaseDetails,
+  type LeadChecklist,
+  type InsertLeadChecklist,
+  type LeadAssignments,
+  type InsertLeadAssignments,
   type Activity,
   type InsertActivity,
   type Proposal,
@@ -98,9 +110,26 @@ export interface IStorage {
   // Leads (dados públicos - sem filtro por ownerId)
   getLeads(pipelineType?: string): Promise<Lead[]>;
   getLead(id: string): Promise<Lead | undefined>;
+  getLeadWithDetails(id: string): Promise<(Lead & { financials?: LeadFinancials | null, caseDetails?: LeadCaseDetails | null, checklist?: LeadChecklist | null, assignments?: LeadAssignments | null }) | undefined>;
   createLead(lead: InsertLead): Promise<Lead>;
   updateLead(id: string, lead: Partial<InsertLead>): Promise<Lead | undefined>;
   deleteLead(id: string): Promise<boolean>;
+
+  // Lead Financials (1:1)
+  getLeadFinancials(leadId: string): Promise<LeadFinancials | undefined>;
+  upsertLeadFinancials(leadId: string, data: Partial<InsertLeadFinancials>): Promise<LeadFinancials>;
+
+  // Lead Case Details (1:1)
+  getLeadCaseDetails(leadId: string): Promise<LeadCaseDetails | undefined>;
+  upsertLeadCaseDetails(leadId: string, data: Partial<InsertLeadCaseDetails>): Promise<LeadCaseDetails>;
+
+  // Lead Checklist (1:1)
+  getLeadChecklist(leadId: string): Promise<LeadChecklist | undefined>;
+  upsertLeadChecklist(leadId: string, data: Partial<InsertLeadChecklist>): Promise<LeadChecklist>;
+
+  // Lead Assignments (1:1)
+  getLeadAssignments(leadId: string): Promise<LeadAssignments | undefined>;
+  upsertLeadAssignments(leadId: string, data: Partial<InsertLeadAssignments>): Promise<LeadAssignments>;
 
   // Products
   getProducts(ownerId: string): Promise<Product[]>;
@@ -487,6 +516,108 @@ export class DatabaseStorage implements IStorage {
   async deleteLead(id: string): Promise<boolean> {
     const result = await db.delete(leads).where(eq(leads.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getLeadWithDetails(id: string): Promise<(Lead & { financials?: LeadFinancials | null, caseDetails?: LeadCaseDetails | null, checklist?: LeadChecklist | null, assignments?: LeadAssignments | null }) | undefined> {
+    const [lead] = await db.select().from(leads).where(eq(leads.id, id));
+    if (!lead) return undefined;
+
+    const [financials] = await db.select().from(leadFinancials).where(eq(leadFinancials.leadId, id));
+    const [caseDetails] = await db.select().from(leadCaseDetails).where(eq(leadCaseDetails.leadId, id));
+    const [checklist] = await db.select().from(leadChecklist).where(eq(leadChecklist.leadId, id));
+    const [assignments] = await db.select().from(leadAssignments).where(eq(leadAssignments.leadId, id));
+
+    return {
+      ...lead,
+      financials: financials || null,
+      caseDetails: caseDetails || null,
+      checklist: checklist || null,
+      assignments: assignments || null,
+    };
+  }
+
+  // Lead Financials (1:1)
+  async getLeadFinancials(leadId: string): Promise<LeadFinancials | undefined> {
+    const [result] = await db.select().from(leadFinancials).where(eq(leadFinancials.leadId, leadId));
+    return result;
+  }
+
+  async upsertLeadFinancials(leadId: string, data: Partial<InsertLeadFinancials>): Promise<LeadFinancials> {
+    const existing = await this.getLeadFinancials(leadId);
+    if (existing) {
+      const [updated] = await db.update(leadFinancials)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(leadFinancials.leadId, leadId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(leadFinancials)
+      .values({ ...data, leadId })
+      .returning();
+    return created;
+  }
+
+  // Lead Case Details (1:1)
+  async getLeadCaseDetails(leadId: string): Promise<LeadCaseDetails | undefined> {
+    const [result] = await db.select().from(leadCaseDetails).where(eq(leadCaseDetails.leadId, leadId));
+    return result;
+  }
+
+  async upsertLeadCaseDetails(leadId: string, data: Partial<InsertLeadCaseDetails>): Promise<LeadCaseDetails> {
+    const existing = await this.getLeadCaseDetails(leadId);
+    if (existing) {
+      const [updated] = await db.update(leadCaseDetails)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(leadCaseDetails.leadId, leadId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(leadCaseDetails)
+      .values({ ...data, leadId })
+      .returning();
+    return created;
+  }
+
+  // Lead Checklist (1:1)
+  async getLeadChecklist(leadId: string): Promise<LeadChecklist | undefined> {
+    const [result] = await db.select().from(leadChecklist).where(eq(leadChecklist.leadId, leadId));
+    return result;
+  }
+
+  async upsertLeadChecklist(leadId: string, data: Partial<InsertLeadChecklist>): Promise<LeadChecklist> {
+    const existing = await this.getLeadChecklist(leadId);
+    if (existing) {
+      const [updated] = await db.update(leadChecklist)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(leadChecklist.leadId, leadId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(leadChecklist)
+      .values({ ...data, leadId })
+      .returning();
+    return created;
+  }
+
+  // Lead Assignments (1:1)
+  async getLeadAssignments(leadId: string): Promise<LeadAssignments | undefined> {
+    const [result] = await db.select().from(leadAssignments).where(eq(leadAssignments.leadId, leadId));
+    return result;
+  }
+
+  async upsertLeadAssignments(leadId: string, data: Partial<InsertLeadAssignments>): Promise<LeadAssignments> {
+    const existing = await this.getLeadAssignments(leadId);
+    if (existing) {
+      const [updated] = await db.update(leadAssignments)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(leadAssignments.leadId, leadId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(leadAssignments)
+      .values({ ...data, leadId })
+      .returning();
+    return created;
   }
 
   // Products
