@@ -189,17 +189,51 @@ export const leads = pgTable("leads", {
   stage: text("stage").notNull().default("novo_lead"),
   position: integer("position").default(0),
   
+  // Valores principais
   valor: numeric("valor", { precision: 12, scale: 2 }),
   probabilidade: integer("probabilidade").default(0),
   previsaoFechamento: timestamp("previsao_fechamento"),
   descricao: text("descricao"),
   motivoPerda: text("motivo_perda"),
   
+  // Valores de fechamento
   valorFechamento: numeric("valor_fechamento", { precision: 12, scale: 2 }),
   percentualComissao: numeric("percentual_comissao", { precision: 5, scale: 2 }),
   formaPagamento: text("forma_pagamento"),
   observacoesFinanceiras: text("observacoes_financeiras"),
   
+  // Checklist - Partes
+  reclamante: text("reclamante"),
+  reclamado: text("reclamado"),
+  
+  // Checklist - Valores do Caso
+  liquidacaoIndicada: numeric("liquidacao_indicada", { precision: 12, scale: 2 }),
+  valorBruto: numeric("valor_bruto", { precision: 12, scale: 2 }),
+  valorLiquido: numeric("valor_liquido", { precision: 12, scale: 2 }),
+  valorControverso: numeric("valor_controverso", { precision: 12, scale: 2 }),
+  sucumbente: text("sucumbente"),
+  fgts: numeric("fgts", { precision: 12, scale: 2 }),
+  dataPlanilha: timestamp("data_planilha"),
+  valorOutros: numeric("valor_outros", { precision: 12, scale: 2 }),
+  prazoCaso: timestamp("prazo_caso"),
+  
+  // Responsáveis
+  comercialResponsavel: text("comercial_responsavel"),
+  advogadoResponsavel: text("advogado_responsavel"),
+  
+  // Dados Básicos
+  cliente: text("cliente"),
+  abordagem: text("abordagem"),
+  origem: text("origem"),
+  
+  // Dados do Caso
+  tribunal: text("tribunal"),
+  assuntoPrincipal: text("assunto_principal"),
+  assuntos: text("assuntos"),
+  orgaoJulgador: text("orgao_julgador"),
+  cnj: varchar("cnj", { length: 30 }),
+  
+  // Relacionamentos
   lawyerId: integer("lawyer_id").references(() => lawyers.id, { onDelete: "set null" }),
   lawFirmId: varchar("law_firm_id").references(() => lawFirms.id, { onDelete: "set null" }),
   claimantId: varchar("claimant_id").references(() => claimants.id, { onDelete: "set null" }),
