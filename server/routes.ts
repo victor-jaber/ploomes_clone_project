@@ -5,6 +5,7 @@ import Redis from "ioredis";
 import { storage } from "./storage";
 import { isAuthenticated, registerAuthRoutes, AuthRequest } from "./auth";
 import { wsManager } from "./websocket";
+import logger from "./logger";
 import {
   insertLawyerSchema,
   insertLawFirmSchema,
@@ -42,7 +43,7 @@ class RedisCache {
   private async initRedis() {
     const redisUrl = process.env.REDIS_URL;
     if (!redisUrl) {
-      console.log("[Cache] REDIS_URL not configured, using local cache only");
+      logger.warn("REDIS_URL não configurado, usando cache local", { prefix: "Cache" });
       return;
     }
 
@@ -58,23 +59,23 @@ class RedisCache {
       });
 
       this.redis.on("connect", () => {
-        console.log("[Cache] Connected to Redis");
+        logger.success("Conectado ao Redis", { prefix: "Cache" });
         this.connected = true;
       });
 
       this.redis.on("error", (err) => {
-        console.error("[Cache] Redis error:", err.message);
+        logger.error(`Erro no Redis: ${err.message}`, undefined, { prefix: "Cache" });
         this.connected = false;
       });
 
       this.redis.on("close", () => {
-        console.log("[Cache] Redis connection closed");
+        logger.info("Conexão Redis fechada", { prefix: "Cache" });
         this.connected = false;
       });
 
       await this.redis.connect();
     } catch (error) {
-      console.error("[Cache] Failed to connect to Redis:", error);
+      logger.error("Falha ao conectar ao Redis", error as Error, { prefix: "Cache" });
       this.redis = null;
       this.connected = false;
     }
@@ -92,7 +93,7 @@ class RedisCache {
         }
         return null;
       } catch (error) {
-        console.error("[Cache] Redis get error:", error);
+        logger.debug("Erro ao buscar cache Redis", { prefix: "Cache" });
       }
     }
 
@@ -117,7 +118,7 @@ class RedisCache {
         await this.redis.setex(fullKey, this.ttl, JSON.stringify(data));
         return;
       } catch (error) {
-        console.error("[Cache] Redis set error:", error);
+        logger.debug("Erro ao salvar cache Redis", { prefix: "Cache" });
       }
     }
 
@@ -153,7 +154,7 @@ class RedisCache {
           }
         }
       } catch (error) {
-        console.error("[Cache] Redis invalidate error:", error);
+        logger.debug("Erro ao invalidar cache Redis", { prefix: "Cache" });
       }
     }
   }
@@ -192,7 +193,7 @@ export async function registerRoutes(
       const lawyers = await storage.getLawyers(userId);
       res.json(lawyers);
     } catch (error) {
-      console.error("Error fetching lawyers:", error);
+      logger.error("fetching lawyers", error as Error);
       res.status(500).json({ message: "Failed to fetch lawyers" });
     }
   });
@@ -208,7 +209,7 @@ export async function registerRoutes(
       }
       res.json(lawyer);
     } catch (error) {
-      console.error("Error fetching lawyer:", error);
+      logger.error("fetching lawyer", error as Error);
       res.status(500).json({ message: "Failed to fetch lawyer" });
     }
   });
@@ -237,7 +238,7 @@ export async function registerRoutes(
       
       res.status(201).json(lawyer);
     } catch (error) {
-      console.error("Error creating lawyer:", error);
+      logger.error("creating lawyer", error as Error);
       res.status(500).json({ message: "Failed to create lawyer" });
     }
   });
@@ -259,7 +260,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('lawyers-with-lawsuits');
       res.json(lawyer);
     } catch (error) {
-      console.error("Error updating lawyer:", error);
+      logger.error("updating lawyer", error as Error);
       res.status(500).json({ message: "Failed to update lawyer" });
     }
   });
@@ -276,7 +277,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('lawyers-with-lawsuits');
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting lawyer:", error);
+      logger.error("deleting lawyer", error as Error);
       res.status(500).json({ message: "Failed to delete lawyer" });
     }
   });
@@ -288,7 +289,7 @@ export async function registerRoutes(
       const lawyers = await storage.getLawyers(userId);
       res.json(lawyers);
     } catch (error) {
-      console.error("Error fetching lawyers:", error);
+      logger.error("fetching lawyers", error as Error);
       res.status(500).json({ message: "Failed to fetch lawyers" });
     }
   });
@@ -304,7 +305,7 @@ export async function registerRoutes(
       }
       res.json(lawyer);
     } catch (error) {
-      console.error("Error fetching lawyer:", error);
+      logger.error("fetching lawyer", error as Error);
       res.status(500).json({ message: "Failed to fetch lawyer" });
     }
   });
@@ -333,7 +334,7 @@ export async function registerRoutes(
       
       res.status(201).json(lawyer);
     } catch (error) {
-      console.error("Error creating lawyer:", error);
+      logger.error("creating lawyer", error as Error);
       res.status(500).json({ message: "Failed to create lawyer" });
     }
   });
@@ -355,7 +356,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('lawyers-with-lawsuits');
       res.json(lawyer);
     } catch (error) {
-      console.error("Error updating lawyer:", error);
+      logger.error("updating lawyer", error as Error);
       res.status(500).json({ message: "Failed to update lawyer" });
     }
   });
@@ -372,7 +373,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('lawyers-with-lawsuits');
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting lawyer:", error);
+      logger.error("deleting lawyer", error as Error);
       res.status(500).json({ message: "Failed to delete lawyer" });
     }
   });
@@ -389,7 +390,7 @@ export async function registerRoutes(
       
       res.json({ synced: result.synced, skipped: result.skipped });
     } catch (error) {
-      console.error("Error syncing lawyers to leads:", error);
+      logger.error("syncing lawyers to leads", error as Error);
       res.status(500).json({ message: "Failed to sync lawyers to leads" });
     }
   });
@@ -401,7 +402,7 @@ export async function registerRoutes(
       const lawFirms = await storage.getLawFirms(userId);
       res.json(lawFirms);
     } catch (error) {
-      console.error("Error fetching law firms:", error);
+      logger.error("fetching law firms", error as Error);
       res.status(500).json({ message: "Failed to fetch law firms" });
     }
   });
@@ -416,7 +417,7 @@ export async function registerRoutes(
       }
       res.json(lawFirm);
     } catch (error) {
-      console.error("Error fetching law firm:", error);
+      logger.error("fetching law firm", error as Error);
       res.status(500).json({ message: "Failed to fetch law firm" });
     }
   });
@@ -433,7 +434,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('law-firms-with-lawsuits');
       res.status(201).json(lawFirm);
     } catch (error) {
-      console.error("Error creating law firm:", error);
+      logger.error("creating law firm", error as Error);
       res.status(500).json({ message: "Failed to create law firm" });
     }
   });
@@ -454,7 +455,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('law-firms-with-lawsuits');
       res.json(lawFirm);
     } catch (error) {
-      console.error("Error updating law firm:", error);
+      logger.error("updating law firm", error as Error);
       res.status(500).json({ message: "Failed to update law firm" });
     }
   });
@@ -470,7 +471,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('law-firms-with-lawsuits');
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting law firm:", error);
+      logger.error("deleting law firm", error as Error);
       res.status(500).json({ message: "Failed to delete law firm" });
     }
   });
@@ -489,7 +490,7 @@ export async function registerRoutes(
       const lawyers = await storage.getLawFirmLawyers(getParam(req.params.id));
       res.json(lawyers);
     } catch (error) {
-      console.error("Error fetching law firm lawyers:", error);
+      logger.error("fetching law firm lawyers", error as Error);
       res.status(500).json({ message: "Failed to fetch law firm lawyers" });
     }
   });
@@ -510,7 +511,7 @@ export async function registerRoutes(
       const relation = await storage.addLawyerToLawFirm(getParam(req.params.id), parsed.data.lawyerId);
       res.status(201).json(relation);
     } catch (error) {
-      console.error("Error adding lawyer to law firm:", error);
+      logger.error("adding lawyer to law firm", error as Error);
       res.status(500).json({ message: "Failed to add lawyer to law firm" });
     }
   });
@@ -531,7 +532,7 @@ export async function registerRoutes(
       }
       res.status(204).send();
     } catch (error) {
-      console.error("Error removing lawyer from law firm:", error);
+      logger.error("removing lawyer from law firm", error as Error);
       res.status(500).json({ message: "Failed to remove lawyer from law firm" });
     }
   });
@@ -543,7 +544,7 @@ export async function registerRoutes(
       const lawFirms = await storage.getLawFirms(userId);
       res.json(lawFirms);
     } catch (error) {
-      console.error("Error fetching law firms:", error);
+      logger.error("fetching law firms", error as Error);
       res.status(500).json({ message: "Failed to fetch law firms" });
     }
   });
@@ -558,7 +559,7 @@ export async function registerRoutes(
       }
       res.json(lawFirm);
     } catch (error) {
-      console.error("Error fetching law firm:", error);
+      logger.error("fetching law firm", error as Error);
       res.status(500).json({ message: "Failed to fetch law firm" });
     }
   });
@@ -575,7 +576,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('law-firms-with-lawsuits');
       res.status(201).json(lawFirm);
     } catch (error) {
-      console.error("Error creating law firm:", error);
+      logger.error("creating law firm", error as Error);
       res.status(500).json({ message: "Failed to create law firm" });
     }
   });
@@ -596,7 +597,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('law-firms-with-lawsuits');
       res.json(lawFirm);
     } catch (error) {
-      console.error("Error updating law firm:", error);
+      logger.error("updating law firm", error as Error);
       res.status(500).json({ message: "Failed to update law firm" });
     }
   });
@@ -612,7 +613,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('law-firms-with-lawsuits');
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting law firm:", error);
+      logger.error("deleting law firm", error as Error);
       res.status(500).json({ message: "Failed to delete law firm" });
     }
   });
@@ -624,7 +625,7 @@ export async function registerRoutes(
       const claimants = await storage.getClaimants(userId);
       res.json(claimants);
     } catch (error) {
-      console.error("Error fetching claimants:", error);
+      logger.error("fetching claimants", error as Error);
       res.status(500).json({ message: "Failed to fetch claimants" });
     }
   });
@@ -639,7 +640,7 @@ export async function registerRoutes(
       }
       res.json(claimant);
     } catch (error) {
-      console.error("Error fetching claimant:", error);
+      logger.error("fetching claimant", error as Error);
       res.status(500).json({ message: "Failed to fetch claimant" });
     }
   });
@@ -656,7 +657,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('claimants-with-lawsuits');
       res.status(201).json(claimant);
     } catch (error) {
-      console.error("Error creating claimant:", error);
+      logger.error("creating claimant", error as Error);
       res.status(500).json({ message: "Failed to create claimant" });
     }
   });
@@ -677,7 +678,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('claimants-with-lawsuits');
       res.json(claimant);
     } catch (error) {
-      console.error("Error updating claimant:", error);
+      logger.error("updating claimant", error as Error);
       res.status(500).json({ message: "Failed to update claimant" });
     }
   });
@@ -693,7 +694,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('claimants-with-lawsuits');
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting claimant:", error);
+      logger.error("deleting claimant", error as Error);
       res.status(500).json({ message: "Failed to delete claimant" });
     }
   });
@@ -705,7 +706,7 @@ export async function registerRoutes(
       const claimants = await storage.getClaimants(userId);
       res.json(claimants);
     } catch (error) {
-      console.error("Error fetching claimants:", error);
+      logger.error("fetching claimants", error as Error);
       res.status(500).json({ message: "Failed to fetch claimants" });
     }
   });
@@ -720,7 +721,7 @@ export async function registerRoutes(
       }
       res.json(claimant);
     } catch (error) {
-      console.error("Error fetching claimant:", error);
+      logger.error("fetching claimant", error as Error);
       res.status(500).json({ message: "Failed to fetch claimant" });
     }
   });
@@ -737,7 +738,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('claimants-with-lawsuits');
       res.status(201).json(claimant);
     } catch (error) {
-      console.error("Error creating claimant:", error);
+      logger.error("creating claimant", error as Error);
       res.status(500).json({ message: "Failed to create claimant" });
     }
   });
@@ -758,7 +759,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('claimants-with-lawsuits');
       res.json(claimant);
     } catch (error) {
-      console.error("Error updating claimant:", error);
+      logger.error("updating claimant", error as Error);
       res.status(500).json({ message: "Failed to update claimant" });
     }
   });
@@ -774,7 +775,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('claimants-with-lawsuits');
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting claimant:", error);
+      logger.error("deleting claimant", error as Error);
       res.status(500).json({ message: "Failed to delete claimant" });
     }
   });
@@ -791,7 +792,7 @@ export async function registerRoutes(
       
       res.json({ synced: result.synced, skipped: result.skipped });
     } catch (error) {
-      console.error("Error syncing claimants to leads:", error);
+      logger.error("syncing claimants to leads", error as Error);
       res.status(500).json({ message: "Failed to sync claimants to leads" });
     }
   });
@@ -805,7 +806,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate();
       res.json(result);
     } catch (error) {
-      console.error("Error syncing lawsuits:", error);
+      logger.error("syncing lawsuits", error as Error);
       res.status(500).json({ message: "Failed to sync lawsuits", error: String(error) });
     }
   });
@@ -819,7 +820,7 @@ export async function registerRoutes(
       const lawsuitsData = await storage.getLawsuitsByLawyer(lawyerId);
       res.json(lawsuitsData);
     } catch (error) {
-      console.error("Error fetching lawyer lawsuits:", error);
+      logger.error("fetching lawyer lawsuits", error as Error);
       res.status(500).json({ message: "Failed to fetch lawyer lawsuits" });
     }
   });
@@ -830,7 +831,7 @@ export async function registerRoutes(
       const lawsuitsData = await storage.getLawsuitsByClaimant(req.params.id as string);
       res.json(lawsuitsData);
     } catch (error) {
-      console.error("Error fetching claimant lawsuits:", error);
+      logger.error("fetching claimant lawsuits", error as Error);
       res.status(500).json({ message: "Failed to fetch claimant lawsuits" });
     }
   });
@@ -841,7 +842,7 @@ export async function registerRoutes(
       const lawsuitsData = await storage.getLawsuitsByLawFirm(req.params.id as string);
       res.json(lawsuitsData);
     } catch (error) {
-      console.error("Error fetching law firm lawsuits:", error);
+      logger.error("fetching law firm lawsuits", error as Error);
       res.status(500).json({ message: "Failed to fetch law firm lawsuits" });
     }
   });
@@ -855,7 +856,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('lawyers-with-lawsuits');
       res.status(201).json(link);
     } catch (error) {
-      console.error("Error linking lawyer to lawsuit:", error);
+      logger.error("linking lawyer to lawsuit", error as Error);
       res.status(500).json({ message: "Failed to link lawyer to lawsuit" });
     }
   });
@@ -869,7 +870,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('lawyers-with-lawsuits');
       res.json({ removed });
     } catch (error) {
-      console.error("Error unlinking lawyer from lawsuit:", error);
+      logger.error("unlinking lawyer from lawsuit", error as Error);
       res.status(500).json({ message: "Failed to unlink lawyer from lawsuit" });
     }
   });
@@ -883,7 +884,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('claimants-with-lawsuits');
       res.status(201).json(link);
     } catch (error) {
-      console.error("Error linking claimant to lawsuit:", error);
+      logger.error("linking claimant to lawsuit", error as Error);
       res.status(500).json({ message: "Failed to link claimant to lawsuit" });
     }
   });
@@ -897,7 +898,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('claimants-with-lawsuits');
       res.json({ removed });
     } catch (error) {
-      console.error("Error unlinking claimant from lawsuit:", error);
+      logger.error("unlinking claimant from lawsuit", error as Error);
       res.status(500).json({ message: "Failed to unlink claimant from lawsuit" });
     }
   });
@@ -911,7 +912,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('law-firms-with-lawsuits');
       res.status(201).json(link);
     } catch (error) {
-      console.error("Error linking law firm to lawsuit:", error);
+      logger.error("linking law firm to lawsuit", error as Error);
       res.status(500).json({ message: "Failed to link law firm to lawsuit" });
     }
   });
@@ -925,7 +926,7 @@ export async function registerRoutes(
       await aggregationCache.invalidate('law-firms-with-lawsuits');
       res.json({ removed });
     } catch (error) {
-      console.error("Error unlinking law firm from lawsuit:", error);
+      logger.error("unlinking law firm from lawsuit", error as Error);
       res.status(500).json({ message: "Failed to unlink law firm from lawsuit" });
     }
   });
@@ -947,7 +948,7 @@ export async function registerRoutes(
       await aggregationCache.set(cacheKey, lawyersWithLawsuits);
       res.json(lawyersWithLawsuits);
     } catch (error) {
-      console.error("Error fetching lawyers with lawsuits:", error);
+      logger.error("fetching lawyers with lawsuits", error as Error);
       res.status(500).json({ message: "Failed to fetch lawyers with lawsuits" });
     }
   });
@@ -967,7 +968,7 @@ export async function registerRoutes(
       await aggregationCache.set(cacheKey, claimantsWithLawsuits);
       res.json(claimantsWithLawsuits);
     } catch (error) {
-      console.error("Error fetching claimants with lawsuits:", error);
+      logger.error("fetching claimants with lawsuits", error as Error);
       res.status(500).json({ message: "Failed to fetch claimants with lawsuits" });
     }
   });
@@ -987,7 +988,7 @@ export async function registerRoutes(
       await aggregationCache.set(cacheKey, lawFirmsWithLawsuits);
       res.json(lawFirmsWithLawsuits);
     } catch (error) {
-      console.error("Error fetching law firms with lawsuits:", error);
+      logger.error("fetching law firms with lawsuits", error as Error);
       res.status(500).json({ message: "Failed to fetch law firms with lawsuits" });
     }
   });
@@ -999,7 +1000,7 @@ export async function registerRoutes(
       const leads = await storage.getLeads(pipelineType);
       res.json(leads);
     } catch (error) {
-      console.error("Error fetching leads:", error);
+      logger.error("fetching leads", error as Error);
       res.status(500).json({ message: "Failed to fetch leads" });
     }
   });
@@ -1013,7 +1014,7 @@ export async function registerRoutes(
       }
       res.json(lead);
     } catch (error) {
-      console.error("Error fetching lead:", error);
+      logger.error("fetching lead", error as Error);
       res.status(500).json({ message: "Failed to fetch lead" });
     }
   });
@@ -1030,7 +1031,7 @@ export async function registerRoutes(
       wsManager.broadcastLeadCreated(lead);
       res.status(201).json(lead);
     } catch (error) {
-      console.error("Error creating lead:", error);
+      logger.error("creating lead", error as Error);
       res.status(500).json({ message: "Failed to create lead" });
     }
   });
@@ -1050,7 +1051,7 @@ export async function registerRoutes(
       wsManager.broadcastLeadUpdate(lead);
       res.json(lead);
     } catch (error) {
-      console.error("Error updating lead:", error);
+      logger.error("updating lead", error as Error);
       res.status(500).json({ message: "Failed to update lead" });
     }
   });
@@ -1065,7 +1066,7 @@ export async function registerRoutes(
       wsManager.broadcastLeadDeleted(getParam(req.params.id));
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting lead:", error);
+      logger.error("deleting lead", error as Error);
       res.status(500).json({ message: "Failed to delete lead" });
     }
   });
@@ -1080,7 +1081,7 @@ export async function registerRoutes(
       }
       res.json(lead);
     } catch (error) {
-      console.error("Error fetching lead details:", error);
+      logger.error("fetching lead details", error as Error);
       res.status(500).json({ message: "Failed to fetch lead details" });
     }
   });
@@ -1091,7 +1092,7 @@ export async function registerRoutes(
       const financials = await storage.getLeadFinancials(getParam(req.params.id));
       res.json(financials || {});
     } catch (error) {
-      console.error("Error fetching lead financials:", error);
+      logger.error("fetching lead financials", error as Error);
       res.status(500).json({ message: "Failed to fetch lead financials" });
     }
   });
@@ -1112,7 +1113,7 @@ export async function registerRoutes(
       const financials = await storage.upsertLeadFinancials(leadId, parsed.data);
       res.json(financials);
     } catch (error) {
-      console.error("Error updating lead financials:", error);
+      logger.error("updating lead financials", error as Error);
       res.status(500).json({ message: "Failed to update lead financials" });
     }
   });
@@ -1123,7 +1124,7 @@ export async function registerRoutes(
       const caseDetails = await storage.getLeadCaseDetails(getParam(req.params.id));
       res.json(caseDetails || {});
     } catch (error) {
-      console.error("Error fetching lead case details:", error);
+      logger.error("fetching lead case details", error as Error);
       res.status(500).json({ message: "Failed to fetch lead case details" });
     }
   });
@@ -1144,7 +1145,7 @@ export async function registerRoutes(
       const caseDetails = await storage.upsertLeadCaseDetails(leadId, parsed.data);
       res.json(caseDetails);
     } catch (error) {
-      console.error("Error updating lead case details:", error);
+      logger.error("updating lead case details", error as Error);
       res.status(500).json({ message: "Failed to update lead case details" });
     }
   });
@@ -1155,7 +1156,7 @@ export async function registerRoutes(
       const checklist = await storage.getLeadChecklist(getParam(req.params.id));
       res.json(checklist || {});
     } catch (error) {
-      console.error("Error fetching lead checklist:", error);
+      logger.error("fetching lead checklist", error as Error);
       res.status(500).json({ message: "Failed to fetch lead checklist" });
     }
   });
@@ -1176,7 +1177,7 @@ export async function registerRoutes(
       const checklist = await storage.upsertLeadChecklist(leadId, parsed.data);
       res.json(checklist);
     } catch (error) {
-      console.error("Error updating lead checklist:", error);
+      logger.error("updating lead checklist", error as Error);
       res.status(500).json({ message: "Failed to update lead checklist" });
     }
   });
@@ -1187,7 +1188,7 @@ export async function registerRoutes(
       const assignments = await storage.getLeadAssignments(getParam(req.params.id));
       res.json(assignments || {});
     } catch (error) {
-      console.error("Error fetching lead assignments:", error);
+      logger.error("fetching lead assignments", error as Error);
       res.status(500).json({ message: "Failed to fetch lead assignments" });
     }
   });
@@ -1208,7 +1209,7 @@ export async function registerRoutes(
       const assignments = await storage.upsertLeadAssignments(leadId, parsed.data);
       res.json(assignments);
     } catch (error) {
-      console.error("Error updating lead assignments:", error);
+      logger.error("updating lead assignments", error as Error);
       res.status(500).json({ message: "Failed to update lead assignments" });
     }
   });
@@ -1224,7 +1225,7 @@ export async function registerRoutes(
       const interactions = await storage.getInteractions(getParam(req.params.id));
       res.json(interactions);
     } catch (error) {
-      console.error("Error fetching interactions:", error);
+      logger.error("fetching interactions", error as Error);
       res.status(500).json({ message: "Failed to fetch interactions" });
     }
   });
@@ -1250,7 +1251,7 @@ export async function registerRoutes(
       const interaction = await storage.createInteraction(parsed.data);
       res.status(201).json(interaction);
     } catch (error) {
-      console.error("Error creating interaction:", error);
+      logger.error("creating interaction", error as Error);
       res.status(500).json({ message: "Failed to create interaction" });
     }
   });
@@ -1265,7 +1266,7 @@ export async function registerRoutes(
       }
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting interaction:", error);
+      logger.error("deleting interaction", error as Error);
       res.status(500).json({ message: "Failed to delete interaction" });
     }
   });
@@ -1277,7 +1278,7 @@ export async function registerRoutes(
       const products = await storage.getProducts(userId);
       res.json(products);
     } catch (error) {
-      console.error("Error fetching products:", error);
+      logger.error("fetching products", error as Error);
       res.status(500).json({ message: "Failed to fetch products" });
     }
   });
@@ -1292,7 +1293,7 @@ export async function registerRoutes(
       }
       res.json(product);
     } catch (error) {
-      console.error("Error fetching product:", error);
+      logger.error("fetching product", error as Error);
       res.status(500).json({ message: "Failed to fetch product" });
     }
   });
@@ -1308,7 +1309,7 @@ export async function registerRoutes(
       const product = await storage.createProduct(parsed.data);
       res.status(201).json(product);
     } catch (error) {
-      console.error("Error creating product:", error);
+      logger.error("creating product", error as Error);
       res.status(500).json({ message: "Failed to create product" });
     }
   });
@@ -1328,7 +1329,7 @@ export async function registerRoutes(
       }
       res.json(product);
     } catch (error) {
-      console.error("Error updating product:", error);
+      logger.error("updating product", error as Error);
       res.status(500).json({ message: "Failed to update product" });
     }
   });
@@ -1343,7 +1344,7 @@ export async function registerRoutes(
       }
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting product:", error);
+      logger.error("deleting product", error as Error);
       res.status(500).json({ message: "Failed to delete product" });
     }
   });
@@ -1355,7 +1356,7 @@ export async function registerRoutes(
       const activities = await storage.getActivities(userId);
       res.json(activities);
     } catch (error) {
-      console.error("Error fetching activities:", error);
+      logger.error("fetching activities", error as Error);
       res.status(500).json({ message: "Failed to fetch activities" });
     }
   });
@@ -1370,7 +1371,7 @@ export async function registerRoutes(
       }
       res.json(activity);
     } catch (error) {
-      console.error("Error fetching activity:", error);
+      logger.error("fetching activity", error as Error);
       res.status(500).json({ message: "Failed to fetch activity" });
     }
   });
@@ -1386,7 +1387,7 @@ export async function registerRoutes(
       const activity = await storage.createActivity(parsed.data);
       res.status(201).json(activity);
     } catch (error) {
-      console.error("Error creating activity:", error);
+      logger.error("creating activity", error as Error);
       res.status(500).json({ message: "Failed to create activity" });
     }
   });
@@ -1406,7 +1407,7 @@ export async function registerRoutes(
       }
       res.json(activity);
     } catch (error) {
-      console.error("Error updating activity:", error);
+      logger.error("updating activity", error as Error);
       res.status(500).json({ message: "Failed to update activity" });
     }
   });
@@ -1421,7 +1422,7 @@ export async function registerRoutes(
       }
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting activity:", error);
+      logger.error("deleting activity", error as Error);
       res.status(500).json({ message: "Failed to delete activity" });
     }
   });
@@ -1433,7 +1434,7 @@ export async function registerRoutes(
       const proposals = await storage.getProposals(userId);
       res.json(proposals);
     } catch (error) {
-      console.error("Error fetching proposals:", error);
+      logger.error("fetching proposals", error as Error);
       res.status(500).json({ message: "Failed to fetch proposals" });
     }
   });
@@ -1448,7 +1449,7 @@ export async function registerRoutes(
       }
       res.json(proposal);
     } catch (error) {
-      console.error("Error fetching proposal:", error);
+      logger.error("fetching proposal", error as Error);
       res.status(500).json({ message: "Failed to fetch proposal" });
     }
   });
@@ -1464,7 +1465,7 @@ export async function registerRoutes(
       const proposal = await storage.createProposal(parsed.data);
       res.status(201).json(proposal);
     } catch (error) {
-      console.error("Error creating proposal:", error);
+      logger.error("creating proposal", error as Error);
       res.status(500).json({ message: "Failed to create proposal" });
     }
   });
@@ -1484,7 +1485,7 @@ export async function registerRoutes(
       }
       res.json(proposal);
     } catch (error) {
-      console.error("Error updating proposal:", error);
+      logger.error("updating proposal", error as Error);
       res.status(500).json({ message: "Failed to update proposal" });
     }
   });
@@ -1499,7 +1500,7 @@ export async function registerRoutes(
       }
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting proposal:", error);
+      logger.error("deleting proposal", error as Error);
       res.status(500).json({ message: "Failed to delete proposal" });
     }
   });
@@ -1516,7 +1517,7 @@ export async function registerRoutes(
       const items = await storage.getProposalItems(getParam(req.params.id));
       res.json(items);
     } catch (error) {
-      console.error("Error fetching proposal items:", error);
+      logger.error("fetching proposal items", error as Error);
       res.status(500).json({ message: "Failed to fetch proposal items" });
     }
   });
@@ -1540,7 +1541,7 @@ export async function registerRoutes(
       const item = await storage.createProposalItem(parsed.data);
       res.status(201).json(item);
     } catch (error) {
-      console.error("Error creating proposal item:", error);
+      logger.error("creating proposal item", error as Error);
       res.status(500).json({ message: "Failed to create proposal item" });
     }
   });
@@ -1559,7 +1560,7 @@ export async function registerRoutes(
       }
       res.json(item);
     } catch (error) {
-      console.error("Error updating proposal item:", error);
+      logger.error("updating proposal item", error as Error);
       res.status(500).json({ message: "Failed to update proposal item" });
     }
   });
@@ -1569,7 +1570,7 @@ export async function registerRoutes(
       await storage.deleteProposalItem(getParam(req.params.id));
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting proposal item:", error);
+      logger.error("deleting proposal item", error as Error);
       res.status(500).json({ message: "Failed to delete proposal item" });
     }
   });
@@ -1580,7 +1581,7 @@ export async function registerRoutes(
       const users = await storage.getUsers();
       res.json(users);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      logger.error("fetching users", error as Error);
       res.status(500).json({ message: "Failed to fetch users" });
     }
   });
