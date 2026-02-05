@@ -1,32 +1,46 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import {
   Calendar as CalendarIcon,
   Plus,
   Clock,
   MapPin,
-  Users,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  Video,
+  Users,
+  Trash2,
+  Edit,
+  X,
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 
 interface CalendarEvent {
   id?: string;
@@ -36,16 +50,13 @@ interface CalendarEvent {
   body?: { contentType: string; content: string };
   location?: { displayName: string };
   attendees?: Array<{ emailAddress: { address: string; name?: string }; type: string }>;
+  isOnlineMeeting?: boolean;
+  onlineMeetingUrl?: string;
 }
 
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-}
+const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const WEEKDAYS_FULL = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 function formatTime(dateString: string): string {
   const date = new Date(dateString);
@@ -55,9 +66,19 @@ function formatTime(dateString: string): string {
   });
 }
 
+function formatFullDate(date: Date): string {
+  return date.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 function getWeekDates(date: Date): Date[] {
   const start = new Date(date);
   start.setDate(start.getDate() - start.getDay());
+  start.setHours(0, 0, 0, 0);
   
   const dates: Date[] = [];
   for (let i = 0; i < 7; i++) {
@@ -68,10 +89,67 @@ function getWeekDates(date: Date): Date[] {
   return dates;
 }
 
+function getMonthDates(date: Date): Date[] {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  
+  const dates: Date[] = [];
+  const startPadding = firstDay.getDay();
+  
+  for (let i = startPadding - 1; i >= 0; i--) {
+    const d = new Date(firstDay);
+    d.setDate(d.getDate() - i - 1);
+    dates.push(d);
+  }
+  
+  for (let i = 1; i <= lastDay.getDate(); i++) {
+    dates.push(new Date(year, month, i));
+  }
+  
+  const endPadding = 6 - lastDay.getDay();
+  for (let i = 1; i <= endPadding; i++) {
+    dates.push(new Date(year, month + 1, i));
+  }
+  
+  return dates;
+}
+
+function isSameDay(date1: Date, date2: Date): boolean {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
+}
+
+function isToday(date: Date): boolean {
+  return isSameDay(date, new Date());
+}
+
+function getEventColor(index: number): string {
+  const colors = [
+    "bg-violet-500/90 hover:bg-violet-500 border-violet-600",
+    "bg-blue-500/90 hover:bg-blue-500 border-blue-600",
+    "bg-emerald-500/90 hover:bg-emerald-500 border-emerald-600",
+    "bg-amber-500/90 hover:bg-amber-500 border-amber-600",
+    "bg-rose-500/90 hover:bg-rose-500 border-rose-600",
+    "bg-cyan-500/90 hover:bg-cyan-500 border-cyan-600",
+    "bg-fuchsia-500/90 hover:bg-fuchsia-500 border-fuchsia-600",
+  ];
+  return colors[index % colors.length];
+}
+
+type ViewMode = "week" | "month" | "day";
+
 export default function CalendarPage() {
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [showNewEvent, setShowNewEvent] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [newEvent, setNewEvent] = useState({
     subject: "",
     startDate: "",
@@ -82,22 +160,27 @@ export default function CalendarPage() {
     description: "",
   });
 
-  const weekDates = getWeekDates(currentDate);
-  const startOfWeek = weekDates[0].toISOString();
-  const endOfWeek = new Date(weekDates[6].getTime() + 24 * 60 * 60 * 1000).toISOString();
+  const weekDates = useMemo(() => getWeekDates(currentDate), [currentDate]);
+  const monthDates = useMemo(() => getMonthDates(currentDate), [currentDate]);
+  
+  const startOfRange = viewMode === "month" 
+    ? monthDates[0].toISOString()
+    : weekDates[0].toISOString();
+  const endOfRange = viewMode === "month"
+    ? new Date(monthDates[monthDates.length - 1].getTime() + 24 * 60 * 60 * 1000).toISOString()
+    : new Date(weekDates[6].getTime() + 24 * 60 * 60 * 1000).toISOString();
 
   const { data: connectionStatus, isLoading: isLoadingStatus } = useQuery<{ connected: boolean }>({
     queryKey: ["/api/calendar/status"],
   });
 
-  const { data: events, isLoading, refetch } = useQuery<CalendarEvent[]>({
-    queryKey: ["/api/calendar/events", startOfWeek, endOfWeek],
+  const { data: events = [], isLoading, refetch } = useQuery<CalendarEvent[]>({
+    queryKey: ["/api/calendar/events", startOfRange, endOfRange],
     queryFn: async () => {
-      const response = await fetch(
-        `/api/calendar/events?startDate=${startOfWeek}&endDate=${endOfWeek}`,
-        { credentials: "include" }
+      const response = await apiRequest(
+        "GET",
+        `/api/calendar/events?startDate=${startOfRange}&endDate=${endOfRange}`
       );
-      if (!response.ok) throw new Error("Falha ao carregar eventos");
       return response.json();
     },
     enabled: connectionStatus?.connected === true,
@@ -105,33 +188,45 @@ export default function CalendarPage() {
 
   const createEventMutation = useMutation({
     mutationFn: async (eventData: CalendarEvent) => {
-      const response = await fetch("/api/calendar/events", {
-        method: "POST",
-        body: JSON.stringify(eventData),
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Falha ao criar evento");
+      const response = await apiRequest("POST", "/api/calendar/events", eventData);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       setShowNewEvent(false);
-      setNewEvent({
-        subject: "",
-        startDate: "",
-        startTime: "",
-        endDate: "",
-        endTime: "",
-        location: "",
-        description: "",
-      });
+      resetNewEvent();
       toast({ title: "Evento criado com sucesso!" });
     },
     onError: () => {
       toast({ title: "Erro ao criar evento", variant: "destructive" });
     },
   });
+
+  const deleteEventMutation = useMutation({
+    mutationFn: async (eventId: string) => {
+      await apiRequest("DELETE", `/api/calendar/events/${eventId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+      setSelectedEvent(null);
+      toast({ title: "Evento excluído com sucesso!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao excluir evento", variant: "destructive" });
+    },
+  });
+
+  const resetNewEvent = () => {
+    setNewEvent({
+      subject: "",
+      startDate: "",
+      startTime: "",
+      endDate: "",
+      endTime: "",
+      location: "",
+      description: "",
+    });
+  };
 
   const handleCreateEvent = () => {
     if (!newEvent.subject || !newEvent.startDate || !newEvent.startTime) {
@@ -140,9 +235,10 @@ export default function CalendarPage() {
     }
 
     const startDateTime = `${newEvent.startDate}T${newEvent.startTime}:00`;
-    const endDateTime = newEvent.endDate && newEvent.endTime
-      ? `${newEvent.endDate}T${newEvent.endTime}:00`
-      : `${newEvent.startDate}T${newEvent.startTime.split(":").map((v, i) => i === 0 ? String(Number(v) + 1).padStart(2, "0") : v).join(":")}:00`;
+    const endDate = newEvent.endDate || newEvent.startDate;
+    const endTime = newEvent.endTime || 
+      `${String(Number(newEvent.startTime.split(":")[0]) + 1).padStart(2, "0")}:${newEvent.startTime.split(":")[1]}`;
+    const endDateTime = `${endDate}T${endTime}:00`;
 
     const eventData: CalendarEvent = {
       subject: newEvent.subject,
@@ -155,69 +251,99 @@ export default function CalendarPage() {
     createEventMutation.mutate(eventData);
   };
 
-  const goToPreviousWeek = () => {
+  const openNewEventWithDate = (date: Date) => {
+    const dateStr = date.toISOString().split("T")[0];
+    setNewEvent(prev => ({
+      ...prev,
+      startDate: dateStr,
+      endDate: dateStr,
+    }));
+    setShowNewEvent(true);
+  };
+
+  const navigate = (direction: number) => {
     const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() - 7);
+    if (viewMode === "month") {
+      newDate.setMonth(newDate.getMonth() + direction);
+    } else if (viewMode === "week") {
+      newDate.setDate(newDate.getDate() + direction * 7);
+    } else {
+      newDate.setDate(newDate.getDate() + direction);
+    }
     setCurrentDate(newDate);
   };
 
-  const goToNextWeek = () => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + 7);
-    setCurrentDate(newDate);
-  };
-
-  const goToToday = () => {
-    setCurrentDate(new Date());
-  };
+  const goToToday = () => setCurrentDate(new Date());
 
   const getEventsForDate = (date: Date): CalendarEvent[] => {
-    if (!events) return [];
-    const dateStr = date.toISOString().split("T")[0];
-    return events.filter((event) => {
-      const eventDate = new Date(event.start.dateTime).toISOString().split("T")[0];
-      return eventDate === dateStr;
+    return events.filter(event => {
+      const eventDate = new Date(event.start.dateTime);
+      return isSameDay(eventDate, date);
     });
+  };
+
+  const getEventsForHour = (date: Date, hour: number): CalendarEvent[] => {
+    return events.filter(event => {
+      const eventDate = new Date(event.start.dateTime);
+      return isSameDay(eventDate, date) && eventDate.getHours() === hour;
+    });
+  };
+
+  const getHeaderTitle = () => {
+    if (viewMode === "month") {
+      return currentDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    } else if (viewMode === "week") {
+      const start = weekDates[0];
+      const end = weekDates[6];
+      if (start.getMonth() === end.getMonth()) {
+        return `${start.getDate()} - ${end.getDate()} de ${start.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}`;
+      }
+      return `${start.getDate()} de ${start.toLocaleDateString("pt-BR", { month: "short" })} - ${end.getDate()} de ${end.toLocaleDateString("pt-BR", { month: "short", year: "numeric" })}`;
+    }
+    return formatFullDate(currentDate);
   };
 
   if (isLoadingStatus) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <Skeleton className="h-8 w-48 mb-2" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-9 w-24" />
-            <Skeleton className="h-9 w-32" />
+      <div className="h-full flex flex-col bg-gradient-to-br from-background via-background to-violet-500/5">
+        <div className="p-4 border-b bg-background/80 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <Skeleton className="h-8 w-48" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-32" />
+            </div>
           </div>
         </div>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-7 gap-2">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <Skeleton key={i} className="h-40" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex-1 p-4">
+          <Skeleton className="h-full w-full rounded-xl" />
+        </div>
       </div>
     );
   }
 
   if (connectionStatus?.connected === false) {
     return (
-      <div className="p-6">
-        <Card className="max-w-lg mx-auto">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <AlertCircle className="h-12 w-12 text-yellow-500" />
-              <h2 className="text-xl font-semibold">Microsoft Calendar não conectado</h2>
-              <p className="text-muted-foreground">
-                Para usar o calendário integrado, você precisa conectar sua conta Microsoft.
-                Acesse as configurações do projeto para conectar.
-              </p>
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-background via-background to-violet-500/5 p-6">
+        <Card className="max-w-lg w-full bg-background/80 backdrop-blur-sm border-violet-500/20">
+          <CardContent className="pt-8 pb-8">
+            <div className="flex flex-col items-center gap-6 text-center">
+              <div className="h-20 w-20 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <AlertCircle className="h-10 w-10 text-amber-500" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-semibold">Microsoft Calendar</h2>
+                <p className="text-muted-foreground max-w-sm">
+                  Para sincronizar seus compromissos, conecte sua conta Microsoft nas configurações do projeto.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CalendarIcon className="h-4 w-4" />
+                <span>Outlook, Hotmail, Microsoft 365</span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -226,252 +352,574 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <CalendarIcon className="h-6 w-6 text-purple-500" />
-            Calendário
-          </h1>
-          <p className="text-muted-foreground">
-            Sincronizado com Microsoft Calendar
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-refresh-calendar">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Atualizar
-          </Button>
-          <Dialog open={showNewEvent} onOpenChange={setShowNewEvent}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-new-event">
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Evento
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Criar Novo Evento</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div>
-                  <Label htmlFor="subject">Título *</Label>
-                  <Input
-                    id="subject"
-                    value={newEvent.subject}
-                    onChange={(e) => setNewEvent({ ...newEvent, subject: e.target.value })}
-                    placeholder="Reunião com cliente"
-                    data-testid="input-event-subject"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="startDate">Data Início *</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={newEvent.startDate}
-                      onChange={(e) => setNewEvent({ ...newEvent, startDate: e.target.value })}
-                      data-testid="input-event-start-date"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="startTime">Hora Início *</Label>
-                    <Input
-                      id="startTime"
-                      type="time"
-                      value={newEvent.startTime}
-                      onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
-                      data-testid="input-event-start-time"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="endDate">Data Fim</Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={newEvent.endDate}
-                      onChange={(e) => setNewEvent({ ...newEvent, endDate: e.target.value })}
-                      data-testid="input-event-end-date"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="endTime">Hora Fim</Label>
-                    <Input
-                      id="endTime"
-                      type="time"
-                      value={newEvent.endTime}
-                      onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                      data-testid="input-event-end-time"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="location">Local</Label>
-                  <Input
-                    id="location"
-                    value={newEvent.location}
-                    onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                    placeholder="Escritório, Teams, Zoom..."
-                    data-testid="input-event-location"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    value={newEvent.description}
-                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                    placeholder="Detalhes do evento..."
-                    rows={3}
-                    data-testid="input-event-description"
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setShowNewEvent(false)}>
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={handleCreateEvent}
-                    disabled={createEventMutation.isPending}
-                    data-testid="button-save-event"
-                  >
-                    {createEventMutation.isPending ? "Salvando..." : "Criar Evento"}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+    <div className="h-full flex flex-col bg-gradient-to-br from-background via-background to-violet-500/5">
+      <div className="p-4 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-20">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+              <CalendarIcon className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold capitalize">{getHeaderTitle()}</h1>
+              <p className="text-sm text-muted-foreground">
+                {events.length} evento{events.length !== 1 ? "s" : ""} neste período
+              </p>
+            </div>
+          </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={goToPreviousWeek} data-testid="button-prev-week">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center border rounded-lg p-1 bg-muted/30">
+              <Button
+                variant={viewMode === "day" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("day")}
+                data-testid="button-view-day"
+              >
+                Dia
+              </Button>
+              <Button
+                variant={viewMode === "week" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("week")}
+                data-testid="button-view-week"
+              >
+                Semana
+              </Button>
+              <Button
+                variant={viewMode === "month" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("month")}
+                data-testid="button-view-month"
+              >
+                Mês
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" onClick={() => navigate(-1)} data-testid="button-prev">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <Button variant="outline" size="sm" onClick={goToToday} data-testid="button-today">
                 Hoje
               </Button>
-              <Button variant="outline" size="icon" onClick={goToNextWeek} data-testid="button-next-week">
+              <Button variant="outline" size="icon" onClick={() => navigate(1)} data-testid="button-next">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <CardTitle className="text-lg">
-              {weekDates[0].toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="grid grid-cols-7 gap-2">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <Skeleton key={i} className="h-40" />
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-7 gap-2">
-              {weekDates.map((date) => {
-                const dayEvents = getEventsForDate(date);
-                const isToday = date.toDateString() === new Date().toDateString();
-                
-                return (
-                  <div
-                    key={date.toISOString()}
-                    className={`min-h-[140px] border rounded-lg p-2 ${
-                      isToday ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20" : ""
-                    }`}
-                  >
-                    <div className="text-center mb-2">
-                      <div className="text-xs text-muted-foreground uppercase">
-                        {date.toLocaleDateString("pt-BR", { weekday: "short" })}
-                      </div>
-                      <div className={`text-lg font-semibold ${isToday ? "text-purple-600" : ""}`}>
-                        {date.getDate()}
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      {dayEvents.slice(0, 3).map((event) => (
-                        <div
-                          key={event.id}
-                          className="text-xs p-1.5 rounded bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 dark:hover:bg-purple-900/50 cursor-pointer transition-colors"
-                          title={event.subject}
-                        >
-                          <div className="font-medium truncate">{event.subject}</div>
-                          <div className="text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {formatTime(event.start.dateTime)}
-                          </div>
-                        </div>
-                      ))}
-                      {dayEvents.length > 3 && (
-                        <Badge variant="outline" className="text-xs w-full justify-center">
-                          +{dayEvents.length - 3} mais
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {events && events.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Próximos Eventos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {events.slice(0, 10).map((event) => (
-                <div
-                  key={event.id}
-                  className="flex items-start gap-4 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                >
-                  <div className="text-center min-w-[60px]">
-                    <div className="text-xs text-muted-foreground uppercase">
-                      {new Date(event.start.dateTime).toLocaleDateString("pt-BR", { weekday: "short" })}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => refetch()}
+              disabled={isLoading}
+              data-testid="button-refresh"
+            >
+              <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+            </Button>
+
+            <Dialog open={showNewEvent} onOpenChange={setShowNewEvent}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600" data-testid="button-new-event">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Evento
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Criar Novo Evento</DialogTitle>
+                  <DialogDescription>Adicione um evento ao seu calendário Microsoft</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="event-subject">Título *</Label>
+                    <Input
+                      id="event-subject"
+                      placeholder="Nome do evento"
+                      value={newEvent.subject}
+                      onChange={(e) => setNewEvent({ ...newEvent, subject: e.target.value })}
+                      data-testid="input-event-subject"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="event-start-date">Data início *</Label>
+                      <Input
+                        id="event-start-date"
+                        type="date"
+                        value={newEvent.startDate}
+                        onChange={(e) => setNewEvent({ ...newEvent, startDate: e.target.value })}
+                        data-testid="input-event-start-date"
+                      />
                     </div>
-                    <div className="text-2xl font-bold">
-                      {new Date(event.start.dateTime).getDate()}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(event.start.dateTime).toLocaleDateString("pt-BR", { month: "short" })}
+                    <div>
+                      <Label htmlFor="event-start-time">Hora início *</Label>
+                      <Input
+                        id="event-start-time"
+                        type="time"
+                        value={newEvent.startTime}
+                        onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
+                        data-testid="input-event-start-time"
+                      />
                     </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{event.subject}</h3>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {formatTime(event.start.dateTime)} - {formatTime(event.end.dateTime)}
-                      </span>
-                      {event.location?.displayName && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          {event.location.displayName}
-                        </span>
-                      )}
-                      {event.attendees && event.attendees.length > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          {event.attendees.length} participante{event.attendees.length > 1 ? "s" : ""}
-                        </span>
-                      )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="event-end-date">Data fim</Label>
+                      <Input
+                        id="event-end-date"
+                        type="date"
+                        value={newEvent.endDate}
+                        onChange={(e) => setNewEvent({ ...newEvent, endDate: e.target.value })}
+                        data-testid="input-event-end-date"
+                      />
                     </div>
+                    <div>
+                      <Label htmlFor="event-end-time">Hora fim</Label>
+                      <Input
+                        id="event-end-time"
+                        type="time"
+                        value={newEvent.endTime}
+                        onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
+                        data-testid="input-event-end-time"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="event-location">Local</Label>
+                    <Input
+                      id="event-location"
+                      placeholder="Endereço ou sala"
+                      value={newEvent.location}
+                      onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                      data-testid="input-event-location"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="event-description">Descrição</Label>
+                    <Textarea
+                      id="event-description"
+                      placeholder="Detalhes do evento..."
+                      rows={3}
+                      value={newEvent.description}
+                      onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                      data-testid="input-event-description"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setShowNewEvent(false)} data-testid="button-cancel-event">
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={handleCreateEvent}
+                      disabled={createEventMutation.isPending}
+                      className="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600"
+                      data-testid="button-save-event"
+                    >
+                      {createEventMutation.isPending ? "Criando..." : "Criar Evento"}
+                    </Button>
                   </div>
                 </div>
-              ))}
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden p-4">
+        {viewMode === "month" && (
+          <MonthView
+            monthDates={monthDates}
+            currentDate={currentDate}
+            events={events}
+            onEventClick={setSelectedEvent}
+            onDateClick={openNewEventWithDate}
+            isLoading={isLoading}
+          />
+        )}
+        {viewMode === "week" && (
+          <WeekView
+            weekDates={weekDates}
+            events={events}
+            onEventClick={setSelectedEvent}
+            onDateClick={openNewEventWithDate}
+            isLoading={isLoading}
+          />
+        )}
+        {viewMode === "day" && (
+          <DayView
+            date={currentDate}
+            events={getEventsForDate(currentDate)}
+            onEventClick={setSelectedEvent}
+            onAddClick={() => openNewEventWithDate(currentDate)}
+            isLoading={isLoading}
+          />
+        )}
+      </div>
+
+      <Sheet open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle className="text-left">{selectedEvent?.subject}</SheetTitle>
+            <SheetDescription className="text-left">
+              Detalhes do evento
+            </SheetDescription>
+          </SheetHeader>
+          {selectedEvent && (
+            <div className="mt-6 space-y-6">
+              <div className="flex items-start gap-3">
+                <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="font-medium">
+                    {new Date(selectedEvent.start.dateTime).toLocaleDateString("pt-BR", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatTime(selectedEvent.start.dateTime)} - {formatTime(selectedEvent.end.dateTime)}
+                  </p>
+                </div>
+              </div>
+
+              {selectedEvent.location?.displayName && (
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <p>{selectedEvent.location.displayName}</p>
+                </div>
+              )}
+
+              {selectedEvent.isOnlineMeeting && selectedEvent.onlineMeetingUrl && (
+                <div className="flex items-start gap-3">
+                  <Video className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <a
+                    href={selectedEvent.onlineMeetingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-violet-500 hover:underline"
+                  >
+                    Entrar na reunião online
+                  </a>
+                </div>
+              )}
+
+              {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
+                <div className="flex items-start gap-3">
+                  <Users className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="space-y-1">
+                    {selectedEvent.attendees.map((attendee, i) => (
+                      <p key={i} className="text-sm">
+                        {attendee.emailAddress.name || attendee.emailAddress.address}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedEvent.body?.content && (
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {selectedEvent.body.content.replace(/<[^>]*>/g, "")}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => selectedEvent.id && deleteEventMutation.mutate(selectedEvent.id)}
+                  disabled={deleteEventMutation.isPending}
+                  data-testid="button-delete-event"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deleteEventMutation.isPending ? "Excluindo..." : "Excluir"}
+                </Button>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
+  );
+}
+
+function MonthView({
+  monthDates,
+  currentDate,
+  events,
+  onEventClick,
+  onDateClick,
+  isLoading,
+}: {
+  monthDates: Date[];
+  currentDate: Date;
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
+  onDateClick: (date: Date) => void;
+  isLoading: boolean;
+}) {
+  const getEventsForDate = (date: Date): CalendarEvent[] => {
+    return events.filter(event => {
+      const eventDate = new Date(event.start.dateTime);
+      return isSameDay(eventDate, date);
+    });
+  };
+
+  return (
+    <Card className="h-full overflow-hidden bg-background/80 backdrop-blur-sm border-violet-500/10">
+      <div className="grid grid-cols-7 border-b bg-muted/30">
+        {WEEKDAYS.map((day) => (
+          <div
+            key={day}
+            className="p-3 text-center text-sm font-medium text-muted-foreground border-r last:border-r-0"
+          >
+            {day}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 flex-1" style={{ gridAutoRows: "1fr" }}>
+        {monthDates.map((date, i) => {
+          const dateEvents = getEventsForDate(date);
+          const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+          const today = isToday(date);
+
+          return (
+            <div
+              key={i}
+              className={cn(
+                "min-h-[100px] p-2 border-r border-b last:border-r-0 cursor-pointer transition-colors hover:bg-muted/50",
+                !isCurrentMonth && "bg-muted/20",
+                today && "bg-violet-500/5"
+              )}
+              onClick={() => onDateClick(date)}
+              data-testid={`calendar-day-${date.toISOString().split("T")[0]}`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span
+                  className={cn(
+                    "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full",
+                    today && "bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white",
+                    !isCurrentMonth && "text-muted-foreground"
+                  )}
+                >
+                  {date.getDate()}
+                </span>
+                {dateEvents.length > 0 && (
+                  <Badge variant="secondary" className="text-xs h-5 px-1.5">
+                    {dateEvents.length}
+                  </Badge>
+                )}
+              </div>
+              <div className="space-y-1">
+                {dateEvents.slice(0, 3).map((event, eventIndex) => (
+                  <div
+                    key={event.id || eventIndex}
+                    className={cn(
+                      "text-xs px-2 py-1 rounded text-white truncate cursor-pointer border-l-2",
+                      getEventColor(eventIndex)
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEventClick(event);
+                    }}
+                    data-testid={`event-${event.id}`}
+                  >
+                    {formatTime(event.start.dateTime)} {event.subject}
+                  </div>
+                ))}
+                {dateEvents.length > 3 && (
+                  <p className="text-xs text-muted-foreground pl-2">
+                    +{dateEvents.length - 3} mais
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function WeekView({
+  weekDates,
+  events,
+  onEventClick,
+  onDateClick,
+  isLoading,
+}: {
+  weekDates: Date[];
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
+  onDateClick: (date: Date) => void;
+  isLoading: boolean;
+}) {
+  const getEventsForDateAndHour = (date: Date, hour: number): CalendarEvent[] => {
+    return events.filter(event => {
+      const eventDate = new Date(event.start.dateTime);
+      return isSameDay(eventDate, date) && eventDate.getHours() === hour;
+    });
+  };
+
+  return (
+    <Card className="h-full overflow-hidden bg-background/80 backdrop-blur-sm border-violet-500/10 flex flex-col">
+      <div className="grid grid-cols-8 border-b bg-muted/30 sticky top-0 z-10">
+        <div className="p-3 text-center text-sm font-medium text-muted-foreground border-r w-16" />
+        {weekDates.map((date, i) => {
+          const today = isToday(date);
+          return (
+            <div
+              key={i}
+              className={cn(
+                "p-3 text-center border-r last:border-r-0",
+                today && "bg-violet-500/5"
+              )}
+            >
+              <p className="text-xs text-muted-foreground uppercase">{WEEKDAYS[i]}</p>
+              <p
+                className={cn(
+                  "text-lg font-semibold mt-1 w-9 h-9 flex items-center justify-center rounded-full mx-auto",
+                  today && "bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white"
+                )}
+              >
+                {date.getDate()}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="grid grid-cols-8">
+          <div className="border-r w-16">
+            {HOURS.map((hour) => (
+              <div key={hour} className="h-16 border-b px-2 py-1 text-right">
+                <span className="text-xs text-muted-foreground">
+                  {String(hour).padStart(2, "0")}:00
+                </span>
+              </div>
+            ))}
+          </div>
+          {weekDates.map((date, dayIndex) => {
+            const today = isToday(date);
+            return (
+              <div key={dayIndex} className={cn("border-r last:border-r-0", today && "bg-violet-500/5")}>
+                {HOURS.map((hour) => {
+                  const hourEvents = getEventsForDateAndHour(date, hour);
+                  return (
+                    <div
+                      key={hour}
+                      className="h-16 border-b relative hover:bg-muted/30 cursor-pointer transition-colors"
+                      onClick={() => {
+                        const dateWithTime = new Date(date);
+                        dateWithTime.setHours(hour);
+                        onDateClick(dateWithTime);
+                      }}
+                    >
+                      {hourEvents.map((event, eventIndex) => (
+                        <div
+                          key={event.id || eventIndex}
+                          className={cn(
+                            "absolute inset-x-1 top-1 bottom-1 px-2 py-1 rounded text-white text-xs overflow-hidden cursor-pointer border-l-2",
+                            getEventColor(eventIndex)
+                          )}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEventClick(event);
+                          }}
+                        >
+                          <p className="font-medium truncate">{event.subject}</p>
+                          <p className="text-white/80 text-[10px]">{formatTime(event.start.dateTime)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
+    </Card>
+  );
+}
+
+function DayView({
+  date,
+  events,
+  onEventClick,
+  onAddClick,
+  isLoading,
+}: {
+  date: Date;
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
+  onAddClick: () => void;
+  isLoading: boolean;
+}) {
+  const getEventsForHour = (hour: number): CalendarEvent[] => {
+    return events.filter(event => {
+      const eventDate = new Date(event.start.dateTime);
+      return eventDate.getHours() === hour;
+    });
+  };
+
+  return (
+    <Card className="h-full overflow-hidden bg-background/80 backdrop-blur-sm border-violet-500/10 flex flex-col">
+      <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+        <div>
+          <p className="text-lg font-semibold">{WEEKDAYS_FULL[date.getDay()]}</p>
+          <p className="text-sm text-muted-foreground">
+            {date.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}
+          </p>
+        </div>
+        <Button onClick={onAddClick} size="sm" variant="outline" data-testid="button-add-day-event">
+          <Plus className="h-4 w-4 mr-2" />
+          Adicionar
+        </Button>
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="divide-y">
+          {HOURS.map((hour) => {
+            const hourEvents = getEventsForHour(hour);
+            return (
+              <div key={hour} className="flex min-h-[80px]">
+                <div className="w-20 p-3 text-right border-r bg-muted/20">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {String(hour).padStart(2, "0")}:00
+                  </span>
+                </div>
+                <div className="flex-1 p-2 space-y-2">
+                  {hourEvents.map((event, i) => (
+                    <div
+                      key={event.id || i}
+                      className={cn(
+                        "p-3 rounded-lg text-white cursor-pointer transition-all hover:scale-[1.02] border-l-4",
+                        getEventColor(i)
+                      )}
+                      onClick={() => onEventClick(event)}
+                      data-testid={`day-event-${event.id}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium">{event.subject}</p>
+                        <Badge variant="secondary" className="bg-white/20 text-white border-0">
+                          {formatTime(event.start.dateTime)} - {formatTime(event.end.dateTime)}
+                        </Badge>
+                      </div>
+                      {event.location?.displayName && (
+                        <p className="text-sm text-white/80 mt-1 flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {event.location.displayName}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
+    </Card>
   );
 }
