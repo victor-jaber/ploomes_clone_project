@@ -58,6 +58,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { WhatsAppLink } from "@/components/whatsapp-link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   Plus, GripVertical, Building2, DollarSign, Trash2, Pencil,
@@ -726,6 +727,7 @@ function LeadDetailPanel({
                           <div className="flex items-center gap-2 text-sm">
                             <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
                             <span className="text-muted-foreground">{advogado.telefone}</span>
+                            <WhatsAppLink phone={advogado.telefone} />
                           </div>
                         )}
                         {advogado.email && (
@@ -829,6 +831,7 @@ function LeadDetailPanel({
                           <div className="flex items-center gap-2 text-sm">
                             <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
                             <span className="text-muted-foreground">{escritorio.telefone}</span>
+                            <WhatsAppLink phone={escritorio.telefone} />
                           </div>
                         )}
                         {escritorio.email && (
@@ -932,6 +935,7 @@ function LeadDetailPanel({
                           <div className="flex items-center gap-2 text-sm">
                             <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
                             <span className="text-muted-foreground">{reclamante.telefone}</span>
+                            <WhatsAppLink phone={reclamante.telefone} />
                           </div>
                         )}
                       </div>
@@ -1596,6 +1600,7 @@ function LeadCard({
                     <div className="flex items-center gap-1 min-w-0">
                       <Phone className="h-3 w-3 shrink-0" />
                       <span className="truncate">{linkedAdvogado.celular || linkedAdvogado.telefone}</span>
+                      <WhatsAppLink phone={linkedAdvogado.celular || linkedAdvogado.telefone} />
                     </div>
                   )}
                   {(linkedAdvogado.estado || linkedAdvogado.municipio) && (
@@ -1660,6 +1665,7 @@ function LeadCard({
                       <div className="flex items-center gap-1 min-w-0">
                         <Phone className="h-3 w-3 shrink-0" />
                         <span className="truncate">{linkedReclamante.telefone}</span>
+                        <WhatsAppLink phone={linkedReclamante.telefone} />
                       </div>
                     )}
                     {linkedReclamante.email && (
