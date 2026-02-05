@@ -5,6 +5,8 @@ import {
   lawFirmLawyers,
   lawsuits,
   lawsuitLawyers,
+  lawsuitClaimants,
+  lawsuitLawFirms,
   leads,
   activities,
   proposals,
@@ -20,6 +22,10 @@ import {
   type InsertClaimant,
   type LawFirmLawyer,
   type InsertLawFirmLawyer,
+  type Lawsuit,
+  type LawsuitLawyer,
+  type LawsuitClaimant,
+  type LawsuitLawFirm,
   type Lead,
   type InsertLead,
   type Activity,
@@ -72,6 +78,22 @@ export interface IStorage {
   getLawFirmLawyers(lawFirmId: string): Promise<Lawyer[]>;
   addLawyerToLawFirm(lawFirmId: string, lawyerId: number): Promise<LawFirmLawyer>;
   removeLawyerFromLawFirm(lawFirmId: string, lawyerId: number): Promise<boolean>;
+
+  // Lawsuit Links (N:N) - Vinculação de processos com entidades
+  getLawsuitsByLawyer(lawyerId: number): Promise<Lawsuit[]>;
+  getLawsuitsByClaimant(claimantId: string): Promise<Lawsuit[]>;
+  getLawsuitsByLawFirm(lawFirmId: string): Promise<Lawsuit[]>;
+  addLawyerToLawsuit(lawsuitId: string, lawyerId: number): Promise<LawsuitLawyer>;
+  addClaimantToLawsuit(lawsuitId: string, claimantId: string): Promise<LawsuitClaimant>;
+  addLawFirmToLawsuit(lawsuitId: string, lawFirmId: string): Promise<LawsuitLawFirm>;
+  removeLawyerFromLawsuit(lawsuitId: string, lawyerId: number): Promise<boolean>;
+  removeClaimantFromLawsuit(lawsuitId: string, claimantId: string): Promise<boolean>;
+  removeLawFirmFromLawsuit(lawsuitId: string, lawFirmId: string): Promise<boolean>;
+
+  // Aggregated data for pipeline
+  getLawyersWithLawsuits(ownerId: string): Promise<(Lawyer & { lawsuits: Lawsuit[] })[]>;
+  getClaimantsWithLawsuits(ownerId: string): Promise<(Claimant & { lawsuits: Lawsuit[] })[]>;
+  getLawFirmsWithLawsuits(ownerId: string): Promise<(LawFirm & { lawsuits: Lawsuit[] })[]>;
 
   // Leads
   getLeads(ownerId: string, pipelineType?: string): Promise<Lead[]>;
@@ -252,6 +274,113 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(lawFirmLawyers.lawFirmId, lawFirmId), eq(lawFirmLawyers.lawyerId, lawyerId)))
       .returning();
     return result.length > 0;
+  }
+
+  // Lawsuit Links (N:N) - Vinculação de processos com entidades
+  async getLawsuitsByLawyer(lawyerId: number): Promise<Lawsuit[]> {
+    const links = await db.select()
+      .from(lawsuitLawyers)
+      .innerJoin(lawsuits, eq(lawsuitLawyers.lawsuitId, lawsuits.id))
+      .where(eq(lawsuitLawyers.lawyerId, lawyerId));
+    return links.map(l => l.lawsuits);
+  }
+
+  async getLawsuitsByClaimant(claimantId: string): Promise<Lawsuit[]> {
+    const links = await db.select()
+      .from(lawsuitClaimants)
+      .innerJoin(lawsuits, eq(lawsuitClaimants.lawsuitId, lawsuits.id))
+      .where(eq(lawsuitClaimants.claimantId, claimantId));
+    return links.map(l => l.lawsuits);
+  }
+
+  async getLawsuitsByLawFirm(lawFirmId: string): Promise<Lawsuit[]> {
+    const links = await db.select()
+      .from(lawsuitLawFirms)
+      .innerJoin(lawsuits, eq(lawsuitLawFirms.lawsuitId, lawsuits.id))
+      .where(eq(lawsuitLawFirms.lawFirmId, lawFirmId));
+    return links.map(l => l.lawsuits);
+  }
+
+  async addLawyerToLawsuit(lawsuitId: string, lawyerId: number): Promise<LawsuitLawyer> {
+    const [link] = await db.insert(lawsuitLawyers)
+      .values({ lawsuitId, lawyerId })
+      .onConflictDoNothing()
+      .returning();
+    return link;
+  }
+
+  async addClaimantToLawsuit(lawsuitId: string, claimantId: string): Promise<LawsuitClaimant> {
+    const [link] = await db.insert(lawsuitClaimants)
+      .values({ lawsuitId, claimantId })
+      .onConflictDoNothing()
+      .returning();
+    return link;
+  }
+
+  async addLawFirmToLawsuit(lawsuitId: string, lawFirmId: string): Promise<LawsuitLawFirm> {
+    const [link] = await db.insert(lawsuitLawFirms)
+      .values({ lawsuitId, lawFirmId })
+      .onConflictDoNothing()
+      .returning();
+    return link;
+  }
+
+  async removeLawyerFromLawsuit(lawsuitId: string, lawyerId: number): Promise<boolean> {
+    const result = await db.delete(lawsuitLawyers)
+      .where(and(eq(lawsuitLawyers.lawsuitId, lawsuitId), eq(lawsuitLawyers.lawyerId, lawyerId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async removeClaimantFromLawsuit(lawsuitId: string, claimantId: string): Promise<boolean> {
+    const result = await db.delete(lawsuitClaimants)
+      .where(and(eq(lawsuitClaimants.lawsuitId, lawsuitId), eq(lawsuitClaimants.claimantId, claimantId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async removeLawFirmFromLawsuit(lawsuitId: string, lawFirmId: string): Promise<boolean> {
+    const result = await db.delete(lawsuitLawFirms)
+      .where(and(eq(lawsuitLawFirms.lawsuitId, lawsuitId), eq(lawsuitLawFirms.lawFirmId, lawFirmId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Aggregated data for pipeline - retorna entidades com seus processos agrupados
+  async getLawyersWithLawsuits(ownerId: string): Promise<(Lawyer & { lawsuits: Lawsuit[] })[]> {
+    const allLawyers = await this.getLawyers(ownerId);
+    const result: (Lawyer & { lawsuits: Lawsuit[] })[] = [];
+    
+    for (const lawyer of allLawyers) {
+      const lawyerLawsuits = await this.getLawsuitsByLawyer(lawyer.id);
+      result.push({ ...lawyer, lawsuits: lawyerLawsuits });
+    }
+    
+    return result;
+  }
+
+  async getClaimantsWithLawsuits(ownerId: string): Promise<(Claimant & { lawsuits: Lawsuit[] })[]> {
+    const allClaimants = await this.getClaimants(ownerId);
+    const result: (Claimant & { lawsuits: Lawsuit[] })[] = [];
+    
+    for (const claimant of allClaimants) {
+      const claimantLawsuits = await this.getLawsuitsByClaimant(claimant.id);
+      result.push({ ...claimant, lawsuits: claimantLawsuits });
+    }
+    
+    return result;
+  }
+
+  async getLawFirmsWithLawsuits(ownerId: string): Promise<(LawFirm & { lawsuits: Lawsuit[] })[]> {
+    const allLawFirms = await this.getLawFirms(ownerId);
+    const result: (LawFirm & { lawsuits: Lawsuit[] })[] = [];
+    
+    for (const lawFirm of allLawFirms) {
+      const lawFirmLawsuitsData = await this.getLawsuitsByLawFirm(lawFirm.id);
+      result.push({ ...lawFirm, lawsuits: lawFirmLawsuitsData });
+    }
+    
+    return result;
   }
 
   // Leads
