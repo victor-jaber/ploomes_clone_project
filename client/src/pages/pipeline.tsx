@@ -1886,8 +1886,9 @@ function PipelineColumn({
   isMinimized: boolean;
   onToggleMinimize: () => void;
   cardsLimit: number;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
+  currentLimit: number;
+  onLoadMore: () => void;
+  onShowLess: () => void;
 }) {
   const totalValue = leads.reduce((acc, l) => acc + Number(l.valor || 0), 0);
   
@@ -1975,7 +1976,7 @@ function PipelineColumn({
             </div>
           ) : (
             <>
-              {(isExpanded ? sortedLeads : sortedLeads.slice(0, cardsLimit)).map((lead) => (
+              {sortedLeads.slice(0, currentLimit).map((lead) => (
                 <LeadCard
                   key={lead.id}
                   lead={lead}
@@ -1999,25 +2000,32 @@ function PipelineColumn({
                 />
               ))}
               {sortedLeads.length > cardsLimit && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-xs text-muted-foreground hover:text-foreground"
-                  onClick={onToggleExpand}
-                  data-testid={`button-toggle-expand-${stage.id}`}
-                >
-                  {isExpanded ? (
-                    <>
+                <div className="flex flex-col gap-1">
+                  {currentLimit < sortedLeads.length && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs text-muted-foreground hover:text-foreground"
+                      onClick={onLoadMore}
+                      data-testid={`button-load-more-${stage.id}`}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Exibir mais {Math.min(cardsLimit, sortedLeads.length - currentLimit)} cards
+                    </Button>
+                  )}
+                  {currentLimit > cardsLimit && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs text-muted-foreground hover:text-foreground"
+                      onClick={onShowLess}
+                      data-testid={`button-show-less-${stage.id}`}
+                    >
                       <Minimize2 className="h-3 w-3 mr-1" />
                       Mostrar menos
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-3 w-3 mr-1" />
-                      Exibir mais {sortedLeads.length - cardsLimit} cards
-                    </>
+                    </Button>
                   )}
-                </Button>
+                </div>
               )}
             </>
           )}
@@ -2157,9 +2165,9 @@ export default function PipelinePage() {
 
   const isLoading = leadsLoading || advogadosLoading || escritoriosLoading || reclamantesLoading || lawyersLawsuitsLoading || claimantsLawsuitsLoading || lawFirmsLawsuitsLoading;
 
-  // Estado para controlar limite de cards por coluna (key = stage.id)
-  const [expandedColumns, setExpandedColumns] = useState<Record<string, boolean>>({});
-  const CARDS_LIMIT = 20;
+  // Estado para controlar limite de cards por coluna (key = stage.id, value = limite atual)
+  const [columnLimits, setColumnLimits] = useState<Record<string, number>>({});
+  const CARDS_LIMIT = 20; // Limite inicial e incremento
 
   // Check if there's a CNJ filter active - if so, show leads from ALL pipelines
   const hasCnjFilter = activeFilters.some(f => f.type === "cnj");
@@ -3204,8 +3212,12 @@ export default function PipelinePage() {
               isMinimized={minimizedColumns.has(stage.id)}
               onToggleMinimize={() => toggleColumnMinimize(stage.id)}
               cardsLimit={CARDS_LIMIT}
-              isExpanded={expandedColumns[stage.id] || false}
-              onToggleExpand={() => setExpandedColumns(prev => ({ ...prev, [stage.id]: !prev[stage.id] }))}
+              currentLimit={columnLimits[stage.id] || CARDS_LIMIT}
+              onLoadMore={() => setColumnLimits(prev => ({ 
+                ...prev, 
+                [stage.id]: (prev[stage.id] || CARDS_LIMIT) + CARDS_LIMIT 
+              }))}
+              onShowLess={() => setColumnLimits(prev => ({ ...prev, [stage.id]: CARDS_LIMIT }))}
             />
           ))}
         </div>
