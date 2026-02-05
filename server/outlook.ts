@@ -64,6 +64,7 @@ export interface CalendarEvent {
   isOnlineMeeting?: boolean;
   onlineMeeting?: { joinUrl: string };
   onlineMeetingUrl?: string;
+  onlineMeetingProvider?: string;
 }
 
 export async function getCalendarEvents(startDate?: string, endDate?: string): Promise<CalendarEvent[]> {
@@ -105,7 +106,40 @@ export async function createCalendarEvent(event: CalendarEvent): Promise<Calenda
   try {
     const client = await getOutlookClient();
     
-    const newEvent = await client.api('/me/calendar/events').post(event);
+    let eventToCreate = { ...event };
+    
+    if (event.isOnlineMeeting) {
+      try {
+        const onlineMeeting = await client.api('/me/onlineMeetings').post({
+          subject: event.subject,
+          startDateTime: event.start.dateTime,
+          endDateTime: event.end.dateTime,
+        });
+        
+        if (onlineMeeting?.joinUrl) {
+          logger.success(`Reunião online criada: ${onlineMeeting.joinUrl}`, { prefix: "Outlook" });
+          
+          const meetingInfo = `\n\n─────────────────────────────\n📹 Reunião Online\n🔗 ${onlineMeeting.joinUrl}\n─────────────────────────────`;
+          
+          eventToCreate = {
+            ...event,
+            body: {
+              contentType: "HTML",
+              content: (event.body?.content || "") + meetingInfo,
+            },
+            location: {
+              displayName: "Reunião do Teams",
+            },
+            isOnlineMeeting: true,
+            onlineMeetingProvider: "teamsForBusiness",
+          };
+        }
+      } catch (meetingError: any) {
+        logger.warn(`Não foi possível criar reunião online (pode ser conta pessoal): ${meetingError.message}`, { prefix: "Outlook" });
+      }
+    }
+    
+    const newEvent = await client.api('/me/calendar/events').post(eventToCreate);
     logger.success(`Evento criado: ${event.subject}`, { prefix: "Outlook" });
     
     return newEvent;
