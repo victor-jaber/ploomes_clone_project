@@ -151,6 +151,7 @@ export default function CalendarPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [showNewEvent, setShowNewEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [newEvent, setNewEvent] = useState({
     subject: "",
@@ -161,6 +162,15 @@ export default function CalendarPage() {
     location: "",
     description: "",
     isOnlineMeeting: false,
+  });
+  const [editForm, setEditForm] = useState({
+    subject: "",
+    startDate: "",
+    startTime: "",
+    endDate: "",
+    endTime: "",
+    location: "",
+    description: "",
   });
 
   const weekDates = useMemo(() => getWeekDates(currentDate), [currentDate]);
@@ -218,6 +228,62 @@ export default function CalendarPage() {
       toast({ title: "Erro ao excluir evento", variant: "destructive" });
     },
   });
+
+  const updateEventMutation = useMutation({
+    mutationFn: async ({ eventId, eventData }: { eventId: string; eventData: Partial<CalendarEvent> }) => {
+      const response = await apiRequest("PATCH", `/api/calendar/events/${eventId}`, eventData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+      setEditingEvent(null);
+      setSelectedEvent(null);
+      toast({ title: "Evento atualizado com sucesso!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar evento", variant: "destructive" });
+    },
+  });
+
+  const openEditMode = (event: CalendarEvent) => {
+    const startDate = new Date(event.start.dateTime);
+    const endDate = new Date(event.end.dateTime);
+    
+    setEditForm({
+      subject: event.subject,
+      startDate: startDate.toISOString().split("T")[0],
+      startTime: startDate.toTimeString().slice(0, 5),
+      endDate: endDate.toISOString().split("T")[0],
+      endTime: endDate.toTimeString().slice(0, 5),
+      location: event.location?.displayName || "",
+      description: event.body?.content?.replace(/<[^>]*>/g, "") || "",
+    });
+    setEditingEvent(event);
+    setSelectedEvent(null);
+  };
+
+  const handleUpdateEvent = () => {
+    if (!editingEvent?.id || !editForm.subject || !editForm.startDate || !editForm.startTime) {
+      toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
+      return;
+    }
+
+    const startDateTime = `${editForm.startDate}T${editForm.startTime}:00`;
+    const endDate = editForm.endDate || editForm.startDate;
+    const endTime = editForm.endTime || 
+      `${String(Number(editForm.startTime.split(":")[0]) + 1).padStart(2, "0")}:${editForm.startTime.split(":")[1]}`;
+    const endDateTime = `${endDate}T${endTime}:00`;
+
+    const eventData: Partial<CalendarEvent> = {
+      subject: editForm.subject,
+      start: { dateTime: startDateTime, timeZone: "America/Sao_Paulo" },
+      end: { dateTime: endDateTime, timeZone: "America/Sao_Paulo" },
+      location: editForm.location ? { displayName: editForm.location } : undefined,
+      body: editForm.description ? { contentType: "text", content: editForm.description } : undefined,
+    };
+
+    updateEventMutation.mutate({ eventId: editingEvent.id, eventData });
+  };
 
   const resetNewEvent = () => {
     setNewEvent({
@@ -796,16 +862,25 @@ export default function CalendarPage() {
                   )}
 
                   <div className="pt-4 border-t space-y-3">
-                    <Button
-                      variant="destructive"
-                      className="w-full"
-                      onClick={() => selectedEvent.id && deleteEventMutation.mutate(selectedEvent.id)}
-                      disabled={deleteEventMutation.isPending}
-                      data-testid="button-delete-event"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      {deleteEventMutation.isPending ? "Excluindo..." : "Excluir Evento"}
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => openEditMode(selectedEvent)}
+                        data-testid="button-edit-event"
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => selectedEvent.id && deleteEventMutation.mutate(selectedEvent.id)}
+                        disabled={deleteEventMutation.isPending}
+                        data-testid="button-delete-event"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {deleteEventMutation.isPending ? "Excluindo..." : "Excluir"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </ScrollArea>
@@ -813,6 +888,105 @@ export default function CalendarPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      <Dialog open={!!editingEvent} onOpenChange={() => setEditingEvent(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Evento</DialogTitle>
+            <DialogDescription>Altere as informações do evento</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label htmlFor="edit-subject">Título *</Label>
+              <Input
+                id="edit-subject"
+                placeholder="Nome do evento"
+                value={editForm.subject}
+                onChange={(e) => setEditForm({ ...editForm, subject: e.target.value })}
+                data-testid="input-edit-subject"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-start-date">Data início *</Label>
+                <Input
+                  id="edit-start-date"
+                  type="date"
+                  value={editForm.startDate}
+                  onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                  data-testid="input-edit-start-date"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-start-time">Hora início *</Label>
+                <Input
+                  id="edit-start-time"
+                  type="time"
+                  value={editForm.startTime}
+                  onChange={(e) => setEditForm({ ...editForm, startTime: e.target.value })}
+                  data-testid="input-edit-start-time"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-end-date">Data fim</Label>
+                <Input
+                  id="edit-end-date"
+                  type="date"
+                  value={editForm.endDate}
+                  onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                  data-testid="input-edit-end-date"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-end-time">Hora fim</Label>
+                <Input
+                  id="edit-end-time"
+                  type="time"
+                  value={editForm.endTime}
+                  onChange={(e) => setEditForm({ ...editForm, endTime: e.target.value })}
+                  data-testid="input-edit-end-time"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="edit-location">Local</Label>
+              <Input
+                id="edit-location"
+                placeholder="Endereço ou sala"
+                value={editForm.location}
+                onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                data-testid="input-edit-location"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Descrição</Label>
+              <Textarea
+                id="edit-description"
+                placeholder="Detalhes do evento..."
+                rows={3}
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                data-testid="input-edit-description"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setEditingEvent(null)} data-testid="button-cancel-edit">
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleUpdateEvent}
+                disabled={updateEventMutation.isPending}
+                className="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600"
+                data-testid="button-save-edit"
+              >
+                {updateEventMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
