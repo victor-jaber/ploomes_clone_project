@@ -10,6 +10,7 @@ import {
   FileText,
   LogOut,
   UserCog,
+  Settings,
 } from "lucide-react";
 import { HermesLogo } from "@/components/hermes-logo";
 import {
@@ -17,11 +18,13 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -32,15 +35,18 @@ interface AppSidebarProps {
   onLogout: () => void;
 }
 
-const menuItems = [
+const mainMenuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Pipeline", url: "/pipeline", icon: Kanban },
+  { title: "Calendário", url: "/calendario", icon: Calendar },
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Oportunidades", url: "/oportunidades", icon: Target },
   { title: "Atividades", url: "/atividades", icon: CalendarCheck },
-  { title: "Calendário", url: "/calendario", icon: Calendar },
   { title: "Produtos", url: "/produtos", icon: Package },
   { title: "Propostas", url: "/propostas", icon: FileText },
+];
+
+const configMenuItems = [
   { title: "Usuários", url: "/usuarios", icon: UserCog },
 ];
 
@@ -77,7 +83,59 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {menuItems.map((item) => {
+              {mainMenuItems.map((item) => {
+                const isActive = location === item.url;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className={`
+                        relative h-11 rounded-xl transition-all duration-300 group
+                        ${isActive 
+                          ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white' 
+                          : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }
+                      `}
+                      data-testid={`nav-${item.url.replace("/", "") || "dashboard"}`}
+                    >
+                      <Link href={item.url}>
+                        <div className={`
+                          p-2 rounded-lg transition-all duration-300
+                          ${isActive 
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30' 
+                            : 'bg-white/5 group-hover:bg-white/10'
+                          }
+                        `}>
+                          <item.icon className="h-4 w-4" />
+                        </div>
+                        <span className="font-medium">{item.title}</span>
+                        {isActive && (
+                          <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400" />
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <div className="my-4 mx-2">
+          <div className="h-px bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
+          <div className="flex items-center gap-2 mt-3 mb-2 px-2">
+            <Settings className="h-3 w-3 text-purple-400/60" />
+            <span className="text-[10px] uppercase tracking-widest text-purple-400/60 font-medium">
+              Configurações
+            </span>
+          </div>
+        </div>
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu className="space-y-1">
+              {configMenuItems.map((item) => {
                 const isActive = location === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
