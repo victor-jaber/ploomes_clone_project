@@ -644,6 +644,158 @@ export async function registerRoutes(
     }
   });
 
+  // === Lawsuit Links API (N:N) ===
+  
+  // Get lawsuits by lawyer
+  app.get("/api/lawyers/:id/lawsuits", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const lawyerId = parseInt(req.params.id as string);
+      const lawsuitsData = await storage.getLawsuitsByLawyer(lawyerId);
+      res.json(lawsuitsData);
+    } catch (error) {
+      console.error("Error fetching lawyer lawsuits:", error);
+      res.status(500).json({ message: "Failed to fetch lawyer lawsuits" });
+    }
+  });
+
+  // Get lawsuits by claimant
+  app.get("/api/claimants/:id/lawsuits", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const lawsuitsData = await storage.getLawsuitsByClaimant(req.params.id as string);
+      res.json(lawsuitsData);
+    } catch (error) {
+      console.error("Error fetching claimant lawsuits:", error);
+      res.status(500).json({ message: "Failed to fetch claimant lawsuits" });
+    }
+  });
+
+  // Get lawsuits by law firm
+  app.get("/api/law-firms/:id/lawsuits", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const lawsuitsData = await storage.getLawsuitsByLawFirm(req.params.id as string);
+      res.json(lawsuitsData);
+    } catch (error) {
+      console.error("Error fetching law firm lawsuits:", error);
+      res.status(500).json({ message: "Failed to fetch law firm lawsuits" });
+    }
+  });
+
+  // Link lawyer to lawsuit
+  app.post("/api/lawsuits/:lawsuitId/lawyers/:lawyerId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const lawsuitId = req.params.lawsuitId as string;
+      const lawyerId = parseInt(req.params.lawyerId as string);
+      const link = await storage.addLawyerToLawsuit(lawsuitId, lawyerId);
+      res.status(201).json(link);
+    } catch (error) {
+      console.error("Error linking lawyer to lawsuit:", error);
+      res.status(500).json({ message: "Failed to link lawyer to lawsuit" });
+    }
+  });
+
+  // Unlink lawyer from lawsuit
+  app.delete("/api/lawsuits/:lawsuitId/lawyers/:lawyerId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const lawsuitId = req.params.lawsuitId as string;
+      const lawyerId = parseInt(req.params.lawyerId as string);
+      const removed = await storage.removeLawyerFromLawsuit(lawsuitId, lawyerId);
+      res.json({ removed });
+    } catch (error) {
+      console.error("Error unlinking lawyer from lawsuit:", error);
+      res.status(500).json({ message: "Failed to unlink lawyer from lawsuit" });
+    }
+  });
+
+  // Link claimant to lawsuit
+  app.post("/api/lawsuits/:lawsuitId/claimants/:claimantId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const lawsuitId = req.params.lawsuitId as string;
+      const claimantId = req.params.claimantId as string;
+      const link = await storage.addClaimantToLawsuit(lawsuitId, claimantId);
+      res.status(201).json(link);
+    } catch (error) {
+      console.error("Error linking claimant to lawsuit:", error);
+      res.status(500).json({ message: "Failed to link claimant to lawsuit" });
+    }
+  });
+
+  // Unlink claimant from lawsuit
+  app.delete("/api/lawsuits/:lawsuitId/claimants/:claimantId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const lawsuitId = req.params.lawsuitId as string;
+      const claimantId = req.params.claimantId as string;
+      const removed = await storage.removeClaimantFromLawsuit(lawsuitId, claimantId);
+      res.json({ removed });
+    } catch (error) {
+      console.error("Error unlinking claimant from lawsuit:", error);
+      res.status(500).json({ message: "Failed to unlink claimant from lawsuit" });
+    }
+  });
+
+  // Link law firm to lawsuit
+  app.post("/api/lawsuits/:lawsuitId/law-firms/:lawFirmId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const lawsuitId = req.params.lawsuitId as string;
+      const lawFirmId = req.params.lawFirmId as string;
+      const link = await storage.addLawFirmToLawsuit(lawsuitId, lawFirmId);
+      res.status(201).json(link);
+    } catch (error) {
+      console.error("Error linking law firm to lawsuit:", error);
+      res.status(500).json({ message: "Failed to link law firm to lawsuit" });
+    }
+  });
+
+  // Unlink law firm from lawsuit
+  app.delete("/api/lawsuits/:lawsuitId/law-firms/:lawFirmId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const lawsuitId = req.params.lawsuitId as string;
+      const lawFirmId = req.params.lawFirmId as string;
+      const removed = await storage.removeLawFirmFromLawsuit(lawsuitId, lawFirmId);
+      res.json({ removed });
+    } catch (error) {
+      console.error("Error unlinking law firm from lawsuit:", error);
+      res.status(500).json({ message: "Failed to unlink law firm from lawsuit" });
+    }
+  });
+
+  // === Aggregated data for pipeline (entities with their lawsuits) ===
+  
+  // Get lawyers with their linked lawsuits (aggregated for pipeline cards)
+  app.get("/api/lawyers-with-lawsuits", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const lawyersWithLawsuits = await storage.getLawyersWithLawsuits(userId);
+      res.json(lawyersWithLawsuits);
+    } catch (error) {
+      console.error("Error fetching lawyers with lawsuits:", error);
+      res.status(500).json({ message: "Failed to fetch lawyers with lawsuits" });
+    }
+  });
+
+  // Get claimants with their linked lawsuits (aggregated for pipeline cards)
+  app.get("/api/claimants-with-lawsuits", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const claimantsWithLawsuits = await storage.getClaimantsWithLawsuits(userId);
+      res.json(claimantsWithLawsuits);
+    } catch (error) {
+      console.error("Error fetching claimants with lawsuits:", error);
+      res.status(500).json({ message: "Failed to fetch claimants with lawsuits" });
+    }
+  });
+
+  // Get law firms with their linked lawsuits (aggregated for pipeline cards)
+  app.get("/api/law-firms-with-lawsuits", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const lawFirmsWithLawsuits = await storage.getLawFirmsWithLawsuits(userId);
+      res.json(lawFirmsWithLawsuits);
+    } catch (error) {
+      console.error("Error fetching law firms with lawsuits:", error);
+      res.status(500).json({ message: "Failed to fetch law firms with lawsuits" });
+    }
+  });
+
   // Leads
   app.get("/api/leads", isAuthenticated, async (req: Request, res: Response) => {
     try {
