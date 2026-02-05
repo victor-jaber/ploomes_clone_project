@@ -401,57 +401,57 @@ export default function CalendarPage() {
 
   if (connectionStatus?.connected === false) {
     return (
-      <div className="h-full flex items-center justify-center bg-gradient-to-br from-violet-500/5 via-background to-fuchsia-500/5 p-6 overflow-auto">
-        <div className="max-w-2xl w-full space-y-8">
-          <div className="text-center space-y-4">
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-violet-500/5 via-background to-fuchsia-500/5 p-4">
+        <div className="max-w-2xl w-full space-y-4">
+          <div className="text-center space-y-2">
             <div className="inline-flex items-center justify-center">
               <div className="relative">
-                <div className="h-24 w-24 rounded-3xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-xl shadow-violet-500/20">
-                  <CalendarIcon className="h-12 w-12 text-white" />
+                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-xl shadow-violet-500/20">
+                  <CalendarIcon className="h-8 w-8 text-white" />
                 </div>
-                <div className="absolute -bottom-2 -right-2 h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
-                  <Video className="h-5 w-5 text-white" />
+                <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
+                  <Video className="h-3.5 w-3.5 text-white" />
                 </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
                 Conecte seu Calendário
               </h1>
-              <p className="text-lg text-muted-foreground max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
                 Sincronize seus compromissos do Microsoft Calendar diretamente no Hermes CRM
               </p>
             </div>
           </div>
 
           <Card className="bg-background/80 backdrop-blur-sm border-violet-500/20 overflow-hidden">
-            <div className="h-2 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500" />
-            <CardContent className="p-8">
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="text-center space-y-3 p-4 rounded-xl hover:bg-muted/50 transition-colors">
-                  <div className="h-14 w-14 rounded-2xl bg-violet-500/10 flex items-center justify-center mx-auto">
-                    <CalendarIcon className="h-7 w-7 text-violet-500" />
+            <div className="h-1.5 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500" />
+            <CardContent className="p-4">
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="text-center space-y-2 p-3 rounded-xl hover:bg-muted/50 transition-colors">
+                  <div className="h-10 w-10 rounded-xl bg-violet-500/10 flex items-center justify-center mx-auto">
+                    <CalendarIcon className="h-5 w-5 text-violet-500" />
                   </div>
-                  <h3 className="font-semibold">Eventos Sincronizados</h3>
-                  <p className="text-sm text-muted-foreground">
+                  <h3 className="font-semibold text-sm">Eventos Sincronizados</h3>
+                  <p className="text-xs text-muted-foreground">
                     Veja todos os seus compromissos do Outlook em um só lugar
                   </p>
                 </div>
-                <div className="text-center space-y-3 p-4 rounded-xl hover:bg-muted/50 transition-colors">
-                  <div className="h-14 w-14 rounded-2xl bg-fuchsia-500/10 flex items-center justify-center mx-auto">
-                    <Video className="h-7 w-7 text-fuchsia-500" />
+                <div className="text-center space-y-2 p-3 rounded-xl hover:bg-muted/50 transition-colors">
+                  <div className="h-10 w-10 rounded-xl bg-fuchsia-500/10 flex items-center justify-center mx-auto">
+                    <Video className="h-5 w-5 text-fuchsia-500" />
                   </div>
-                  <h3 className="font-semibold">Reuniões do Teams</h3>
-                  <p className="text-sm text-muted-foreground">
+                  <h3 className="font-semibold text-sm">Reuniões do Teams</h3>
+                  <p className="text-xs text-muted-foreground">
                     Acesse suas reuniões online com um clique direto do CRM
                   </p>
                 </div>
-                <div className="text-center space-y-3 p-4 rounded-xl hover:bg-muted/50 transition-colors">
-                  <div className="h-14 w-14 rounded-2xl bg-pink-500/10 flex items-center justify-center mx-auto">
-                    <Users className="h-7 w-7 text-pink-500" />
+                <div className="text-center space-y-2 p-3 rounded-xl hover:bg-muted/50 transition-colors">
+                  <div className="h-10 w-10 rounded-xl bg-pink-500/10 flex items-center justify-center mx-auto">
+                    <Users className="h-5 w-5 text-pink-500" />
                   </div>
-                  <h3 className="font-semibold">Agende Reuniões</h3>
-                  <p className="text-sm text-muted-foreground">
+                  <h3 className="font-semibold text-sm">Agende Reuniões</h3>
+                  <p className="text-xs text-muted-foreground">
                     Crie eventos que sincronizam automaticamente com seu calendário
                   </p>
                 </div>
@@ -460,11 +460,11 @@ export default function CalendarPage() {
           </Card>
 
           <Card className="bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 border-violet-500/20">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg">
-                    <svg viewBox="0 0 23 23" className="h-10 w-10">
+            <CardContent className="p-4">
+              <div className="flex flex-col md:flex-row items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-xl bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg">
+                    <svg viewBox="0 0 23 23" className="h-7 w-7">
                       <path fill="#f25022" d="M0 0h11v11H0z" />
                       <path fill="#00a4ef" d="M0 12h11v11H0z" />
                       <path fill="#7fba00" d="M12 0h11v11H12z" />
@@ -472,22 +472,23 @@ export default function CalendarPage() {
                     </svg>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">Microsoft 365</h3>
-                    <p className="text-sm text-muted-foreground">Outlook, Hotmail, Office 365</p>
+                    <h3 className="font-semibold">Microsoft 365</h3>
+                    <p className="text-xs text-muted-foreground">Outlook, Hotmail, Office 365</p>
                   </div>
                 </div>
                 <div className="flex-1 text-center md:text-right">
-                  <p className="text-sm text-muted-foreground mb-3">
+                  <p className="text-xs text-muted-foreground mb-2">
                     Clique no botão abaixo para conectar sua conta Microsoft
                   </p>
                   <Button 
+                    size="sm"
                     className="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 shadow-lg shadow-violet-500/20"
                     onClick={() => {
                       window.open("/__repl", "_blank");
                     }}
                     data-testid="button-connect-microsoft"
                   >
-                    <svg viewBox="0 0 23 23" className="h-5 w-5 mr-2">
+                    <svg viewBox="0 0 23 23" className="h-4 w-4 mr-2">
                       <path fill="currentColor" d="M0 0h11v11H0zM0 12h11v11H0zM12 0h11v11H12zM12 12h11v11H12z" />
                     </svg>
                     Conectar Conta Microsoft
@@ -497,7 +498,7 @@ export default function CalendarPage() {
             </CardContent>
           </Card>
 
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-center text-xs text-muted-foreground">
             Seus dados são protegidos e usados apenas para sincronização de calendário
           </p>
         </div>
