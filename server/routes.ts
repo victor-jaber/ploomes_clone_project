@@ -10,6 +10,10 @@ import {
   insertLawFirmSchema,
   insertClaimantSchema,
   insertLeadSchema,
+  insertLeadFinancialsSchema,
+  insertLeadCaseDetailsSchema,
+  insertLeadChecklistSchema,
+  insertLeadAssignmentsSchema,
   insertProductSchema,
   insertActivitySchema,
   insertProposalSchema,
@@ -1094,7 +1098,18 @@ export async function registerRoutes(
 
   app.put("/api/leads/:id/financials", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const financials = await storage.upsertLeadFinancials(getParam(req.params.id), req.body);
+      const leadId = getParam(req.params.id);
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      const parsed = insertLeadFinancialsSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const financials = await storage.upsertLeadFinancials(leadId, parsed.data);
       res.json(financials);
     } catch (error) {
       console.error("Error updating lead financials:", error);
@@ -1115,7 +1130,18 @@ export async function registerRoutes(
 
   app.put("/api/leads/:id/case-details", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const caseDetails = await storage.upsertLeadCaseDetails(getParam(req.params.id), req.body);
+      const leadId = getParam(req.params.id);
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      const parsed = insertLeadCaseDetailsSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const caseDetails = await storage.upsertLeadCaseDetails(leadId, parsed.data);
       res.json(caseDetails);
     } catch (error) {
       console.error("Error updating lead case details:", error);
@@ -1136,7 +1162,18 @@ export async function registerRoutes(
 
   app.put("/api/leads/:id/checklist", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const checklist = await storage.upsertLeadChecklist(getParam(req.params.id), req.body);
+      const leadId = getParam(req.params.id);
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      const parsed = insertLeadChecklistSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const checklist = await storage.upsertLeadChecklist(leadId, parsed.data);
       res.json(checklist);
     } catch (error) {
       console.error("Error updating lead checklist:", error);
@@ -1157,7 +1194,18 @@ export async function registerRoutes(
 
   app.put("/api/leads/:id/assignments", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const assignments = await storage.upsertLeadAssignments(getParam(req.params.id), req.body);
+      const leadId = getParam(req.params.id);
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      const parsed = insertLeadAssignmentsSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
+      }
+      const assignments = await storage.upsertLeadAssignments(leadId, parsed.data);
       res.json(assignments);
     } catch (error) {
       console.error("Error updating lead assignments:", error);
