@@ -6,6 +6,7 @@ import { storage } from "./storage";
 import { isAuthenticated, registerAuthRoutes, AuthRequest } from "./auth";
 import { wsManager } from "./websocket";
 import logger from "./logger";
+import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, checkOutlookConnection, type CalendarEvent } from "./outlook";
 import {
   insertLawyerSchema,
   insertLawFirmSchema,
@@ -1583,6 +1584,62 @@ export async function registerRoutes(
     } catch (error) {
       logger.error("fetching users", error as Error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Calendar routes (Microsoft Outlook integration)
+  app.get("/api/calendar/status", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const connected = await checkOutlookConnection();
+      res.json({ connected });
+    } catch (error) {
+      res.json({ connected: false });
+    }
+  });
+
+  app.get("/api/calendar/events", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const events = await getCalendarEvents(
+        startDate as string | undefined,
+        endDate as string | undefined
+      );
+      res.json(events);
+    } catch (error) {
+      logger.error("fetching calendar events", error as Error);
+      res.status(500).json({ message: "Falha ao buscar eventos do calendário" });
+    }
+  });
+
+  app.post("/api/calendar/events", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const event = await createCalendarEvent(req.body);
+      res.status(201).json(event);
+    } catch (error) {
+      logger.error("creating calendar event", error as Error);
+      res.status(500).json({ message: "Falha ao criar evento no calendário" });
+    }
+  });
+
+  app.patch("/api/calendar/events/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const eventId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const event = await updateCalendarEvent(eventId, req.body);
+      res.json(event);
+    } catch (error) {
+      logger.error("updating calendar event", error as Error);
+      res.status(500).json({ message: "Falha ao atualizar evento no calendário" });
+    }
+  });
+
+  app.delete("/api/calendar/events/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const eventId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      await deleteCalendarEvent(eventId);
+      res.status(204).send();
+    } catch (error) {
+      logger.error("deleting calendar event", error as Error);
+      res.status(500).json({ message: "Falha ao excluir evento no calendário" });
     }
   });
 

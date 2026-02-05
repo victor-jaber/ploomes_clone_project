@@ -21,6 +21,7 @@ import ActivitiesPage from "@/pages/activities";
 import ProductsPage from "@/pages/products";
 import ProposalsPage from "@/pages/proposals";
 import UsersPage from "@/pages/users";
+import CalendarPage from "@/pages/calendar";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedRouter() {
@@ -34,6 +35,7 @@ function AuthenticatedRouter() {
       <Route path="/produtos" component={ProductsPage} />
       <Route path="/propostas" component={ProposalsPage} />
       <Route path="/usuarios" component={UsersPage} />
+      <Route path="/calendario" component={CalendarPage} />
       <Route component={NotFound} />
     </Switch>
   );
