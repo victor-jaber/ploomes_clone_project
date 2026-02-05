@@ -51,6 +51,7 @@ interface CalendarEvent {
   location?: { displayName: string };
   attendees?: Array<{ emailAddress: { address: string; name?: string }; type: string }>;
   isOnlineMeeting?: boolean;
+  onlineMeeting?: { joinUrl: string };
   onlineMeetingUrl?: string;
 }
 
@@ -589,16 +590,16 @@ export default function CalendarPage() {
                 </div>
               )}
 
-              {selectedEvent.isOnlineMeeting && selectedEvent.onlineMeetingUrl && (
+              {selectedEvent.isOnlineMeeting && (selectedEvent.onlineMeeting?.joinUrl || selectedEvent.onlineMeetingUrl) && (
                 <div className="flex items-start gap-3">
-                  <Video className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <Video className="h-5 w-5 text-violet-500 mt-0.5" />
                   <a
-                    href={selectedEvent.onlineMeetingUrl}
+                    href={selectedEvent.onlineMeeting?.joinUrl || selectedEvent.onlineMeetingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-violet-500 hover:underline"
+                    className="text-violet-500 hover:underline font-medium"
                   >
-                    Entrar na reunião online
+                    Entrar na reunião do Teams
                   </a>
                 </div>
               )}

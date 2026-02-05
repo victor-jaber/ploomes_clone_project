@@ -61,6 +61,9 @@ export interface CalendarEvent {
   body?: { contentType: string; content: string };
   location?: { displayName: string };
   attendees?: Array<{ emailAddress: { address: string; name?: string }; type: string }>;
+  isOnlineMeeting?: boolean;
+  onlineMeeting?: { joinUrl: string };
+  onlineMeetingUrl?: string;
 }
 
 export async function getCalendarEvents(startDate?: string, endDate?: string): Promise<CalendarEvent[]> {
@@ -76,14 +79,14 @@ export async function getCalendarEvents(startDate?: string, endDate?: string): P
           endDateTime: endDate,
         })
         .header('Prefer', 'outlook.timezone="America/Sao_Paulo"')
-        .select('id,subject,start,end,location,attendees,body')
+        .select('id,subject,start,end,location,attendees,body,isOnlineMeeting,onlineMeeting,onlineMeetingUrl')
         .orderby('start/dateTime')
         .top(50)
         .get();
     } else {
       response = await client.api('/me/calendar/events')
         .header('Prefer', 'outlook.timezone="America/Sao_Paulo"')
-        .select('id,subject,start,end,location,attendees,body')
+        .select('id,subject,start,end,location,attendees,body,isOnlineMeeting,onlineMeeting,onlineMeetingUrl')
         .orderby('start/dateTime')
         .top(50)
         .get();
