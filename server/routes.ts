@@ -6,7 +6,19 @@ import { storage } from "./storage";
 import { isAuthenticated, registerAuthRoutes, AuthRequest } from "./auth";
 import { wsManager } from "./websocket";
 import logger from "./logger";
-import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, checkOutlookConnection, getConnectionAuthUrl, type CalendarEvent } from "./outlook";
+import { 
+  getCalendarEvents, 
+  createCalendarEvent, 
+  updateCalendarEvent, 
+  deleteCalendarEvent, 
+  checkOutlookConnection,
+  getOAuthConfig,
+  getAuthorizationUrl,
+  exchangeCodeForTokens,
+  saveUserTokens,
+  deleteUserTokens,
+  type CalendarEvent 
+} from "./outlook";
 import {
   insertLawyerSchema,
   insertLawFirmSchema,
@@ -1587,43 +1599,120 @@ export async function registerRoutes(
     }
   });
 
-  // Calendar routes (Microsoft Outlook integration)
+  // Calendar routes (Microsoft Outlook integration with per-user OAuth)
+  app.get("/api/calendar/config", isAuthenticated, async (req: Request, res: Response) => {
+    const config = getOAuthConfig();
+    res.json({ configured: config.configured });
+  });
+
   app.get("/api/calendar/status", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const connected = await checkOutlookConnection();
+      const authReq = req as AuthRequest;
+      const userId = authReq.user?.id;
+      if (!userId) {
+        return res.json({ connected: false });
+      }
+      const connected = await checkOutlookConnection(userId);
       res.json({ connected });
     } catch (error) {
       res.json({ connected: false });
     }
   });
 
-  app.get("/api/calendar/connect-url", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/calendar/authorize", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const authUrl = await getConnectionAuthUrl();
+      const authReq = req as AuthRequest;
+      const userId = authReq.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Não autenticado" });
+      }
+      const state = Buffer.from(JSON.stringify({ userId })).toString("base64");
+      const authUrl = getAuthorizationUrl(state);
       res.json({ authUrl });
     } catch (error) {
-      logger.error("getting calendar connect url", error as Error);
-      res.json({ authUrl: null });
+      logger.error("getting calendar authorize url", error as Error);
+      res.status(500).json({ message: "Falha ao gerar URL de autorização" });
+    }
+  });
+
+  app.get("/api/calendar/callback", async (req: Request, res: Response) => {
+    try {
+      const { code, state, error } = req.query;
+      
+      if (error) {
+        logger.error("OAuth callback error: " + error);
+        return res.redirect("/calendario?error=auth_denied");
+      }
+      
+      if (!code || !state) {
+        return res.redirect("/calendario?error=missing_params");
+      }
+      
+      const stateData = JSON.parse(Buffer.from(state as string, "base64").toString());
+      const userId = stateData.userId;
+      
+      if (!userId) {
+        return res.redirect("/calendario?error=invalid_state");
+      }
+      
+      const tokens = await exchangeCodeForTokens(code as string);
+      await saveUserTokens(userId, tokens);
+      
+      logger.success("Calendário Microsoft conectado com sucesso", { prefix: "OAuth" });
+      res.redirect("/calendario?success=connected");
+    } catch (error) {
+      logger.error("calendar oauth callback", error as Error);
+      res.redirect("/calendario?error=auth_failed");
+    }
+  });
+
+  app.post("/api/calendar/disconnect", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      const userId = authReq.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Não autenticado" });
+      }
+      await deleteUserTokens(userId);
+      res.json({ success: true });
+    } catch (error) {
+      logger.error("disconnecting calendar", error as Error);
+      res.status(500).json({ message: "Falha ao desconectar calendário" });
     }
   });
 
   app.get("/api/calendar/events", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const authReq = req as AuthRequest;
+      const userId = authReq.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Não autenticado" });
+      }
       const { startDate, endDate } = req.query;
       const events = await getCalendarEvents(
+        userId,
         startDate as string | undefined,
         endDate as string | undefined
       );
       res.json(events);
-    } catch (error) {
+    } catch (error: any) {
       logger.error("fetching calendar events", error as Error);
-      res.status(500).json({ message: "Falha ao buscar eventos do calendário" });
+      if (error.message?.includes("não conectado") || error.message?.includes("reconecte")) {
+        res.status(401).json({ message: error.message, needsReconnect: true });
+      } else {
+        res.status(500).json({ message: "Falha ao buscar eventos do calendário" });
+      }
     }
   });
 
   app.post("/api/calendar/events", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const event = await createCalendarEvent(req.body);
+      const authReq = req as AuthRequest;
+      const userId = authReq.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Não autenticado" });
+      }
+      const event = await createCalendarEvent(userId, req.body);
       res.status(201).json(event);
     } catch (error) {
       logger.error("creating calendar event", error as Error);
@@ -1633,8 +1722,13 @@ export async function registerRoutes(
 
   app.patch("/api/calendar/events/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const authReq = req as AuthRequest;
+      const userId = authReq.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Não autenticado" });
+      }
       const eventId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-      const event = await updateCalendarEvent(eventId, req.body);
+      const event = await updateCalendarEvent(userId, eventId, req.body);
       res.json(event);
     } catch (error) {
       logger.error("updating calendar event", error as Error);
@@ -1644,8 +1738,13 @@ export async function registerRoutes(
 
   app.delete("/api/calendar/events/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const authReq = req as AuthRequest;
+      const userId = authReq.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Não autenticado" });
+      }
       const eventId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-      await deleteCalendarEvent(eventId);
+      await deleteCalendarEvent(userId, eventId);
       res.status(204).send();
     } catch (error) {
       logger.error("deleting calendar event", error as Error);
