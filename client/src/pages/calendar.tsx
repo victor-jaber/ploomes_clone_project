@@ -662,8 +662,8 @@ export default function CalendarPage() {
                 </Button>
               </div>
 
-              <ScrollArea className="flex-1">
-                <div className="p-6 space-y-6">
+              <ScrollArea className="flex-1 w-full">
+                <div className="p-6 space-y-6 overflow-hidden">
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border">
                   <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white">
                     <CalendarIcon className="h-7 w-7" />
@@ -745,10 +745,10 @@ export default function CalendarPage() {
                 )}
 
                 {selectedEvent.body?.content && selectedEvent.body.content.replace(/<[^>]*>/g, "").trim() && (
-                    <div className="space-y-2">
+                    <div className="space-y-2 min-w-0">
                       <p className="text-sm font-medium text-muted-foreground">Descrição</p>
-                      <div className="p-4 rounded-xl bg-muted/30 border overflow-hidden">
-                        <p className="text-sm whitespace-pre-wrap break-words">
+                      <div className="p-4 rounded-xl bg-muted/30 border overflow-hidden max-w-full">
+                        <p className="text-sm whitespace-pre-wrap break-all overflow-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                           {selectedEvent.body.content.replace(/<[^>]*>/g, "").trim()}
                         </p>
                       </div>
