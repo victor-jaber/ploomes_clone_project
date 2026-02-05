@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { WhatsAppLink } from "@/components/whatsapp-link";
 import {
   Plus,
   Search,
@@ -704,6 +705,7 @@ export default function ClientsPage() {
                   {adv.telefone && (
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Phone className="h-3 w-3" /> {adv.telefone}
+                      <WhatsAppLink phone={adv.telefone} />
                     </div>
                   )}
                 </div>
@@ -782,6 +784,7 @@ export default function ClientsPage() {
                   {esc.telefone && (
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Phone className="h-3 w-3" /> {esc.telefone}
+                      <WhatsAppLink phone={esc.telefone} />
                     </div>
                   )}
                 </div>
@@ -858,6 +861,7 @@ export default function ClientsPage() {
                   {rec.telefone && (
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Phone className="h-3 w-3" /> {rec.telefone}
+                      <WhatsAppLink phone={rec.telefone} />
                     </div>
                   )}
                 </div>
@@ -925,8 +929,8 @@ export default function ClientsPage() {
             {adv.cnj && <div><p className="text-sm text-muted-foreground">CNJ</p><p className="font-medium">{adv.cnj}</p></div>}
             {adv.valorCausa && <div><p className="text-sm text-muted-foreground">Valor da Causa</p><p className="font-semibold text-green-600 dark:text-green-400">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(adv.valorCausa))}</p></div>}
             {adv.email && <div><p className="text-sm text-muted-foreground">E-mail</p><p className="font-medium">{adv.email}</p></div>}
-            {adv.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium">{adv.telefone}</p></div>}
-            {adv.celular && <div><p className="text-sm text-muted-foreground">Celular</p><p className="font-medium">{adv.celular}</p></div>}
+            {adv.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium flex items-center gap-2">{adv.telefone} <WhatsAppLink phone={adv.telefone} /></p></div>}
+            {adv.celular && <div><p className="text-sm text-muted-foreground">Celular</p><p className="font-medium flex items-center gap-2">{adv.celular} <WhatsAppLink phone={adv.celular} /></p></div>}
             {adv.cep && <div><p className="text-sm text-muted-foreground">CEP</p><p className="font-medium">{adv.cep}</p></div>}
           </div>
           {(adv.logradouro || adv.municipio) && (
@@ -963,7 +967,7 @@ export default function ClientsPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             {esc.email && <div><p className="text-sm text-muted-foreground">E-mail</p><p className="font-medium">{esc.email}</p></div>}
-            {esc.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium">{esc.telefone}</p></div>}
+            {esc.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium flex items-center gap-2">{esc.telefone} <WhatsAppLink phone={esc.telefone} /></p></div>}
             {esc.endereco && <div className="col-span-2"><p className="text-sm text-muted-foreground">Endereço</p><p className="font-medium">{esc.endereco}{esc.cidade && `, ${esc.cidade}`}{esc.estado && ` - ${esc.estado}`}</p></div>}
           </div>
           {esc.observacoes && <div><p className="text-sm text-muted-foreground">Observações</p><p className="text-sm">{esc.observacoes}</p></div>}
@@ -988,7 +992,7 @@ export default function ClientsPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             {rec.email && <div><p className="text-sm text-muted-foreground">E-mail</p><p className="font-medium">{rec.email}</p></div>}
-            {rec.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium">{rec.telefone}</p></div>}
+            {rec.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium flex items-center gap-2">{rec.telefone} <WhatsAppLink phone={rec.telefone} /></p></div>}
             {rec.cnj && <div><p className="text-sm text-muted-foreground">Nº Processo</p><p className="font-medium">{rec.cnj}</p></div>}
             {rec.valorCausa && <div><p className="text-sm text-muted-foreground">Valor da Causa</p><p className="font-semibold text-green-600 dark:text-green-400">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(rec.valorCausa))}</p></div>}
           </div>
