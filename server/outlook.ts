@@ -9,7 +9,7 @@ async function getAccessToken(): Promise<string> {
     return connectionSettings.settings.access_token;
   }
   
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  const hostname = process.env.CONNECTORS_HOSTNAME || process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY 
     ? 'repl ' + process.env.REPL_IDENTITY 
     : process.env.WEB_REPL_RENEWAL 
@@ -44,7 +44,7 @@ async function getAccessToken(): Promise<string> {
 }
 
 export async function getConnectionAuthUrl(): Promise<string | null> {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  const hostname = process.env.CONNECTORS_HOSTNAME || process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY 
     ? 'repl ' + process.env.REPL_IDENTITY 
     : process.env.WEB_REPL_RENEWAL 
@@ -52,6 +52,7 @@ export async function getConnectionAuthUrl(): Promise<string | null> {
     : null;
 
   if (!hostname || !xReplitToken) {
+    logger.warn("Missing connector env vars - hostname: " + !!hostname + ", token: " + !!xReplitToken);
     return null;
   }
 
@@ -67,6 +68,7 @@ export async function getConnectionAuthUrl(): Promise<string | null> {
     );
     
     const data = await response.json();
+    logger.info("Connector response received");
     const connector = data.items?.[0];
     
     if (connector?.auth_url) {
