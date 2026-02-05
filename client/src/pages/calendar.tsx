@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -191,25 +191,88 @@ export default function CalendarPage() {
     ? new Date(monthDates[monthDates.length - 1].getTime() + 24 * 60 * 60 * 1000).toISOString()
     : new Date(weekDates[6].getTime() + 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: connectionStatus, isLoading: isLoadingStatus } = useQuery<{ connected: boolean }>({
+  const { data: oauthConfig } = useQuery<{ configured: boolean }>({
+    queryKey: ["/api/calendar/config"],
+  });
+
+  const { data: connectionStatus, isLoading: isLoadingStatus, refetch: refetchStatus } = useQuery<{ connected: boolean }>({
     queryKey: ["/api/calendar/status"],
   });
 
-  const { data: connectUrlData } = useQuery<{ authUrl: string | null }>({
-    queryKey: ["/api/calendar/connect-url"],
+  const authorizeMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("GET", "/api/calendar/authorize");
+      return response.json();
+    },
+    onSuccess: (data: { authUrl: string }) => {
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao iniciar autenticação com Microsoft",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/calendar/disconnect");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+      toast({ title: "Calendário desconectado" });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao desconectar calendário",
+        variant: "destructive",
+      });
+    },
   });
 
   const handleConnectCalendar = () => {
-    if (connectUrlData?.authUrl) {
-      window.open(connectUrlData.authUrl, "_blank");
-    } else {
+    if (!oauthConfig?.configured) {
       toast({
-        title: "Conexão não disponível",
-        description: "A integração com Microsoft Calendar precisa ser configurada pelo administrador do sistema.",
+        title: "OAuth não configurado",
+        description: "Configure MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET e MICROSOFT_REDIRECT_URI nas variáveis de ambiente.",
         variant: "destructive",
       });
+      return;
     }
+    authorizeMutation.mutate();
   };
+
+  const handleDisconnectCalendar = () => {
+    disconnectMutation.mutate();
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("success") === "connected") {
+      toast({ title: "Calendário conectado com sucesso!" });
+      refetchStatus();
+      window.history.replaceState({}, "", "/calendario");
+    } else if (params.get("error")) {
+      const errorMessages: Record<string, string> = {
+        auth_denied: "Autorização negada pelo usuário",
+        auth_failed: "Falha na autenticação",
+        missing_params: "Parâmetros ausentes",
+        invalid_state: "Estado inválido",
+      };
+      toast({
+        title: "Erro na conexão",
+        description: errorMessages[params.get("error")!] || "Erro desconhecido",
+        variant: "destructive",
+      });
+      window.history.replaceState({}, "", "/calendario");
+    }
+  }, []);
 
   const { data: events = [], isLoading, refetch } = useQuery<CalendarEvent[]>({
     queryKey: ["/api/calendar/events", startOfRange, endOfRange],
@@ -603,19 +666,12 @@ export default function CalendarPage() {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
-                  onClick={() => {
-                    if (connectUrlData?.authUrl) {
-                      window.open(connectUrlData.authUrl, "_blank");
-                    }
-                    toast({
-                      title: "Gerenciar conexão",
-                      description: "Gerencie sua conexão Microsoft na nova aba que foi aberta",
-                    });
-                  }}
+                  onClick={handleDisconnectCalendar}
+                  disabled={disconnectMutation.isPending}
                   data-testid="button-disconnect-calendar"
                 >
                   <Unplug className="h-4 w-4 mr-2" />
-                  Gerenciar Conexão
+                  {disconnectMutation.isPending ? "Desconectando..." : "Desconectar Calendário"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
