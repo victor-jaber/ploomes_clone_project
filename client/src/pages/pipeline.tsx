@@ -66,8 +66,12 @@ import {
   Minimize2, Maximize2, Filter, X
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Lead, TodosAdvogadosInfos, Escritorio, Reclamante, Activity, Interaction, InsertLead } from "@shared/schema";
+import type { Lead, TodosAdvogadosInfos, Escritorio, Reclamante, Activity, Interaction, InsertLead, Lawsuit } from "@shared/schema";
 import { PIPELINE_STAGES, type PipelineType } from "@shared/schema";
+
+type LawyerWithLawsuits = TodosAdvogadosInfos & { lawsuits: Lawsuit[] };
+type ClaimantWithLawsuits = Reclamante & { lawsuits: Lawsuit[] };
+type LawFirmWithLawsuits = Escritorio & { lawsuits: Lawsuit[] };
 
 const PIPELINE_LABELS: Record<PipelineType, { label: string; icon: JSX.Element; description: string }> = {
   advogados: { label: "Advogados", icon: <Scale className="h-4 w-4" />, description: "Pipeline de advogados" },
@@ -1291,6 +1295,9 @@ function LeadCard({
   escritorios,
   reclamantes,
   activities,
+  lawyersWithLawsuits,
+  claimantsWithLawsuits,
+  lawFirmsWithLawsuits,
   pipelineType,
   onDragStart,
   onDragEnd,
@@ -1307,6 +1314,9 @@ function LeadCard({
   escritorios: Escritorio[];
   reclamantes: Reclamante[];
   activities: Activity[];
+  lawyersWithLawsuits: LawyerWithLawsuits[];
+  claimantsWithLawsuits: ClaimantWithLawsuits[];
+  lawFirmsWithLawsuits: LawFirmWithLawsuits[];
   pipelineType: PipelineType;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDragEnd: () => void;
@@ -1346,6 +1356,30 @@ function LeadCard({
   const linkedAdvogado = lead.lawyerId 
     ? todosAdvogadosInfos.find(a => a.id === lead.lawyerId)
     : null;
+
+  const lawyerWithLawsuits = lead.lawyerId 
+    ? lawyersWithLawsuits.find(a => a.id === lead.lawyerId)
+    : null;
+  const claimantWithLawsuits = lead.claimantId 
+    ? claimantsWithLawsuits.find(c => c.id === lead.claimantId)
+    : null;
+  const lawFirmWithLawsuits = lead.lawFirmId 
+    ? lawFirmsWithLawsuits.find(l => l.id === lead.lawFirmId)
+    : null;
+
+  const linkedLawsuits = (() => {
+    if (pipelineType === "advogados" && lawyerWithLawsuits) {
+      return lawyerWithLawsuits.lawsuits || [];
+    }
+    if (pipelineType === "reclamantes" && claimantWithLawsuits) {
+      return claimantWithLawsuits.lawsuits || [];
+    }
+    if (pipelineType === "escritorios" && lawFirmWithLawsuits) {
+      return lawFirmWithLawsuits.lawsuits || [];
+    }
+    return [];
+  })();
+  const totalLawsuitsValue = linkedLawsuits.reduce((acc, l) => acc + Number(l.valorCausa || 0), 0);
 
   return (
     <ContextMenu>
@@ -1388,33 +1422,58 @@ function LeadCard({
             </div>
 
             {pipelineType === "advogados" && linkedAdvogado && (
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                {linkedAdvogado.email && (
-                  <div className="flex items-center gap-1 min-w-0">
-                    <Mail className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{linkedAdvogado.email}</span>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  {linkedAdvogado.email && (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Mail className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{linkedAdvogado.email}</span>
+                    </div>
+                  )}
+                  {(linkedAdvogado.celular || linkedAdvogado.telefone) && (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Phone className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{linkedAdvogado.celular || linkedAdvogado.telefone}</span>
+                    </div>
+                  )}
+                  {(linkedAdvogado.estado || linkedAdvogado.municipio) && (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      <span className="truncate">
+                        {linkedAdvogado.municipio && linkedAdvogado.estado 
+                          ? `${linkedAdvogado.municipio}/${linkedAdvogado.estado}`
+                          : linkedAdvogado.municipio || linkedAdvogado.estado}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {linkedLawsuits.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1 text-xs font-medium text-purple-600 dark:text-purple-400">
+                      <FileText className="h-3 w-3" />
+                      <span>{linkedLawsuits.length} processo{linkedLawsuits.length > 1 ? "s" : ""}</span>
+                      {totalLawsuitsValue > 0 && (
+                        <span className="text-muted-foreground">({formatCurrencyShort(totalLawsuitsValue)})</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {linkedLawsuits.slice(0, 3).map((lawsuit, idx) => (
+                        <Badge key={lawsuit.id || idx} variant="secondary" className="text-xs px-1.5 py-0">
+                          {lawsuit.cnj?.replace(/(\d{7})-?(\d{2})\.?(\d{4})\.?(\d)\.?(\d{2})\.?(\d{4})/, "$1-$2.$3.$4.$5.$6") || "Sem CNJ"}
+                        </Badge>
+                      ))}
+                      {linkedLawsuits.length > 3 && (
+                        <Badge variant="outline" className="text-xs px-1.5 py-0">
+                          +{linkedLawsuits.length - 3}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 )}
-                {(linkedAdvogado.celular || linkedAdvogado.telefone) && (
-                  <div className="flex items-center gap-1 min-w-0">
-                    <Phone className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{linkedAdvogado.celular || linkedAdvogado.telefone}</span>
-                  </div>
-                )}
-                {linkedAdvogado.cnj && (
-                  <div className="flex items-center gap-1 min-w-0">
+                {linkedLawsuits.length === 0 && linkedAdvogado.cnj && (
+                  <div className="flex items-center gap-1 min-w-0 text-xs text-muted-foreground">
                     <FileText className="h-3 w-3 shrink-0" />
                     <span className="truncate">{linkedAdvogado.cnj}</span>
-                  </div>
-                )}
-                {(linkedAdvogado.estado || linkedAdvogado.municipio) && (
-                  <div className="flex items-center gap-1 min-w-0">
-                    <MapPin className="h-3 w-3 shrink-0" />
-                    <span className="truncate">
-                      {linkedAdvogado.municipio && linkedAdvogado.estado 
-                        ? `${linkedAdvogado.municipio}/${linkedAdvogado.estado}`
-                        : linkedAdvogado.municipio || linkedAdvogado.estado}
-                    </span>
                   </div>
                 )}
               </div>
@@ -1430,12 +1489,6 @@ function LeadCard({
                     <span className="truncate">{linkedReclamante.nome}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground pl-4">
-                    {linkedReclamante.cnj && (
-                      <div className="flex items-center gap-1 min-w-0">
-                        <FileText className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{linkedReclamante.cnj}</span>
-                      </div>
-                    )}
                     {linkedReclamante.cpf && (
                       <div className="flex items-center gap-1 min-w-0">
                         <span className="truncate">CPF: {linkedReclamante.cpf}</span>
@@ -1454,6 +1507,35 @@ function LeadCard({
                       </div>
                     )}
                   </div>
+                  {pipelineType === "reclamantes" && linkedLawsuits.length > 0 && (
+                    <div className="space-y-1 pl-4">
+                      <div className="flex items-center gap-1 text-xs font-medium text-purple-600 dark:text-purple-400">
+                        <FileText className="h-3 w-3" />
+                        <span>{linkedLawsuits.length} processo{linkedLawsuits.length > 1 ? "s" : ""}</span>
+                        {totalLawsuitsValue > 0 && (
+                          <span className="text-muted-foreground">({formatCurrencyShort(totalLawsuitsValue)})</span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {linkedLawsuits.slice(0, 3).map((lawsuit, idx) => (
+                          <Badge key={lawsuit.id || idx} variant="secondary" className="text-xs px-1.5 py-0">
+                            {lawsuit.cnj?.replace(/(\d{7})-?(\d{2})\.?(\d{4})\.?(\d)\.?(\d{2})\.?(\d{4})/, "$1-$2.$3.$4.$5.$6") || "Sem CNJ"}
+                          </Badge>
+                        ))}
+                        {linkedLawsuits.length > 3 && (
+                          <Badge variant="outline" className="text-xs px-1.5 py-0">
+                            +{linkedLawsuits.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {pipelineType === "reclamantes" && linkedLawsuits.length === 0 && linkedReclamante.cnj && (
+                    <div className="flex items-center gap-1 min-w-0 text-xs text-muted-foreground pl-4">
+                      <FileText className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{linkedReclamante.cnj}</span>
+                    </div>
+                  )}
                 </div>
               ) : null;
             })()}
@@ -1590,6 +1672,9 @@ function PipelineColumn({
   escritorios,
   reclamantes,
   activities,
+  lawyersWithLawsuits,
+  claimantsWithLawsuits,
+  lawFirmsWithLawsuits,
   pipelineType,
   onDrop,
   onDragOver,
@@ -1614,6 +1699,9 @@ function PipelineColumn({
   escritorios: Escritorio[];
   reclamantes: Reclamante[];
   activities: Activity[];
+  lawyersWithLawsuits: LawyerWithLawsuits[];
+  claimantsWithLawsuits: ClaimantWithLawsuits[];
+  lawFirmsWithLawsuits: LawFirmWithLawsuits[];
   pipelineType: PipelineType;
   onDrop: (e: React.DragEvent, stageId: string) => void;
   onDragOver: (e: React.DragEvent, stageId: string) => void;
@@ -1725,6 +1813,9 @@ function PipelineColumn({
                 escritorios={escritorios}
                 reclamantes={reclamantes}
                 activities={activities}
+                lawyersWithLawsuits={lawyersWithLawsuits}
+                claimantsWithLawsuits={claimantsWithLawsuits}
+                lawFirmsWithLawsuits={lawFirmsWithLawsuits}
                 pipelineType={pipelineType}
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
@@ -1858,6 +1949,18 @@ export default function PipelinePage() {
 
   const { data: activities = [] } = useQuery<Activity[]>({
     queryKey: ["/api/activities"],
+  });
+
+  const { data: lawyersWithLawsuits = [] } = useQuery<LawyerWithLawsuits[]>({
+    queryKey: ["/api/lawyers-with-lawsuits"],
+  });
+
+  const { data: claimantsWithLawsuits = [] } = useQuery<ClaimantWithLawsuits[]>({
+    queryKey: ["/api/claimants-with-lawsuits"],
+  });
+
+  const { data: lawFirmsWithLawsuits = [] } = useQuery<LawFirmWithLawsuits[]>({
+    queryKey: ["/api/law-firms-with-lawsuits"],
   });
 
   const isLoading = leadsLoading;
@@ -2856,6 +2959,9 @@ export default function PipelinePage() {
               escritorios={escritorios}
               reclamantes={reclamantes}
               activities={activities}
+              lawyersWithLawsuits={lawyersWithLawsuits}
+              claimantsWithLawsuits={claimantsWithLawsuits}
+              lawFirmsWithLawsuits={lawFirmsWithLawsuits}
               pipelineType={selectedPipeline}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
