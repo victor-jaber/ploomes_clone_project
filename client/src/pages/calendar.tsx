@@ -558,10 +558,10 @@ export default function CalendarPage() {
       </div>
 
       <Sheet open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-        <SheetContent className="sm:max-w-md p-0 overflow-hidden">
+        <SheetContent className="sm:max-w-md p-0 flex flex-col [&>button]:hidden">
           {selectedEvent && (
             <>
-              <div className="relative h-32 bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500">
+              <div className="relative h-32 bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 shrink-0">
                 <div className="absolute inset-0 bg-black/10" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <Badge className="bg-white/20 text-white border-0 backdrop-blur-sm mb-2">
@@ -582,7 +582,8 @@ export default function CalendarPage() {
                 </Button>
               </div>
 
-              <div className="p-6 space-y-6">
+              <ScrollArea className="flex-1">
+                <div className="p-6 space-y-6">
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border">
                   <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white">
                     <CalendarIcon className="h-7 w-7" />
@@ -664,29 +665,30 @@ export default function CalendarPage() {
                 )}
 
                 {selectedEvent.body?.content && selectedEvent.body.content.replace(/<[^>]*>/g, "").trim() && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Descrição</p>
-                    <div className="p-4 rounded-xl bg-muted/30 border">
-                      <p className="text-sm whitespace-pre-wrap">
-                        {selectedEvent.body.content.replace(/<[^>]*>/g, "").trim()}
-                      </p>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Descrição</p>
+                      <div className="p-4 rounded-xl bg-muted/30 border overflow-hidden">
+                        <p className="text-sm whitespace-pre-wrap break-words">
+                          {selectedEvent.body.content.replace(/<[^>]*>/g, "").trim()}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="pt-4 border-t space-y-3">
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    onClick={() => selectedEvent.id && deleteEventMutation.mutate(selectedEvent.id)}
-                    disabled={deleteEventMutation.isPending}
-                    data-testid="button-delete-event"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {deleteEventMutation.isPending ? "Excluindo..." : "Excluir Evento"}
-                  </Button>
+                  <div className="pt-4 border-t space-y-3">
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      onClick={() => selectedEvent.id && deleteEventMutation.mutate(selectedEvent.id)}
+                      disabled={deleteEventMutation.isPending}
+                      data-testid="button-delete-event"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {deleteEventMutation.isPending ? "Excluindo..." : "Excluir Evento"}
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              </ScrollArea>
             </>
           )}
         </SheetContent>
