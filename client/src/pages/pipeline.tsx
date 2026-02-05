@@ -66,8 +66,16 @@ import {
   Minimize2, Maximize2, Filter, X
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Lead, TodosAdvogadosInfos, Escritorio, Reclamante, Activity, Interaction, InsertLead, Lawsuit } from "@shared/schema";
+import type { Lead, TodosAdvogadosInfos, Escritorio, Reclamante, Activity, Interaction, InsertLead, Lawsuit, LeadFinancials, LeadCaseDetails, LeadChecklist, LeadAssignments } from "@shared/schema";
 import { PIPELINE_STAGES, type PipelineType } from "@shared/schema";
+
+// Tipo combinado para lead com detalhes normalizados
+type LeadWithDetails = Lead & {
+  financials?: LeadFinancials | null;
+  caseDetails?: LeadCaseDetails | null;
+  checklist?: LeadChecklist | null;
+  assignments?: LeadAssignments | null;
+};
 
 type LawyerWithLawsuits = TodosAdvogadosInfos & { lawsuits: Lawsuit[] };
 type ClaimantWithLawsuits = Reclamante & { lawsuits: Lawsuit[] };
@@ -261,6 +269,39 @@ function LeadDetailPanel({
     queryKey: [`/api/leads/${lead.id}/interactions`],
   });
 
+  // Queries para dados normalizados
+  const { data: financials } = useQuery<LeadFinancials>({
+    queryKey: ["/api/leads", lead.id, "financials"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/leads/${lead.id}/financials`);
+      return res.json();
+    },
+  });
+
+  const { data: caseDetails } = useQuery<LeadCaseDetails>({
+    queryKey: ["/api/leads", lead.id, "case-details"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/leads/${lead.id}/case-details`);
+      return res.json();
+    },
+  });
+
+  const { data: checklist } = useQuery<LeadChecklist>({
+    queryKey: ["/api/leads", lead.id, "checklist"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/leads/${lead.id}/checklist`);
+      return res.json();
+    },
+  });
+
+  const { data: assignments } = useQuery<LeadAssignments>({
+    queryKey: ["/api/leads", lead.id, "assignments"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/leads/${lead.id}/assignments`);
+      return res.json();
+    },
+  });
+
   const updateFieldMutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
       return apiRequest("PATCH", `/api/leads/${lead.id}`, data);
@@ -284,8 +325,73 @@ function LeadDetailPanel({
     },
   });
 
+  // Mutations para dados normalizados
+  const updateFinancialsMutation = useMutation({
+    mutationFn: async (data: Record<string, any>) => {
+      return apiRequest("PUT", `/api/leads/${lead.id}/financials`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads", lead.id, "financials"] });
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar dados financeiros", variant: "destructive" });
+    },
+  });
+
+  const updateCaseDetailsMutation = useMutation({
+    mutationFn: async (data: Record<string, any>) => {
+      return apiRequest("PUT", `/api/leads/${lead.id}/case-details`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads", lead.id, "case-details"] });
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar detalhes do caso", variant: "destructive" });
+    },
+  });
+
+  const updateChecklistMutation = useMutation({
+    mutationFn: async (data: Record<string, any>) => {
+      return apiRequest("PUT", `/api/leads/${lead.id}/checklist`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads", lead.id, "checklist"] });
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar checklist", variant: "destructive" });
+    },
+  });
+
+  const updateAssignmentsMutation = useMutation({
+    mutationFn: async (data: Record<string, any>) => {
+      return apiRequest("PUT", `/api/leads/${lead.id}/assignments`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads", lead.id, "assignments"] });
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar responsáveis", variant: "destructive" });
+    },
+  });
+
+  // Campos por tabela para roteamento
+  const financialsFields = ["valorFechamento", "percentualComissao", "formaPagamento", "observacoesFinanceiras"];
+  const caseDetailsFields = ["tribunal", "assuntoPrincipal", "assuntos", "orgaoJulgador", "cnj", "cliente", "abordagem", "origem"];
+  const checklistFields = ["reclamante", "reclamado", "liquidacaoIndicada", "valorBruto", "valorLiquido", "valorControverso", "sucumbente", "fgts", "dataPlanilha", "valorOutros", "prazoCaso"];
+  const assignmentsFields = ["comercialResponsavel", "advogadoResponsavel"];
+
   const handleUpdateField = (field: string, value: any) => {
-    updateFieldMutation.mutate({ [field]: value });
+    if (financialsFields.includes(field)) {
+      updateFinancialsMutation.mutate({ [field]: value });
+    } else if (caseDetailsFields.includes(field)) {
+      updateCaseDetailsMutation.mutate({ [field]: value });
+    } else if (checklistFields.includes(field)) {
+      updateChecklistMutation.mutate({ [field]: value });
+    } else if (assignmentsFields.includes(field)) {
+      updateAssignmentsMutation.mutate({ [field]: value });
+    } else {
+      updateFieldMutation.mutate({ [field]: value });
+    }
   };
 
   const createInteractionMutation = useMutation({
@@ -898,35 +1004,35 @@ function LeadDetailPanel({
               </div>
             )}
 
-            {(lead.valorFechamento || lead.percentualComissao || lead.formaPagamento || lead.observacoesFinanceiras) && (
+            {(financials?.valorFechamento || financials?.percentualComissao || financials?.formaPagamento || financials?.observacoesFinanceiras) && (
               <div>
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   Informações Financeiras
                 </h3>
                 <Card className="p-4">
                   <div className="space-y-3 text-sm">
-                    {lead.valorFechamento && (
+                    {financials?.valorFechamento && (
                       <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Valor Fechamento</span>
-                        <span className="font-bold text-green-600">{formatCurrency(Number(lead.valorFechamento))}</span>
+                        <span className="font-bold text-green-600">{formatCurrency(Number(financials.valorFechamento))}</span>
                       </div>
                     )}
-                    {lead.percentualComissao && (
+                    {financials?.percentualComissao && (
                       <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Comissão</span>
-                        <span>{lead.percentualComissao}%</span>
+                        <span>{financials.percentualComissao}%</span>
                       </div>
                     )}
-                    {lead.formaPagamento && (
+                    {financials?.formaPagamento && (
                       <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Forma de Pagamento</span>
-                        <span>{lead.formaPagamento}</span>
+                        <span>{financials.formaPagamento}</span>
                       </div>
                     )}
-                    {lead.observacoesFinanceiras && (
+                    {financials?.observacoesFinanceiras && (
                       <div className="pt-2 border-t">
                         <span className="text-muted-foreground text-xs block mb-1">Observações</span>
-                        <p className="text-sm whitespace-pre-wrap">{lead.observacoesFinanceiras}</p>
+                        <p className="text-sm whitespace-pre-wrap">{financials.observacoesFinanceiras}</p>
                       </div>
                     )}
                   </div>
@@ -946,7 +1052,7 @@ function LeadDetailPanel({
                       Reclamante
                     </Label>
                     <InlineEditField
-                      value={lead.reclamante || ""}
+                      value={checklist?.reclamante || ""}
                       onSave={(val) => handleUpdateField("reclamante", val)}
                       placeholder="Adicionar..."
                     />
@@ -957,7 +1063,7 @@ function LeadDetailPanel({
                       Reclamado
                     </Label>
                     <InlineEditField
-                      value={lead.reclamado || ""}
+                      value={checklist?.reclamado || ""}
                       onSave={(val) => handleUpdateField("reclamado", val)}
                       placeholder="Adicionar..."
                     />
@@ -978,7 +1084,7 @@ function LeadDetailPanel({
                       Liquidação Indicada
                     </Label>
                     <InlineEditField
-                      value={lead.liquidacaoIndicada || ""}
+                      value={checklist?.liquidacaoIndicada || ""}
                       type="currency"
                       onSave={(val) => handleUpdateField("liquidacaoIndicada", val)}
                       placeholder="Adicionar..."
@@ -990,7 +1096,7 @@ function LeadDetailPanel({
                       Valor Bruto
                     </Label>
                     <InlineEditField
-                      value={lead.valorBruto || ""}
+                      value={checklist?.valorBruto || ""}
                       type="currency"
                       onSave={(val) => handleUpdateField("valorBruto", val)}
                       placeholder="Adicionar..."
@@ -1002,7 +1108,7 @@ function LeadDetailPanel({
                       Valor Líquido
                     </Label>
                     <InlineEditField
-                      value={lead.valorLiquido || ""}
+                      value={checklist?.valorLiquido || ""}
                       type="currency"
                       onSave={(val) => handleUpdateField("valorLiquido", val)}
                       placeholder="Adicionar..."
@@ -1014,7 +1120,7 @@ function LeadDetailPanel({
                       Valor Controverso
                     </Label>
                     <InlineEditField
-                      value={lead.valorControverso || ""}
+                      value={checklist?.valorControverso || ""}
                       type="currency"
                       onSave={(val) => handleUpdateField("valorControverso", val)}
                       placeholder="Adicionar..."
@@ -1026,7 +1132,7 @@ function LeadDetailPanel({
                       Sucumbente
                     </Label>
                     <InlineEditField
-                      value={lead.sucumbente || ""}
+                      value={checklist?.sucumbente || ""}
                       onSave={(val) => handleUpdateField("sucumbente", val)}
                       placeholder="Adicionar..."
                     />
@@ -1037,7 +1143,7 @@ function LeadDetailPanel({
                       FGTS
                     </Label>
                     <InlineEditField
-                      value={lead.fgts || ""}
+                      value={checklist?.fgts || ""}
                       type="currency"
                       onSave={(val) => handleUpdateField("fgts", val)}
                       placeholder="Adicionar..."
@@ -1049,7 +1155,7 @@ function LeadDetailPanel({
                       Data da Planilha
                     </Label>
                     <InlineEditField
-                      value={lead.dataPlanilha ? new Date(lead.dataPlanilha).toISOString().split('T')[0] : ""}
+                      value={checklist?.dataPlanilha ? new Date(checklist.dataPlanilha).toISOString().split('T')[0] : ""}
                       type="date"
                       onSave={(val) => handleUpdateField("dataPlanilha", val ? new Date(val) : null)}
                       placeholder="Adicionar..."
@@ -1061,7 +1167,7 @@ function LeadDetailPanel({
                       Valor Outros
                     </Label>
                     <InlineEditField
-                      value={lead.valorOutros || ""}
+                      value={checklist?.valorOutros || ""}
                       type="currency"
                       onSave={(val) => handleUpdateField("valorOutros", val)}
                       placeholder="Adicionar..."
@@ -1073,7 +1179,7 @@ function LeadDetailPanel({
                       Prazo do Caso
                     </Label>
                     <InlineEditField
-                      value={lead.prazoCaso ? new Date(lead.prazoCaso).toISOString().split('T')[0] : ""}
+                      value={checklist?.prazoCaso ? new Date(checklist.prazoCaso).toISOString().split('T')[0] : ""}
                       type="date"
                       onSave={(val) => handleUpdateField("prazoCaso", val ? new Date(val) : null)}
                       placeholder="Adicionar..."
@@ -1095,7 +1201,7 @@ function LeadDetailPanel({
                       Comercial Responsável
                     </Label>
                     <InlineEditField
-                      value={lead.comercialResponsavel || ""}
+                      value={assignments?.comercialResponsavel || ""}
                       onSave={(val) => handleUpdateField("comercialResponsavel", val)}
                       placeholder="Adicionar..."
                     />
@@ -1106,7 +1212,7 @@ function LeadDetailPanel({
                       Advogado Responsável
                     </Label>
                     <InlineEditField
-                      value={lead.advogadoResponsavel || ""}
+                      value={assignments?.advogadoResponsavel || ""}
                       onSave={(val) => handleUpdateField("advogadoResponsavel", val)}
                       placeholder="Adicionar..."
                     />
@@ -1124,7 +1230,7 @@ function LeadDetailPanel({
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Cliente</Label>
                     <InlineEditField
-                      value={lead.cliente || ""}
+                      value={caseDetails?.cliente || ""}
                       onSave={(val) => handleUpdateField("cliente", val)}
                       placeholder="Adicionar..."
                     />
@@ -1132,7 +1238,7 @@ function LeadDetailPanel({
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Abordagem</Label>
                     <InlineEditField
-                      value={lead.abordagem || ""}
+                      value={caseDetails?.abordagem || ""}
                       onSave={(val) => handleUpdateField("abordagem", val)}
                       placeholder="Adicionar..."
                     />
@@ -1140,7 +1246,7 @@ function LeadDetailPanel({
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Origem</Label>
                     <InlineEditField
-                      value={lead.origem || ""}
+                      value={caseDetails?.origem || ""}
                       onSave={(val) => handleUpdateField("origem", val)}
                       placeholder="Adicionar..."
                     />
@@ -1158,7 +1264,7 @@ function LeadDetailPanel({
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">CNJ</Label>
                     <InlineEditField
-                      value={lead.cnj || ""}
+                      value={caseDetails?.cnj || ""}
                       onSave={(val) => handleUpdateField("cnj", val)}
                       placeholder="Adicionar..."
                     />
@@ -1166,7 +1272,7 @@ function LeadDetailPanel({
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Tribunal</Label>
                     <InlineEditField
-                      value={lead.tribunal || ""}
+                      value={caseDetails?.tribunal || ""}
                       onSave={(val) => handleUpdateField("tribunal", val)}
                       placeholder="Adicionar..."
                     />
@@ -1174,7 +1280,7 @@ function LeadDetailPanel({
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Assunto Principal</Label>
                     <InlineEditField
-                      value={lead.assuntoPrincipal || ""}
+                      value={caseDetails?.assuntoPrincipal || ""}
                       onSave={(val) => handleUpdateField("assuntoPrincipal", val)}
                       placeholder="Adicionar..."
                     />
@@ -1182,7 +1288,7 @@ function LeadDetailPanel({
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Assuntos</Label>
                     <InlineEditField
-                      value={lead.assuntos || ""}
+                      value={caseDetails?.assuntos || ""}
                       onSave={(val) => handleUpdateField("assuntos", val)}
                       placeholder="Adicionar..."
                     />
@@ -1190,7 +1296,7 @@ function LeadDetailPanel({
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Órgão Julgador</Label>
                     <InlineEditField
-                      value={lead.orgaoJulgador || ""}
+                      value={caseDetails?.orgaoJulgador || ""}
                       onSave={(val) => handleUpdateField("orgaoJulgador", val)}
                       placeholder="Adicionar..."
                     />
