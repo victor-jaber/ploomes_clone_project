@@ -43,6 +43,43 @@ async function getAccessToken(): Promise<string> {
   return accessToken;
 }
 
+export async function getConnectionAuthUrl(): Promise<string | null> {
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  const xReplitToken = process.env.REPL_IDENTITY 
+    ? 'repl ' + process.env.REPL_IDENTITY 
+    : process.env.WEB_REPL_RENEWAL 
+    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
+    : null;
+
+  if (!hostname || !xReplitToken) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `https://${hostname}/api/v2/connector?connector_names=outlook`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'X_REPLIT_TOKEN': xReplitToken
+        }
+      }
+    );
+    
+    const data = await response.json();
+    const connector = data.items?.[0];
+    
+    if (connector?.auth_url) {
+      return connector.auth_url;
+    }
+    
+    return `https://${hostname}/oauth/outlook/authorize`;
+  } catch (error) {
+    logger.error("getting connection auth url", error as Error);
+    return null;
+  }
+}
+
 export async function getOutlookClient(): Promise<Client> {
   const accessToken = await getAccessToken();
 

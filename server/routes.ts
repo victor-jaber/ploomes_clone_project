@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { isAuthenticated, registerAuthRoutes, AuthRequest } from "./auth";
 import { wsManager } from "./websocket";
 import logger from "./logger";
-import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, checkOutlookConnection, type CalendarEvent } from "./outlook";
+import { getCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, checkOutlookConnection, getConnectionAuthUrl, type CalendarEvent } from "./outlook";
 import {
   insertLawyerSchema,
   insertLawFirmSchema,
@@ -1594,6 +1594,16 @@ export async function registerRoutes(
       res.json({ connected });
     } catch (error) {
       res.json({ connected: false });
+    }
+  });
+
+  app.get("/api/calendar/connect-url", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const authUrl = await getConnectionAuthUrl();
+      res.json({ authUrl });
+    } catch (error) {
+      logger.error("getting calendar connect url", error as Error);
+      res.json({ authUrl: null });
     }
   });
 
