@@ -90,17 +90,17 @@ export interface IStorage {
   removeClaimantFromLawsuit(lawsuitId: string, claimantId: string): Promise<boolean>;
   removeLawFirmFromLawsuit(lawsuitId: string, lawFirmId: string): Promise<boolean>;
 
-  // Aggregated data for pipeline
-  getLawyersWithLawsuits(ownerId: string): Promise<(Lawyer & { lawsuits: Lawsuit[] })[]>;
-  getClaimantsWithLawsuits(ownerId: string): Promise<(Claimant & { lawsuits: Lawsuit[] })[]>;
-  getLawFirmsWithLawsuits(ownerId: string): Promise<(LawFirm & { lawsuits: Lawsuit[] })[]>;
+  // Aggregated data for pipeline (dados públicos - sem filtro por ownerId)
+  getLawyersWithLawsuits(): Promise<(Lawyer & { lawsuits: Lawsuit[] })[]>;
+  getClaimantsWithLawsuits(): Promise<(Claimant & { lawsuits: Lawsuit[] })[]>;
+  getLawFirmsWithLawsuits(): Promise<(LawFirm & { lawsuits: Lawsuit[] })[]>;
 
-  // Leads
-  getLeads(ownerId: string, pipelineType?: string): Promise<Lead[]>;
-  getLead(id: string, ownerId: string): Promise<Lead | undefined>;
+  // Leads (dados públicos - sem filtro por ownerId)
+  getLeads(pipelineType?: string): Promise<Lead[]>;
+  getLead(id: string): Promise<Lead | undefined>;
   createLead(lead: InsertLead): Promise<Lead>;
-  updateLead(id: string, ownerId: string, lead: Partial<InsertLead>): Promise<Lead | undefined>;
-  deleteLead(id: string, ownerId: string): Promise<boolean>;
+  updateLead(id: string, lead: Partial<InsertLead>): Promise<Lead | undefined>;
+  deleteLead(id: string): Promise<boolean>;
 
   // Products
   getProducts(ownerId: string): Promise<Product[]>;
@@ -172,6 +172,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(lawyers).where(eq(lawyers.ownerId, ownerId)).orderBy(desc(lawyers.createdAt));
   }
 
+  // Retorna todos os advogados sem filtro por ownerId (dados públicos)
+  async getAllLawyers(): Promise<Lawyer[]> {
+    return db.select().from(lawyers).orderBy(desc(lawyers.createdAt));
+  }
+
   async getLawyer(id: number, ownerId: string): Promise<Lawyer | undefined> {
     const [lawyer] = await db.select().from(lawyers).where(and(eq(lawyers.id, id), eq(lawyers.ownerId, ownerId)));
     return lawyer;
@@ -201,6 +206,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(lawFirms).where(eq(lawFirms.ownerId, ownerId)).orderBy(desc(lawFirms.createdAt));
   }
 
+  // Retorna todos os escritórios sem filtro por ownerId (dados públicos)
+  async getAllLawFirms(): Promise<LawFirm[]> {
+    return db.select().from(lawFirms).orderBy(desc(lawFirms.createdAt));
+  }
+
   async getLawFirm(id: string, ownerId: string): Promise<LawFirm | undefined> {
     const [lawFirm] = await db.select().from(lawFirms).where(and(eq(lawFirms.id, id), eq(lawFirms.ownerId, ownerId)));
     return lawFirm;
@@ -228,6 +238,11 @@ export class DatabaseStorage implements IStorage {
   // Claimants
   async getClaimants(ownerId: string): Promise<Claimant[]> {
     return db.select().from(claimants).where(eq(claimants.ownerId, ownerId)).orderBy(desc(claimants.createdAt));
+  }
+
+  // Retorna todos os reclamantes sem filtro por ownerId (dados públicos)
+  async getAllClaimants(): Promise<Claimant[]> {
+    return db.select().from(claimants).orderBy(desc(claimants.createdAt));
   }
 
   async getClaimant(id: string, ownerId: string): Promise<Claimant | undefined> {
@@ -346,10 +361,10 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Aggregated data for pipeline - retorna entidades com seus processos agrupados
-  async getLawyersWithLawsuits(ownerId: string): Promise<(Lawyer & { lawsuits: Lawsuit[] })[]> {
+  // Aggregated data for pipeline - retorna entidades com seus processos agrupados (dados públicos)
+  async getLawyersWithLawsuits(): Promise<(Lawyer & { lawsuits: Lawsuit[] })[]> {
     // Otimizado: uma única query com LEFT JOIN em vez de N+1 queries
-    const allLawyers = await this.getLawyers(ownerId);
+    const allLawyers = await this.getAllLawyers();
     
     if (allLawyers.length === 0) return [];
     
@@ -378,9 +393,9 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getClaimantsWithLawsuits(ownerId: string): Promise<(Claimant & { lawsuits: Lawsuit[] })[]> {
-    // Otimizado: uma única query com LEFT JOIN em vez de N+1 queries
-    const allClaimants = await this.getClaimants(ownerId);
+  async getClaimantsWithLawsuits(): Promise<(Claimant & { lawsuits: Lawsuit[] })[]> {
+    // Otimizado: uma única query com LEFT JOIN em vez de N+1 queries (dados públicos)
+    const allClaimants = await this.getAllClaimants();
     
     if (allClaimants.length === 0) return [];
     
@@ -409,9 +424,9 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getLawFirmsWithLawsuits(ownerId: string): Promise<(LawFirm & { lawsuits: Lawsuit[] })[]> {
-    // Otimizado: uma única query com LEFT JOIN em vez de N+1 queries
-    const allLawFirms = await this.getLawFirms(ownerId);
+  async getLawFirmsWithLawsuits(): Promise<(LawFirm & { lawsuits: Lawsuit[] })[]> {
+    // Otimizado: uma única query com LEFT JOIN em vez de N+1 queries (dados públicos)
+    const allLawFirms = await this.getAllLawFirms();
     
     if (allLawFirms.length === 0) return [];
     
@@ -440,18 +455,18 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  // Leads
-  async getLeads(ownerId: string, pipelineType?: string): Promise<Lead[]> {
+  // Leads (dados públicos - sem filtro por ownerId)
+  async getLeads(pipelineType?: string): Promise<Lead[]> {
     if (pipelineType) {
       return db.select().from(leads).where(
-        and(eq(leads.ownerId, ownerId), eq(leads.pipelineType, pipelineType as any))
+        eq(leads.pipelineType, pipelineType as any)
       ).orderBy(desc(leads.createdAt));
     }
-    return db.select().from(leads).where(eq(leads.ownerId, ownerId)).orderBy(desc(leads.createdAt));
+    return db.select().from(leads).orderBy(desc(leads.createdAt));
   }
 
-  async getLead(id: string, ownerId: string): Promise<Lead | undefined> {
-    const [lead] = await db.select().from(leads).where(and(eq(leads.id, id), eq(leads.ownerId, ownerId)));
+  async getLead(id: string): Promise<Lead | undefined> {
+    const [lead] = await db.select().from(leads).where(eq(leads.id, id));
     return lead;
   }
 
@@ -460,17 +475,17 @@ export class DatabaseStorage implements IStorage {
     return newLead;
   }
 
-  async updateLead(id: string, ownerId: string, lead: Partial<InsertLead>): Promise<Lead | undefined> {
+  async updateLead(id: string, lead: Partial<InsertLead>): Promise<Lead | undefined> {
     const [updated] = await db
       .update(leads)
       .set({ ...lead, updatedAt: new Date() })
-      .where(and(eq(leads.id, id), eq(leads.ownerId, ownerId)))
+      .where(eq(leads.id, id))
       .returning();
     return updated;
   }
 
-  async deleteLead(id: string, ownerId: string): Promise<boolean> {
-    const result = await db.delete(leads).where(and(eq(leads.id, id), eq(leads.ownerId, ownerId))).returning();
+  async deleteLead(id: string): Promise<boolean> {
+    const result = await db.delete(leads).where(eq(leads.id, id)).returning();
     return result.length > 0;
   }
 

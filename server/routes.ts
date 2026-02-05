@@ -57,7 +57,8 @@ class SimpleCache {
       return;
     }
     
-    for (const key of this.cache.keys()) {
+    const keys = Array.from(this.cache.keys());
+    for (const key of keys) {
       if (key.includes(pattern)) {
         this.cache.delete(key);
       }
@@ -837,16 +838,15 @@ export async function registerRoutes(
   // Get lawyers with their linked lawsuits (aggregated for pipeline cards) - CACHED
   app.get("/api/lawyers-with-lawsuits", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const cacheKey = `lawyers-with-lawsuits:${userId}`;
+      const cacheKey = 'lawyers-with-lawsuits';
       
-      // Try cache first
+      // Try cache first (dados públicos - cache global)
       const cached = aggregationCache.get<(Lawyer & { lawsuits: Lawsuit[] })[]>(cacheKey);
       if (cached) {
         return res.json(cached);
       }
       
-      const lawyersWithLawsuits = await storage.getLawyersWithLawsuits(userId);
+      const lawyersWithLawsuits = await storage.getLawyersWithLawsuits();
       aggregationCache.set(cacheKey, lawyersWithLawsuits);
       res.json(lawyersWithLawsuits);
     } catch (error) {
@@ -858,16 +858,15 @@ export async function registerRoutes(
   // Get claimants with their linked lawsuits (aggregated for pipeline cards) - CACHED
   app.get("/api/claimants-with-lawsuits", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const cacheKey = `claimants-with-lawsuits:${userId}`;
+      const cacheKey = 'claimants-with-lawsuits';
       
-      // Try cache first
+      // Try cache first (dados públicos - cache global)
       const cached = aggregationCache.get<(Claimant & { lawsuits: Lawsuit[] })[]>(cacheKey);
       if (cached) {
         return res.json(cached);
       }
       
-      const claimantsWithLawsuits = await storage.getClaimantsWithLawsuits(userId);
+      const claimantsWithLawsuits = await storage.getClaimantsWithLawsuits();
       aggregationCache.set(cacheKey, claimantsWithLawsuits);
       res.json(claimantsWithLawsuits);
     } catch (error) {
@@ -879,16 +878,15 @@ export async function registerRoutes(
   // Get law firms with their linked lawsuits (aggregated for pipeline cards) - CACHED
   app.get("/api/law-firms-with-lawsuits", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const cacheKey = `law-firms-with-lawsuits:${userId}`;
+      const cacheKey = 'law-firms-with-lawsuits';
       
-      // Try cache first
+      // Try cache first (dados públicos - cache global)
       const cached = aggregationCache.get<(LawFirm & { lawsuits: Lawsuit[] })[]>(cacheKey);
       if (cached) {
         return res.json(cached);
       }
       
-      const lawFirmsWithLawsuits = await storage.getLawFirmsWithLawsuits(userId);
+      const lawFirmsWithLawsuits = await storage.getLawFirmsWithLawsuits();
       aggregationCache.set(cacheKey, lawFirmsWithLawsuits);
       res.json(lawFirmsWithLawsuits);
     } catch (error) {
@@ -897,12 +895,11 @@ export async function registerRoutes(
     }
   });
 
-  // Leads
+  // Leads (dados públicos - sem filtro por ownerId)
   app.get("/api/leads", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const pipelineType = req.query.pipelineType as string | undefined;
-      const leads = await storage.getLeads(userId, pipelineType);
+      const leads = await storage.getLeads(pipelineType);
       res.json(leads);
     } catch (error) {
       console.error("Error fetching leads:", error);
@@ -912,8 +909,7 @@ export async function registerRoutes(
 
   app.get("/api/leads/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const lead = await storage.getLead(getParam(req.params.id), userId);
+      const lead = await storage.getLead(getParam(req.params.id));
       if (!lead) {
         res.status(404).json({ message: "Lead not found" });
         return;
@@ -944,13 +940,12 @@ export async function registerRoutes(
 
   app.patch("/api/leads/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const partial = insertLeadSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const lead = await storage.updateLead(getParam(req.params.id), userId, partial.data);
+      const lead = await storage.updateLead(getParam(req.params.id), partial.data);
       if (!lead) {
         res.status(404).json({ message: "Lead not found" });
         return;
@@ -965,8 +960,7 @@ export async function registerRoutes(
 
   app.delete("/api/leads/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteLead(getParam(req.params.id), userId);
+      const deleted = await storage.deleteLead(getParam(req.params.id));
       if (!deleted) {
         res.status(404).json({ message: "Lead not found" });
         return;
@@ -982,8 +976,7 @@ export async function registerRoutes(
   // Lead Interactions
   app.get("/api/leads/:id/interactions", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const lead = await storage.getLead(getParam(req.params.id), userId);
+      const lead = await storage.getLead(getParam(req.params.id));
       if (!lead) {
         res.status(404).json({ message: "Lead not found" });
         return;
@@ -999,7 +992,7 @@ export async function registerRoutes(
   app.post("/api/leads/:id/interactions", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const lead = await storage.getLead(getParam(req.params.id), userId);
+      const lead = await storage.getLead(getParam(req.params.id));
       if (!lead) {
         res.status(404).json({ message: "Lead not found" });
         return;
