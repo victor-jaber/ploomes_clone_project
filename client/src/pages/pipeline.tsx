@@ -1749,6 +1749,9 @@ function PipelineColumn({
   isUpdating,
   isMinimized,
   onToggleMinimize,
+  cardsLimit,
+  isExpanded,
+  onToggleExpand,
 }: {
   stage: { id: string; label: string; color: string };
   leads: Lead[];
@@ -1776,6 +1779,9 @@ function PipelineColumn({
   isUpdating: boolean;
   isMinimized: boolean;
   onToggleMinimize: () => void;
+  cardsLimit: number;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }) {
   const totalValue = leads.reduce((acc, l) => acc + Number(l.valor || 0), 0);
   
@@ -1862,29 +1868,52 @@ function PipelineColumn({
               Nenhum lead
             </div>
           ) : (
-            sortedLeads.map((lead) => (
-              <LeadCard
-                key={lead.id}
-                lead={lead}
-                todosAdvogadosInfos={todosAdvogadosInfos}
-                escritorios={escritorios}
-                reclamantes={reclamantes}
-                activities={activities}
-                lawyersWithLawsuits={lawyersWithLawsuits}
-                claimantsWithLawsuits={claimantsWithLawsuits}
-                lawFirmsWithLawsuits={lawFirmsWithLawsuits}
-                pipelineType={pipelineType}
-                onDragStart={onDragStart}
-                onDragEnd={onDragEnd}
-                onUpdateStage={onUpdateStage}
-                onDropOnLead={(e, leadId) => onDropOnLead(e, leadId, stage.id)}
-                onSelect={onSelectLead}
-                onDelete={onDeleteLead}
-                onFilter={onFilter}
-                isDragOver={dragOverLeadId === lead.id}
-                isUpdating={isUpdating}
-              />
-            ))
+            <>
+              {(isExpanded ? sortedLeads : sortedLeads.slice(0, cardsLimit)).map((lead) => (
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  todosAdvogadosInfos={todosAdvogadosInfos}
+                  escritorios={escritorios}
+                  reclamantes={reclamantes}
+                  activities={activities}
+                  lawyersWithLawsuits={lawyersWithLawsuits}
+                  claimantsWithLawsuits={claimantsWithLawsuits}
+                  lawFirmsWithLawsuits={lawFirmsWithLawsuits}
+                  pipelineType={pipelineType}
+                  onDragStart={onDragStart}
+                  onDragEnd={onDragEnd}
+                  onUpdateStage={onUpdateStage}
+                  onDropOnLead={(e, leadId) => onDropOnLead(e, leadId, stage.id)}
+                  onSelect={onSelectLead}
+                  onDelete={onDeleteLead}
+                  onFilter={onFilter}
+                  isDragOver={dragOverLeadId === lead.id}
+                  isUpdating={isUpdating}
+                />
+              ))}
+              {sortedLeads.length > cardsLimit && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs text-muted-foreground hover:text-foreground"
+                  onClick={onToggleExpand}
+                  data-testid={`button-toggle-expand-${stage.id}`}
+                >
+                  {isExpanded ? (
+                    <>
+                      <Minimize2 className="h-3 w-3 mr-1" />
+                      Mostrar menos
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-3 w-3 mr-1" />
+                      Exibir mais {sortedLeads.length - cardsLimit} cards
+                    </>
+                  )}
+                </Button>
+              )}
+            </>
           )}
         </div>
       </ScrollArea>
@@ -1992,15 +2021,15 @@ export default function PipelinePage() {
     queryKey: ["/api/leads"],
   });
 
-  const { data: todosAdvogadosInfos = [] } = useQuery<TodosAdvogadosInfos[]>({
+  const { data: todosAdvogadosInfos = [], isLoading: advogadosLoading } = useQuery<TodosAdvogadosInfos[]>({
     queryKey: ["/api/todos-advogados-infos"],
   });
 
-  const { data: escritorios = [] } = useQuery<Escritorio[]>({
+  const { data: escritorios = [], isLoading: escritoriosLoading } = useQuery<Escritorio[]>({
     queryKey: ["/api/escritorios"],
   });
 
-  const { data: reclamantes = [] } = useQuery<Reclamante[]>({
+  const { data: reclamantes = [], isLoading: reclamantesLoading } = useQuery<Reclamante[]>({
     queryKey: ["/api/reclamantes"],
   });
 
@@ -2008,19 +2037,23 @@ export default function PipelinePage() {
     queryKey: ["/api/activities"],
   });
 
-  const { data: lawyersWithLawsuits = [] } = useQuery<LawyerWithLawsuits[]>({
+  const { data: lawyersWithLawsuits = [], isLoading: lawyersLawsuitsLoading } = useQuery<LawyerWithLawsuits[]>({
     queryKey: ["/api/lawyers-with-lawsuits"],
   });
 
-  const { data: claimantsWithLawsuits = [] } = useQuery<ClaimantWithLawsuits[]>({
+  const { data: claimantsWithLawsuits = [], isLoading: claimantsLawsuitsLoading } = useQuery<ClaimantWithLawsuits[]>({
     queryKey: ["/api/claimants-with-lawsuits"],
   });
 
-  const { data: lawFirmsWithLawsuits = [] } = useQuery<LawFirmWithLawsuits[]>({
+  const { data: lawFirmsWithLawsuits = [], isLoading: lawFirmsLawsuitsLoading } = useQuery<LawFirmWithLawsuits[]>({
     queryKey: ["/api/law-firms-with-lawsuits"],
   });
 
-  const isLoading = leadsLoading;
+  const isLoading = leadsLoading || advogadosLoading || escritoriosLoading || reclamantesLoading || lawyersLawsuitsLoading || claimantsLawsuitsLoading || lawFirmsLawsuitsLoading;
+
+  // Estado para controlar limite de cards por coluna (key = stage.id)
+  const [expandedColumns, setExpandedColumns] = useState<Record<string, boolean>>({});
+  const CARDS_LIMIT = 20;
 
   // Check if there's a CNJ filter active - if so, show leads from ALL pipelines
   const hasCnjFilter = activeFilters.some(f => f.type === "cnj");
@@ -2435,6 +2468,30 @@ export default function PipelinePage() {
 
   const entityOptions = getEntityOptions();
   const pipelineInfo = PIPELINE_LABELS[selectedPipeline];
+
+  // Loading global - aguarda todos os dados carregarem
+  if (isLoading) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center space-y-6">
+        <div className="h-16 w-16 rounded-2xl gradient-primary flex items-center justify-center shadow-lg shadow-purple-500/25 animate-pulse">
+          <Kanban className="h-8 w-8 text-white" />
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
+            Carregando Pipeline
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Aguarde enquanto carregamos seus dados...
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <div className="h-2 w-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: "0ms" }} />
+          <div className="h-2 w-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: "150ms" }} />
+          <div className="h-2 w-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: "300ms" }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col space-y-6">
@@ -3040,6 +3097,9 @@ export default function PipelinePage() {
               isUpdating={updateMutation.isPending}
               isMinimized={minimizedColumns.has(stage.id)}
               onToggleMinimize={() => toggleColumnMinimize(stage.id)}
+              cardsLimit={CARDS_LIMIT}
+              isExpanded={expandedColumns[stage.id] || false}
+              onToggleExpand={() => setExpandedColumns(prev => ({ ...prev, [stage.id]: !prev[stage.id] }))}
             />
           ))}
         </div>
