@@ -1066,6 +1066,105 @@ export async function registerRoutes(
     }
   });
 
+  // Lead with full details (normalized data)
+  app.get("/api/leads/:id/details", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const lead = await storage.getLeadWithDetails(getParam(req.params.id));
+      if (!lead) {
+        res.status(404).json({ message: "Lead not found" });
+        return;
+      }
+      res.json(lead);
+    } catch (error) {
+      console.error("Error fetching lead details:", error);
+      res.status(500).json({ message: "Failed to fetch lead details" });
+    }
+  });
+
+  // Lead Financials (1:1)
+  app.get("/api/leads/:id/financials", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const financials = await storage.getLeadFinancials(getParam(req.params.id));
+      res.json(financials || {});
+    } catch (error) {
+      console.error("Error fetching lead financials:", error);
+      res.status(500).json({ message: "Failed to fetch lead financials" });
+    }
+  });
+
+  app.put("/api/leads/:id/financials", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const financials = await storage.upsertLeadFinancials(getParam(req.params.id), req.body);
+      res.json(financials);
+    } catch (error) {
+      console.error("Error updating lead financials:", error);
+      res.status(500).json({ message: "Failed to update lead financials" });
+    }
+  });
+
+  // Lead Case Details (1:1)
+  app.get("/api/leads/:id/case-details", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const caseDetails = await storage.getLeadCaseDetails(getParam(req.params.id));
+      res.json(caseDetails || {});
+    } catch (error) {
+      console.error("Error fetching lead case details:", error);
+      res.status(500).json({ message: "Failed to fetch lead case details" });
+    }
+  });
+
+  app.put("/api/leads/:id/case-details", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const caseDetails = await storage.upsertLeadCaseDetails(getParam(req.params.id), req.body);
+      res.json(caseDetails);
+    } catch (error) {
+      console.error("Error updating lead case details:", error);
+      res.status(500).json({ message: "Failed to update lead case details" });
+    }
+  });
+
+  // Lead Checklist (1:1)
+  app.get("/api/leads/:id/checklist", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const checklist = await storage.getLeadChecklist(getParam(req.params.id));
+      res.json(checklist || {});
+    } catch (error) {
+      console.error("Error fetching lead checklist:", error);
+      res.status(500).json({ message: "Failed to fetch lead checklist" });
+    }
+  });
+
+  app.put("/api/leads/:id/checklist", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const checklist = await storage.upsertLeadChecklist(getParam(req.params.id), req.body);
+      res.json(checklist);
+    } catch (error) {
+      console.error("Error updating lead checklist:", error);
+      res.status(500).json({ message: "Failed to update lead checklist" });
+    }
+  });
+
+  // Lead Assignments (1:1)
+  app.get("/api/leads/:id/assignments", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const assignments = await storage.getLeadAssignments(getParam(req.params.id));
+      res.json(assignments || {});
+    } catch (error) {
+      console.error("Error fetching lead assignments:", error);
+      res.status(500).json({ message: "Failed to fetch lead assignments" });
+    }
+  });
+
+  app.put("/api/leads/:id/assignments", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const assignments = await storage.upsertLeadAssignments(getParam(req.params.id), req.body);
+      res.json(assignments);
+    } catch (error) {
+      console.error("Error updating lead assignments:", error);
+      res.status(500).json({ message: "Failed to update lead assignments" });
+    }
+  });
+
   // Lead Interactions
   app.get("/api/leads/:id/interactions", isAuthenticated, async (req: Request, res: Response) => {
     try {
