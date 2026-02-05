@@ -181,6 +181,26 @@ export const lawsuitLawyers = pgTable("lawsuit_lawyers", {
   unique("lawsuit_lawyer_unique").on(table.lawsuitId, table.lawyerId),
 ]);
 
+// Tabela N:N entre lawsuits e claimants (um processo pode ter múltiplos reclamantes)
+export const lawsuitClaimants = pgTable("lawsuit_claimants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  lawsuitId: varchar("lawsuit_id").notNull().references(() => lawsuits.id, { onDelete: "cascade" }),
+  claimantId: varchar("claimant_id").notNull().references(() => claimants.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique("lawsuit_claimant_unique").on(table.lawsuitId, table.claimantId),
+]);
+
+// Tabela N:N entre lawsuits e law_firms (um processo pode ter múltiplos escritórios)
+export const lawsuitLawFirms = pgTable("lawsuit_law_firms", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  lawsuitId: varchar("lawsuit_id").notNull().references(() => lawsuits.id, { onDelete: "cascade" }),
+  lawFirmId: varchar("law_firm_id").notNull().references(() => lawFirms.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique("lawsuit_law_firm_unique").on(table.lawsuitId, table.lawFirmId),
+]);
+
 // Leads (Cases no pipeline)
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -438,6 +458,9 @@ export const insertLawFirmSchema = createInsertSchema(lawFirms).omit({ id: true,
 export const insertClaimantSchema = createInsertSchema(claimants).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLawsuitSchema = createInsertSchema(lawsuits).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLawFirmLawyerSchema = createInsertSchema(lawFirmLawyers).omit({ id: true, createdAt: true });
+export const insertLawsuitLawyerSchema = createInsertSchema(lawsuitLawyers).omit({ id: true, createdAt: true });
+export const insertLawsuitClaimantSchema = createInsertSchema(lawsuitClaimants).omit({ id: true, createdAt: true });
+export const insertLawsuitLawFirmSchema = createInsertSchema(lawsuitLawFirms).omit({ id: true, createdAt: true });
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInteractionSchema = createInsertSchema(interactions).omit({ id: true, createdAt: true });
 export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, createdAt: true });
@@ -456,6 +479,12 @@ export type Lawsuit = typeof lawsuits.$inferSelect;
 export type InsertLawsuit = z.infer<typeof insertLawsuitSchema>;
 export type LawFirmLawyer = typeof lawFirmLawyers.$inferSelect;
 export type InsertLawFirmLawyer = z.infer<typeof insertLawFirmLawyerSchema>;
+export type LawsuitLawyer = typeof lawsuitLawyers.$inferSelect;
+export type InsertLawsuitLawyer = z.infer<typeof insertLawsuitLawyerSchema>;
+export type LawsuitClaimant = typeof lawsuitClaimants.$inferSelect;
+export type InsertLawsuitClaimant = z.infer<typeof insertLawsuitClaimantSchema>;
+export type LawsuitLawFirm = typeof lawsuitLawFirms.$inferSelect;
+export type InsertLawsuitLawFirm = z.infer<typeof insertLawsuitLawFirmSchema>;
 export type Lead = typeof leads.$inferSelect;
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type Interaction = typeof interactions.$inferSelect;
