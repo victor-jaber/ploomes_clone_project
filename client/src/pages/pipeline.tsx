@@ -814,6 +814,7 @@ function LeadDetailPanel({
               </Card>
             </div>
 
+            {pipelineType === "triagem" && (
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                 Dados do Caso
@@ -855,6 +856,7 @@ function LeadDetailPanel({
                 </div>
               </Card>
             </div>
+            )}
 
             {pipelineType === "reclamantes" ? (
               <div>
