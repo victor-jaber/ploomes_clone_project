@@ -68,7 +68,7 @@ import {
   Send, Paperclip, FileText, Kanban, User, Scale, Users, FileSearch, Handshake, MapPin, RefreshCw,
   Minimize2, Maximize2, Filter, X,
   Bold, Italic, Underline, Strikethrough, List, Calendar, CalendarPlus, CircleCheck, Circle,
-  PhoneCall, Video, MapPinIcon, MessageCircle
+  PhoneCall, Video, MapPinIcon, MessageCircle, Copy, Check
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Lead, TodosAdvogadosInfos, Escritorio, Reclamante, Activity, Interaction, InsertLead, Lawsuit, LeadFinancials, LeadCaseDetails, LeadChecklist, LeadAssignments } from "@shared/schema";
@@ -118,6 +118,51 @@ function formatCurrencyShort(value: number) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function CopyPhoneButton({ phone, label }: { phone: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(phone);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-6 w-6 shrink-0"
+      onClick={handleCopy}
+      title={label || `Copiar ${phone}`}
+      data-testid={`button-copy-phone-${phone}`}
+    >
+      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+    </Button>
+  );
+}
+
+function CopyAllPhonesButton({ phones }: { phones: string[] }) {
+  const [copied, setCopied] = useState(false);
+  if (phones.length <= 1) return null;
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(phones.join(", "));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="gap-1 text-xs h-7"
+      onClick={handleCopy}
+      data-testid="button-copy-all-phones"
+    >
+      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+      {copied ? "Copiados!" : "Copiar Todos"}
+    </Button>
+  );
 }
 
 function getStageColor(stageId: string, pipelineType: PipelineType) {
@@ -698,13 +743,28 @@ function LeadDetailPanel({
                           <p className="text-sm">{advogado.cpf}</p>
                         </div>
                       )}
-                      {advogado.telefone && (
+                      {(advogado.telefone || advogado.celular) && (
                         <div className="space-y-1">
-                          <Label className="text-muted-foreground text-xs">Telefone</Label>
-                          <div className="flex items-center gap-2 text-sm">
-                            <span>{advogado.telefone}</span>
-                            <WhatsAppLink phone={advogado.telefone} />
+                          <div className="flex items-center justify-between">
+                            <Label className="text-muted-foreground text-xs">Telefones</Label>
+                            <CopyAllPhonesButton phones={[advogado.telefone, advogado.celular].filter(Boolean) as string[]} />
                           </div>
+                          {advogado.telefone && (
+                            <div className="flex items-center gap-1 text-sm">
+                              <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
+                              <span>{advogado.telefone}</span>
+                              <WhatsAppLink phone={advogado.telefone} />
+                              <CopyPhoneButton phone={advogado.telefone} />
+                            </div>
+                          )}
+                          {advogado.celular && (
+                            <div className="flex items-center gap-1 text-sm">
+                              <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
+                              <span>{advogado.celular}</span>
+                              <WhatsAppLink phone={advogado.celular} />
+                              <CopyPhoneButton phone={advogado.celular} />
+                            </div>
+                          )}
                         </div>
                       )}
                       {advogado.email && (
@@ -1917,6 +1977,7 @@ function LeadCard({
                       <Phone className="h-3 w-3 shrink-0" />
                       <span className="truncate">{linkedAdvogado.celular || linkedAdvogado.telefone}</span>
                       <WhatsAppLink phone={linkedAdvogado.celular || linkedAdvogado.telefone} />
+                      <CopyPhoneButton phone={(linkedAdvogado.celular || linkedAdvogado.telefone)!} />
                     </div>
                   )}
                   {(linkedAdvogado.estado || linkedAdvogado.municipio) && (
