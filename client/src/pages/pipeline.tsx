@@ -885,9 +885,8 @@ function LeadDetailPanel({
                         }}
                         data-testid="button-nav-advogados"
                       >
-                        <Scale className="h-4 w-4" />
-                        Ver Advogados ({cnjs.length} CNJs em comum)
-                        <ArrowRight className="h-4 w-4 shrink-0" />
+                        <Scale className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Ver Advogados ({cnjs.length} CNJs em comum)</span>
                       </Button>
                     );
                   })()}
@@ -920,9 +919,8 @@ function LeadDetailPanel({
                         }}
                         data-testid="button-nav-advogados-from-triagem"
                       >
-                        <Scale className="h-4 w-4" />
-                        Ver Advogados (CNJ: {cnjs[0]?.substring(0, 15)}...)
-                        <ArrowRight className="h-4 w-4 shrink-0" />
+                        <Scale className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Ver Advogados (CNJ: {cnjs[0]?.substring(0, 15)}...)</span>
                       </Button>
                     );
                   })()}
@@ -950,9 +948,8 @@ function LeadDetailPanel({
                       }}
                       data-testid="button-nav-escritorios"
                     >
-                      <Building2 className="h-4 w-4" />
-                      Ver Escritórios
-                      <ArrowRight className="h-4 w-4 shrink-0" />
+                      <Building2 className="h-4 w-4 shrink-0" />
+                      <span className="truncate">Ver Escritórios</span>
                     </Button>
                   ) : (
                     <p className="text-sm text-muted-foreground">Vincule um advogado para ver escritórios relacionados</p>
@@ -1008,9 +1005,8 @@ function LeadDetailPanel({
                         }}
                         data-testid="button-nav-escritorios-from-reclamante"
                       >
-                        <Building2 className="h-4 w-4" />
-                        Ver Escritórios ({cnjs.length} CNJs em comum)
-                        <ArrowRight className="h-4 w-4 shrink-0" />
+                        <Building2 className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Ver Escritórios ({cnjs.length} CNJs em comum)</span>
                       </Button>
                     );
                   })()}
@@ -1151,9 +1147,8 @@ function LeadDetailPanel({
                         }}
                         data-testid="button-nav-reclamantes"
                       >
-                        <Users className="h-4 w-4" />
-                        Ver Reclamantes ({cnjs.length} CNJs)
-                        <ArrowRight className="h-4 w-4 shrink-0" />
+                        <Users className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Ver Reclamantes ({cnjs.length} CNJs)</span>
                       </Button>
                     );
                   })()}
@@ -1194,9 +1189,8 @@ function LeadDetailPanel({
                         }}
                         data-testid="button-nav-reclamantes-from-escritorio"
                       >
-                        <Users className="h-4 w-4" />
-                        Ver Reclamantes ({cnjs.length} CNJs)
-                        <ArrowRight className="h-4 w-4 shrink-0" />
+                        <Users className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Ver Reclamantes ({cnjs.length} CNJs)</span>
                       </Button>
                     );
                   })()}
