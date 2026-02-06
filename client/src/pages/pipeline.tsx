@@ -596,27 +596,6 @@ function LeadDetailPanel({
                       className="text-muted-foreground"
                     />
                   </div>
-                  <div className="space-y-1 pt-2 border-t">
-                    <Label className="text-muted-foreground text-xs">Pipeline</Label>
-                    <Select 
-                      value={lead.pipelineType} 
-                      onValueChange={(v) => {
-                        const newPipeline = v as PipelineType;
-                        const newStages = PIPELINE_STAGES[newPipeline];
-                        handleUpdateField("pipelineType", newPipeline);
-                        handleUpdateField("stage", newStages[0].id);
-                      }}
-                    >
-                      <SelectTrigger data-testid="select-pipeline">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {VISIBLE_PIPELINES.map((key) => (
-                          <SelectItem key={key} value={key}>{PIPELINE_LABELS[key].label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Estágio</Label>
                     <Select 
