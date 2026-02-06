@@ -658,7 +658,9 @@ function LeadDetailPanel({
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right shrink-0">
-              <div className="text-2xl font-bold text-primary">{formatCurrency(Number(lead.valor || 0))}</div>
+              {(pipelineType === "triagem" || pipelineType === "fechamento") && (
+                <div className="text-2xl font-bold text-primary">{formatCurrency(Number(lead.valor || 0))}</div>
+              )}
               {currentStage && (
                 <Badge className={`${currentStage.color} text-white mt-1`}>
                   {currentStage.label}
@@ -705,6 +707,7 @@ function LeadDetailPanel({
                     <Label className="text-muted-foreground text-xs">Título</Label>
                     <p className="font-medium">{lead.titulo}</p>
                   </div>
+                  {(pipelineType === "triagem" || pipelineType === "fechamento") && (
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Valor (R$)</Label>
                     <InlineEditField
@@ -714,6 +717,7 @@ function LeadDetailPanel({
                       className="font-bold text-green-600 block"
                     />
                   </div>
+                  )}
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Probabilidade (%)</Label>
                     <InlineEditField
@@ -2063,6 +2067,7 @@ function LeadCard({
               ) : null;
             })()}
             
+            {(pipelineType === "triagem" || pipelineType === "fechamento") && (
             <div className="flex items-center justify-between pt-2 border-t border-dashed">
               <div className="flex items-center gap-1.5">
                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
@@ -2078,6 +2083,7 @@ function LeadCard({
                 </Badge>
               )}
             </div>
+            )}
           </CardContent>
         </Card>
       </ContextMenuTrigger>
@@ -2295,9 +2301,11 @@ function PipelineColumn({
             <Minimize2 className="h-3 w-3" />
           </Button>
         </div>
+        {(pipelineType === "triagem" || pipelineType === "fechamento") && (
         <div className="text-white/80 text-xs mt-1">
           {formatCurrencyShort(totalValue)}
         </div>
+        )}
       </div>
 
       <ScrollArea className="flex-1 bg-muted/30 rounded-b-xl">
@@ -3061,6 +3069,8 @@ export default function PipelinePage() {
         
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-6 mr-4">
+            {(selectedPipeline === "triagem" || selectedPipeline === "fechamento") && (
+            <>
             <div className="text-right">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Total em Pipeline</p>
               <p className="text-lg font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">
@@ -3068,6 +3078,8 @@ export default function PipelinePage() {
               </p>
             </div>
             <div className="h-10 w-px bg-border" />
+            </>
+            )}
             <div className="text-right">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Leads</p>
               <p className="text-lg font-bold text-foreground">{totalLeads}</p>
@@ -3299,6 +3311,7 @@ export default function PipelinePage() {
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
+                  {(selectedPipeline === "triagem" || selectedPipeline === "fechamento") && (
                   <div className="space-y-2">
                     <Label htmlFor="valor">Valor (R$)</Label>
                     <Input
@@ -3309,6 +3322,7 @@ export default function PipelinePage() {
                       data-testid="input-lead-valor"
                     />
                   </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="probabilidade">Probabilidade (%)</Label>
                     <Input
