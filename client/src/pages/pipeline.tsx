@@ -689,7 +689,7 @@ function LeadDetailPanel({
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-80 border-r bg-muted/10 overflow-y-auto">
+        <div className="w-72 shrink-0 border-r bg-muted/10 overflow-y-auto">
           <div className="p-4 space-y-6">
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
@@ -1550,8 +1550,8 @@ function LeadDetailPanel({
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="interaction" className="m-0 px-4 pb-3 pt-2">
-                <div className="flex items-center gap-1 mb-2 flex-wrap">
+              <TabsContent value="interaction" className="m-0 px-4 pb-2 pt-1">
+                <div className="flex items-center gap-1 mb-1.5 flex-wrap">
                   {[
                     { id: "comment", icon: MessageSquare, label: "Comentário" },
                     { id: "call_log", icon: PhoneCall, label: "Ligação" },
@@ -1603,7 +1603,7 @@ function LeadDetailPanel({
                         handleSendComment();
                       }
                     }}
-                    className="min-h-[70px] resize-none border-0 focus-visible:ring-0 rounded-t-none"
+                    className="min-h-[50px] resize-none border-0 focus-visible:ring-0 rounded-t-none"
                     data-testid="input-comment"
                   />
                 </div>
@@ -1716,13 +1716,13 @@ function LeadDetailPanel({
             </div>
           )}
           
-          <div className="px-4 py-2 border-b">
+          <div className="px-4 py-1.5 border-b bg-muted/20">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               Histórico de Interações
             </h3>
           </div>
 
-          <ScrollArea className="flex-1 p-4">
+          <ScrollArea className="flex-1 p-3">
             <div className="space-y-4">
               {loadingInteractions ? (
                 <div className="space-y-3">
@@ -3710,7 +3710,7 @@ export default function PipelinePage() {
         
         return (
           <Sheet open={true} onOpenChange={(open) => !open && setSelectedLeadId(null)}>
-            <SheetContent className="w-full sm:max-w-4xl p-0 overflow-hidden">
+            <SheetContent className="w-full sm:max-w-5xl p-0 overflow-hidden">
               <LeadDetailPanel
                 lead={selectedLead}
                 todosAdvogadosInfos={todosAdvogadosInfos}
