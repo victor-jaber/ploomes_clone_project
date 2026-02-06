@@ -1528,10 +1528,10 @@ function LeadDetailPanel({
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="border-b">
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 space-y-4">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "interaction" | "task")}>
-              <TabsList className="w-full rounded-none bg-transparent border-b-0 px-4 pt-2 gap-1">
+              <TabsList className="w-full rounded-md gap-1">
                 <TabsTrigger 
                   value="interaction" 
                   className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary gap-1.5 text-xs"
@@ -1550,7 +1550,7 @@ function LeadDetailPanel({
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="interaction" className="m-0 px-4 pb-2 pt-1">
+              <TabsContent value="interaction" className="m-0 pt-3">
                 <div className="flex items-center gap-1 mb-1.5 flex-wrap">
                   {[
                     { id: "comment", icon: MessageSquare, label: "Comentário" },
@@ -1625,7 +1625,7 @@ function LeadDetailPanel({
                 </div>
               </TabsContent>
 
-              <TabsContent value="task" className="m-0 px-4 pb-3 pt-2">
+              <TabsContent value="task" className="m-0 pt-3">
                 <div className="space-y-3">
                   <Input
                     placeholder="Título da tarefa *"
@@ -1678,51 +1678,49 @@ function LeadDetailPanel({
                 </div>
               </TabsContent>
             </Tabs>
-          </div>
 
-          {leadActivities.filter(a => a.status !== "completed").length > 0 && (
-            <div className="border-b px-4 py-3">
-              <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5" />
-                Tarefas em Aberto ({leadActivities.filter(a => a.status !== "completed").length})
-              </h4>
-              <div className="space-y-1.5">
-                {leadActivities.filter(a => a.status !== "completed").map((activity) => (
-                  <div 
-                    key={activity.id} 
-                    className="flex items-center gap-2 p-2 rounded-md hover-elevate cursor-pointer group"
-                    onClick={() => toggleActivityStatus.mutate({ id: activity.id, status: activity.status || "pending" })}
-                    data-testid={`task-item-${activity.id}`}
-                  >
-                    <Circle className="h-4 w-4 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm truncate block">{activity.title}</span>
-                      {activity.dueDate && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(activity.dueDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                      )}
+            {leadActivities.filter(a => a.status !== "completed").length > 0 && (
+              <div className="border rounded-md p-3">
+                <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  Tarefas em Aberto ({leadActivities.filter(a => a.status !== "completed").length})
+                </h4>
+                <div className="space-y-1.5">
+                  {leadActivities.filter(a => a.status !== "completed").map((activity) => (
+                    <div 
+                      key={activity.id} 
+                      className="flex items-center gap-2 p-2 rounded-md hover-elevate cursor-pointer group"
+                      onClick={() => toggleActivityStatus.mutate({ id: activity.id, status: activity.status || "pending" })}
+                      data-testid={`task-item-${activity.id}`}
+                    >
+                      <Circle className="h-4 w-4 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm truncate block">{activity.title}</span>
+                        {activity.dueDate && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(activity.dueDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
+                      </div>
+                      <Badge variant="outline" className="text-xs shrink-0">
+                        {activity.type === "call" ? "Ligação" :
+                         activity.type === "email" ? "E-mail" :
+                         activity.type === "meeting" ? "Reunião" :
+                         activity.type === "task" ? "Tarefa" : "Nota"}
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="text-xs shrink-0">
-                      {activity.type === "call" ? "Ligação" :
-                       activity.type === "email" ? "E-mail" :
-                       activity.type === "meeting" ? "Reunião" :
-                       activity.type === "task" ? "Tarefa" : "Nota"}
-                    </Badge>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
           
-          <div className="px-4 py-1.5 border-b bg-muted/20">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Histórico de Interações
-            </h3>
-          </div>
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Histórico de Interações
+              </h3>
+            </div>
 
-          <ScrollArea className="flex-1 p-3">
             <div className="space-y-4">
               {loadingInteractions ? (
                 <div className="space-y-3">
@@ -1825,7 +1823,7 @@ function LeadDetailPanel({
                 </>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </div>
       </div>
     </div>
