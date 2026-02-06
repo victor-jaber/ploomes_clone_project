@@ -17,6 +17,8 @@ import {
   interacoes,
   produtos,
   usuarios,
+  enderecos,
+  contatos,
   type Advogado,
   type InsertAdvogado,
   type Escritorio,
@@ -54,22 +56,22 @@ import { eq, and, desc, inArray, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Lawyers (Advogados)
-  getLawyers(ownerId: string): Promise<Advogado[]>;
-  getLawyer(id: number, ownerId: string): Promise<Advogado | undefined>;
+  getLawyers(ownerId: string): Promise<any[]>;
+  getLawyer(id: number, ownerId: string): Promise<any | undefined>;
   createLawyer(lawyer: InsertAdvogado): Promise<Advogado>;
   updateLawyer(id: number, ownerId: string, lawyer: Partial<InsertAdvogado>): Promise<Advogado | undefined>;
   deleteLawyer(id: number, ownerId: string): Promise<boolean>;
 
   // Law Firms (Escritórios)
-  getLawFirms(ownerId: string): Promise<Escritorio[]>;
-  getLawFirm(id: string, ownerId: string): Promise<Escritorio | undefined>;
+  getLawFirms(ownerId: string): Promise<any[]>;
+  getLawFirm(id: string, ownerId: string): Promise<any | undefined>;
   createLawFirm(lawFirm: InsertEscritorio): Promise<Escritorio>;
   updateLawFirm(id: string, ownerId: string, lawFirm: Partial<InsertEscritorio>): Promise<Escritorio | undefined>;
   deleteLawFirm(id: string, ownerId: string): Promise<boolean>;
 
   // Claimants (Reclamantes)
-  getClaimants(ownerId: string): Promise<Reclamante[]>;
-  getClaimant(id: string, ownerId: string): Promise<Reclamante | undefined>;
+  getClaimants(ownerId: string): Promise<any[]>;
+  getClaimant(id: string, ownerId: string): Promise<any | undefined>;
   createClaimant(claimant: InsertReclamante): Promise<Reclamante>;
   updateClaimant(id: string, ownerId: string, claimant: Partial<InsertReclamante>): Promise<Reclamante | undefined>;
   deleteClaimant(id: string, ownerId: string): Promise<boolean>;
@@ -184,17 +186,82 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   // Lawyers
-  async getLawyers(ownerId: string): Promise<Advogado[]> {
-    return db.select().from(advogados).where(eq(advogados.proprietarioId, ownerId)).orderBy(desc(advogados.criadoEm));
+  async getLawyers(ownerId: string): Promise<any[]> {
+    const rows = await db.select({
+      advogado: advogados,
+      contato: contatos,
+      endereco: enderecos,
+    })
+    .from(advogados)
+    .leftJoin(contatos, eq(advogados.contatoId, contatos.id))
+    .leftJoin(enderecos, eq(advogados.enderecoId, enderecos.id))
+    .where(eq(advogados.proprietarioId, ownerId))
+    .orderBy(desc(advogados.criadoEm));
+
+    return rows.map(r => ({
+      ...r.advogado,
+      email: r.contato?.email || null,
+      telefone: r.contato?.telefone || null,
+      celular: r.contato?.celular || null,
+      estado: r.endereco?.estado || null,
+      municipio: r.endereco?.municipio || null,
+      cidade: r.endereco?.cidade || null,
+      bairro: r.endereco?.bairro || null,
+      logradouro: r.endereco?.logradouro || null,
+      numero: r.endereco?.numero || null,
+      complemento: r.endereco?.complemento || null,
+      cep: r.endereco?.cep || null,
+    }));
   }
 
-  async getAllLawyers(): Promise<Advogado[]> {
-    return db.select().from(advogados).orderBy(desc(advogados.criadoEm));
+  async getAllLawyers(): Promise<any[]> {
+    const rows = await db.select({
+      advogado: advogados,
+      contato: contatos,
+      endereco: enderecos,
+    })
+    .from(advogados)
+    .leftJoin(contatos, eq(advogados.contatoId, contatos.id))
+    .leftJoin(enderecos, eq(advogados.enderecoId, enderecos.id))
+    .orderBy(desc(advogados.criadoEm));
+
+    return rows.map(r => ({
+      ...r.advogado,
+      email: r.contato?.email || null,
+      telefone: r.contato?.telefone || null,
+      celular: r.contato?.celular || null,
+      estado: r.endereco?.estado || null,
+      municipio: r.endereco?.municipio || null,
+      cidade: r.endereco?.cidade || null,
+    }));
   }
 
-  async getLawyer(id: number, ownerId: string): Promise<Advogado | undefined> {
-    const [lawyer] = await db.select().from(advogados).where(and(eq(advogados.id, id), eq(advogados.proprietarioId, ownerId)));
-    return lawyer;
+  async getLawyer(id: number, ownerId: string): Promise<any | undefined> {
+    const [row] = await db.select({
+      advogado: advogados,
+      contato: contatos,
+      endereco: enderecos,
+    })
+    .from(advogados)
+    .leftJoin(contatos, eq(advogados.contatoId, contatos.id))
+    .leftJoin(enderecos, eq(advogados.enderecoId, enderecos.id))
+    .where(and(eq(advogados.id, id), eq(advogados.proprietarioId, ownerId)));
+
+    if (!row) return undefined;
+    return {
+      ...row.advogado,
+      email: row.contato?.email || null,
+      telefone: row.contato?.telefone || null,
+      celular: row.contato?.celular || null,
+      estado: row.endereco?.estado || null,
+      municipio: row.endereco?.municipio || null,
+      cidade: row.endereco?.cidade || null,
+      bairro: row.endereco?.bairro || null,
+      logradouro: row.endereco?.logradouro || null,
+      numero: row.endereco?.numero || null,
+      complemento: row.endereco?.complemento || null,
+      cep: row.endereco?.cep || null,
+    };
   }
 
   async createLawyer(lawyer: InsertAdvogado): Promise<Advogado> {
@@ -217,17 +284,82 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Law Firms
-  async getLawFirms(ownerId: string): Promise<Escritorio[]> {
-    return db.select().from(escritorios).where(eq(escritorios.proprietarioId, ownerId)).orderBy(desc(escritorios.criadoEm));
+  async getLawFirms(ownerId: string): Promise<any[]> {
+    const rows = await db.select({
+      escritorio: escritorios,
+      contato: contatos,
+      endereco: enderecos,
+    })
+    .from(escritorios)
+    .leftJoin(contatos, eq(escritorios.contatoId, contatos.id))
+    .leftJoin(enderecos, eq(escritorios.enderecoId, enderecos.id))
+    .where(eq(escritorios.proprietarioId, ownerId))
+    .orderBy(desc(escritorios.criadoEm));
+
+    return rows.map(r => ({
+      ...r.escritorio,
+      email: r.contato?.email || null,
+      telefone: r.contato?.telefone || null,
+      celular: r.contato?.celular || null,
+      estado: r.endereco?.estado || null,
+      municipio: r.endereco?.municipio || null,
+      cidade: r.endereco?.cidade || null,
+      bairro: r.endereco?.bairro || null,
+      logradouro: r.endereco?.logradouro || null,
+      numero: r.endereco?.numero || null,
+      complemento: r.endereco?.complemento || null,
+      cep: r.endereco?.cep || null,
+    }));
   }
 
-  async getAllLawFirms(): Promise<Escritorio[]> {
-    return db.select().from(escritorios).orderBy(desc(escritorios.criadoEm));
+  async getAllLawFirms(): Promise<any[]> {
+    const rows = await db.select({
+      escritorio: escritorios,
+      contato: contatos,
+      endereco: enderecos,
+    })
+    .from(escritorios)
+    .leftJoin(contatos, eq(escritorios.contatoId, contatos.id))
+    .leftJoin(enderecos, eq(escritorios.enderecoId, enderecos.id))
+    .orderBy(desc(escritorios.criadoEm));
+
+    return rows.map(r => ({
+      ...r.escritorio,
+      email: r.contato?.email || null,
+      telefone: r.contato?.telefone || null,
+      celular: r.contato?.celular || null,
+      estado: r.endereco?.estado || null,
+      municipio: r.endereco?.municipio || null,
+      cidade: r.endereco?.cidade || null,
+    }));
   }
 
-  async getLawFirm(id: string, ownerId: string): Promise<Escritorio | undefined> {
-    const [lawFirm] = await db.select().from(escritorios).where(and(eq(escritorios.id, id), eq(escritorios.proprietarioId, ownerId)));
-    return lawFirm;
+  async getLawFirm(id: string, ownerId: string): Promise<any | undefined> {
+    const [row] = await db.select({
+      escritorio: escritorios,
+      contato: contatos,
+      endereco: enderecos,
+    })
+    .from(escritorios)
+    .leftJoin(contatos, eq(escritorios.contatoId, contatos.id))
+    .leftJoin(enderecos, eq(escritorios.enderecoId, enderecos.id))
+    .where(and(eq(escritorios.id, id), eq(escritorios.proprietarioId, ownerId)));
+
+    if (!row) return undefined;
+    return {
+      ...row.escritorio,
+      email: row.contato?.email || null,
+      telefone: row.contato?.telefone || null,
+      celular: row.contato?.celular || null,
+      estado: row.endereco?.estado || null,
+      municipio: row.endereco?.municipio || null,
+      cidade: row.endereco?.cidade || null,
+      bairro: row.endereco?.bairro || null,
+      logradouro: row.endereco?.logradouro || null,
+      numero: row.endereco?.numero || null,
+      complemento: row.endereco?.complemento || null,
+      cep: row.endereco?.cep || null,
+    };
   }
 
   async createLawFirm(lawFirm: InsertEscritorio): Promise<Escritorio> {
@@ -250,17 +382,82 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Claimants
-  async getClaimants(ownerId: string): Promise<Reclamante[]> {
-    return db.select().from(reclamantes).where(eq(reclamantes.proprietarioId, ownerId)).orderBy(desc(reclamantes.criadoEm));
+  async getClaimants(ownerId: string): Promise<any[]> {
+    const rows = await db.select({
+      reclamante: reclamantes,
+      contato: contatos,
+      endereco: enderecos,
+    })
+    .from(reclamantes)
+    .leftJoin(contatos, eq(reclamantes.contatoId, contatos.id))
+    .leftJoin(enderecos, eq(reclamantes.enderecoId, enderecos.id))
+    .where(eq(reclamantes.proprietarioId, ownerId))
+    .orderBy(desc(reclamantes.criadoEm));
+
+    return rows.map(r => ({
+      ...r.reclamante,
+      email: r.contato?.email || null,
+      telefone: r.contato?.telefone || null,
+      celular: r.contato?.celular || null,
+      estado: r.endereco?.estado || null,
+      municipio: r.endereco?.municipio || null,
+      cidade: r.endereco?.cidade || null,
+      bairro: r.endereco?.bairro || null,
+      logradouro: r.endereco?.logradouro || null,
+      numero: r.endereco?.numero || null,
+      complemento: r.endereco?.complemento || null,
+      cep: r.endereco?.cep || null,
+    }));
   }
 
-  async getAllClaimants(): Promise<Reclamante[]> {
-    return db.select().from(reclamantes).orderBy(desc(reclamantes.criadoEm));
+  async getAllClaimants(): Promise<any[]> {
+    const rows = await db.select({
+      reclamante: reclamantes,
+      contato: contatos,
+      endereco: enderecos,
+    })
+    .from(reclamantes)
+    .leftJoin(contatos, eq(reclamantes.contatoId, contatos.id))
+    .leftJoin(enderecos, eq(reclamantes.enderecoId, enderecos.id))
+    .orderBy(desc(reclamantes.criadoEm));
+
+    return rows.map(r => ({
+      ...r.reclamante,
+      email: r.contato?.email || null,
+      telefone: r.contato?.telefone || null,
+      celular: r.contato?.celular || null,
+      estado: r.endereco?.estado || null,
+      municipio: r.endereco?.municipio || null,
+      cidade: r.endereco?.cidade || null,
+    }));
   }
 
-  async getClaimant(id: string, ownerId: string): Promise<Reclamante | undefined> {
-    const [claimant] = await db.select().from(reclamantes).where(and(eq(reclamantes.id, id), eq(reclamantes.proprietarioId, ownerId)));
-    return claimant;
+  async getClaimant(id: string, ownerId: string): Promise<any | undefined> {
+    const [row] = await db.select({
+      reclamante: reclamantes,
+      contato: contatos,
+      endereco: enderecos,
+    })
+    .from(reclamantes)
+    .leftJoin(contatos, eq(reclamantes.contatoId, contatos.id))
+    .leftJoin(enderecos, eq(reclamantes.enderecoId, enderecos.id))
+    .where(and(eq(reclamantes.id, id), eq(reclamantes.proprietarioId, ownerId)));
+
+    if (!row) return undefined;
+    return {
+      ...row.reclamante,
+      email: row.contato?.email || null,
+      telefone: row.contato?.telefone || null,
+      celular: row.contato?.celular || null,
+      estado: row.endereco?.estado || null,
+      municipio: row.endereco?.municipio || null,
+      cidade: row.endereco?.cidade || null,
+      bairro: row.endereco?.bairro || null,
+      logradouro: row.endereco?.logradouro || null,
+      numero: row.endereco?.numero || null,
+      complemento: row.endereco?.complemento || null,
+      cep: row.endereco?.cep || null,
+    };
   }
 
   async createClaimant(claimant: InsertReclamante): Promise<Reclamante> {
