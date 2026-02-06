@@ -1407,7 +1407,14 @@ export async function registerRoutes(
   app.post("/api/activities", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertActivitySchema.safeParse({ ...req.body, ownerId: userId });
+      const body = { ...req.body, ownerId: userId };
+      if (body.dueDate && typeof body.dueDate === "string") {
+        body.dueDate = new Date(body.dueDate);
+      }
+      if (body.completedAt && typeof body.completedAt === "string") {
+        body.completedAt = new Date(body.completedAt);
+      }
+      const parsed = insertActivitySchema.safeParse(body);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -1423,7 +1430,17 @@ export async function registerRoutes(
   app.patch("/api/activities/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertActivitySchema.partial().safeParse(req.body);
+      const body = { ...req.body };
+      if (body.dueDate && typeof body.dueDate === "string") {
+        body.dueDate = new Date(body.dueDate);
+      }
+      if (body.completedAt && typeof body.completedAt === "string") {
+        body.completedAt = new Date(body.completedAt);
+      }
+      if (body.completedAt === null) {
+        delete body.completedAt;
+      }
+      const partial = insertActivitySchema.partial().safeParse(body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
