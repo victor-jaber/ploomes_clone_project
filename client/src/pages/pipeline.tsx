@@ -895,7 +895,7 @@ function LeadDetailPanel({
                       >
                         <Scale className="h-4 w-4" />
                         Ver Advogados ({cnjs.length} CNJs em comum)
-                        <ArrowRight className="h-4 w-4 ml-auto" />
+                        <ArrowRight className="h-4 w-4 shrink-0" />
                       </Button>
                     );
                   })()}
@@ -930,7 +930,7 @@ function LeadDetailPanel({
                       >
                         <Scale className="h-4 w-4" />
                         Ver Advogados (CNJ: {cnjs[0]?.substring(0, 15)}...)
-                        <ArrowRight className="h-4 w-4 ml-auto" />
+                        <ArrowRight className="h-4 w-4 shrink-0" />
                       </Button>
                     );
                   })()}
@@ -960,7 +960,7 @@ function LeadDetailPanel({
                     >
                       <Building2 className="h-4 w-4" />
                       Ver Escritórios
-                      <ArrowRight className="h-4 w-4 ml-auto" />
+                      <ArrowRight className="h-4 w-4 shrink-0" />
                     </Button>
                   ) : (
                     <p className="text-sm text-muted-foreground">Vincule um advogado para ver escritórios relacionados</p>
@@ -1018,7 +1018,7 @@ function LeadDetailPanel({
                       >
                         <Building2 className="h-4 w-4" />
                         Ver Escritórios ({cnjs.length} CNJs em comum)
-                        <ArrowRight className="h-4 w-4 ml-auto" />
+                        <ArrowRight className="h-4 w-4 shrink-0" />
                       </Button>
                     );
                   })()}
@@ -1161,7 +1161,7 @@ function LeadDetailPanel({
                       >
                         <Users className="h-4 w-4" />
                         Ver Reclamantes ({cnjs.length} CNJs)
-                        <ArrowRight className="h-4 w-4 ml-auto" />
+                        <ArrowRight className="h-4 w-4 shrink-0" />
                       </Button>
                     );
                   })()}
@@ -1204,7 +1204,7 @@ function LeadDetailPanel({
                       >
                         <Users className="h-4 w-4" />
                         Ver Reclamantes ({cnjs.length} CNJs)
-                        <ArrowRight className="h-4 w-4 ml-auto" />
+                        <ArrowRight className="h-4 w-4 shrink-0" />
                       </Button>
                     );
                   })()}
