@@ -2772,6 +2772,27 @@ export default function PipelinePage() {
     },
   });
 
+  const syncProcessosMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/sync-processos-to-leads");
+      return response.json();
+    },
+    onSuccess: (data: { synced: number; skipped: number }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      toast({
+        title: "Sincronização concluída",
+        description: `${data.synced} processos sincronizados para o pipeline`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro na sincronização",
+        description: "Não foi possível sincronizar os processos",
+        variant: "destructive",
+      });
+    },
+  });
+
   const createInlineAdvogadoMutation = useMutation({
     mutationFn: async (data: { nome: string; cpf: string; telefone: string; email: string }) => {
       const response = await apiRequest("POST", "/api/todos-advogados-infos", data);
@@ -3086,6 +3107,18 @@ export default function PipelinePage() {
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${syncReclamantesMutation.isPending ? "animate-spin" : ""}`} />
               {syncReclamantesMutation.isPending ? "Sincronizando..." : "Sincronizar Reclamantes"}
+            </Button>
+          )}
+
+          {selectedPipeline === "triagem" && (
+            <Button
+              variant="outline"
+              onClick={() => syncProcessosMutation.mutate()}
+              disabled={syncProcessosMutation.isPending}
+              data-testid="button-sync-processos"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncProcessosMutation.isPending ? "animate-spin" : ""}`} />
+              {syncProcessosMutation.isPending ? "Sincronizando..." : "Sincronizar Processos"}
             </Button>
           )}
           
