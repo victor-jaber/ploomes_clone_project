@@ -173,6 +173,7 @@ export interface IStorage {
   // Sync functions
   syncLawyersToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
   syncClaimantsToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
+  syncLawsuitsToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
   syncLawsuitsFromApi(userId: string): Promise<{ total: number; linked: number; errors: number }>;
   
   // Backward compatibility
@@ -852,6 +853,56 @@ export class DatabaseStorage implements IStorage {
     return {
       synced: newLeads.length,
       skipped: allClaimants.length - notSynced.length,
+      leads: newLeads,
+    };
+  }
+
+  async syncLawsuitsToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }> {
+    const allLawsuits = await db.select().from(lawsuits).where(eq(lawsuits.enviadoParaPipeline, false));
+    
+    const newLeads: Lead[] = [];
+    for (const lawsuit of allLawsuits) {
+      const lead = await this.createLead({
+        titulo: lawsuit.cnj || `Processo ${lawsuit.id.substring(0, 8)}`,
+        pipelineType: "triagem",
+        stage: "novo_caso",
+        position: 0,
+        valor: lawsuit.valorCausa || null,
+        probabilidade: lawsuit.probabilidadeSucesso ? Math.round(Number(lawsuit.probabilidadeSucesso)) : 0,
+        vendedorId: userId,
+        ownerId: userId,
+        lawyerId: lawsuit.lawyerId,
+        lawFirmId: lawsuit.lawFirmId,
+        claimantId: lawsuit.claimantId,
+      });
+      newLeads.push(lead);
+
+      await this.upsertLeadCaseDetails(lead.id, {
+        leadId: lead.id,
+        cnj: lawsuit.cnj || undefined,
+        tribunal: lawsuit.tribunal || undefined,
+        orgaoJulgador: lawsuit.vara || undefined,
+        assuntoPrincipal: lawsuit.assunto || undefined,
+        cliente: lawsuit.autor || undefined,
+      });
+
+      await this.upsertLeadChecklist(lead.id, {
+        leadId: lead.id,
+        reclamante: lawsuit.autor || undefined,
+        reclamado: lawsuit.reu || undefined,
+      });
+
+      await db.update(lawsuits)
+        .set({ enviadoParaPipeline: true, updatedAt: new Date() })
+        .where(eq(lawsuits.id, lawsuit.id));
+    }
+    
+    const totalLawsuits = await db.select({ count: sql<number>`count(*)` }).from(lawsuits);
+    const skipped = Number(totalLawsuits[0]?.count || 0) - newLeads.length;
+    
+    return {
+      synced: newLeads.length,
+      skipped,
       leads: newLeads,
     };
   }
