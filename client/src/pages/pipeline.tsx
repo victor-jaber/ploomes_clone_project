@@ -552,7 +552,7 @@ function LeadDetailPanel({
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-[480px] border-r bg-muted/10 overflow-y-auto">
+        <div className="w-80 border-r bg-muted/10 overflow-y-auto">
           <div className="p-4 space-y-6">
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
@@ -3361,7 +3361,7 @@ export default function PipelinePage() {
         
         return (
           <Sheet open={true} onOpenChange={(open) => !open && setSelectedLeadId(null)}>
-            <SheetContent className="w-full sm:max-w-3xl p-0 overflow-hidden">
+            <SheetContent className="w-full sm:max-w-5xl p-0 overflow-hidden">
               <LeadDetailPanel
                 lead={selectedLead}
                 todosAdvogadosInfos={todosAdvogadosInfos}
