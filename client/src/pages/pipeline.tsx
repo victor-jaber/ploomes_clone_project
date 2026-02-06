@@ -2438,33 +2438,33 @@ export default function PipelinePage() {
   useEffect(() => {
     if (userPreferences && !prefsLoaded.current) {
       prefsLoaded.current = true;
-      const saved = userPreferences.minimizedColumns?.[pipelineType];
+      const saved = userPreferences.minimizedColumns?.[selectedPipeline];
       if (saved && saved.length > 0) {
         setMinimizedColumns(new Set(saved));
       }
     }
-  }, [userPreferences, pipelineType]);
+  }, [userPreferences, selectedPipeline]);
 
   useEffect(() => {
     if (prefsLoaded.current) {
-      const saved = userPreferences?.minimizedColumns?.[pipelineType];
+      const saved = userPreferences?.minimizedColumns?.[selectedPipeline];
       if (saved && saved.length > 0) {
         setMinimizedColumns(new Set(saved));
       } else {
         setMinimizedColumns(new Set());
       }
     }
-  }, [pipelineType]);
+  }, [selectedPipeline]);
 
   const saveMinimizedColumns = useCallback((newSet: Set<string>) => {
     const currentMinimized = userPreferences?.minimizedColumns || {};
-    const updated = { ...currentMinimized, [pipelineType]: Array.from(newSet) };
+    const updated = { ...currentMinimized, [selectedPipeline]: Array.from(newSet) };
     apiRequest("PUT", "/api/auth/preferences", { minimizedColumns: updated });
     queryClient.setQueryData(["/api/auth/preferences"], (old: any) => ({
       ...old,
       minimizedColumns: updated,
     }));
-  }, [pipelineType, userPreferences]);
+  }, [selectedPipeline, userPreferences]);
 
   const addFilter = useCallback((filter: PipelineFilter) => {
     setActiveFilters(prev => {
