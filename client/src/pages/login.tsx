@@ -11,7 +11,7 @@ import { HermesLogo } from "@/components/hermes-logo";
 
 const loginFormSchema = z.object({
   email: z.string().email("E-mail inválido"),
-  password: z.string().min(1, "Senha é obrigatória"),
+  senha: z.string().min(1, "Senha é obrigatória"),
 });
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
@@ -86,7 +86,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
       email: "",
-      password: "",
+      senha: "",
     },
   });
 
@@ -159,7 +159,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               />
               <FormField
                 control={form.control}
-                name="password"
+                name="senha"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="sr-only">Senha</FormLabel>
