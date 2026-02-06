@@ -47,6 +47,8 @@ import {
   X,
   FileText,
   UserPlus,
+  Copy,
+  Check,
 } from "lucide-react";
 import {
   Select,
@@ -80,6 +82,51 @@ const entityConfig = {
     color: "from-green-500 to-emerald-500",
   },
 };
+
+function CopyPhoneButton({ phone, label }: { phone: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(phone);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-6 w-6 shrink-0"
+      onClick={handleCopy}
+      title={label || `Copiar ${phone}`}
+      data-testid={`button-copy-phone-${phone}`}
+    >
+      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+    </Button>
+  );
+}
+
+function CopyAllPhonesButton({ phones }: { phones: string[] }) {
+  const [copied, setCopied] = useState(false);
+  if (phones.length <= 1) return null;
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(phones.join(", "));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="gap-1 text-xs h-7"
+      onClick={handleCopy}
+      data-testid="button-copy-all-phones"
+    >
+      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+      {copied ? "Copiados!" : "Copiar Todos"}
+    </Button>
+  );
+}
 
 export default function ClientsPage() {
   const { toast } = useToast();
@@ -740,7 +787,18 @@ export default function ClientsPage() {
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Phone className="h-3 w-3" /> {adv.telefone}
                       <WhatsAppLink phone={adv.telefone} />
+                      <CopyPhoneButton phone={adv.telefone} />
                     </div>
+                  )}
+                  {adv.celular && adv.celular !== adv.telefone && (
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Phone className="h-3 w-3" /> {adv.celular}
+                      <WhatsAppLink phone={adv.celular} />
+                      <CopyPhoneButton phone={adv.celular} />
+                    </div>
+                  )}
+                  {(adv.telefone && adv.celular && adv.celular !== adv.telefone) && (
+                    <CopyAllPhonesButton phones={[adv.telefone, adv.celular]} />
                   )}
                 </div>
               </TableCell>
@@ -972,8 +1030,9 @@ export default function ClientsPage() {
             )}
             {adv.valorCausa && <div><p className="text-sm text-muted-foreground">Valor da Causa</p><p className="font-semibold text-green-600 dark:text-green-400">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(adv.valorCausa))}</p></div>}
             {adv.email && <div><p className="text-sm text-muted-foreground">E-mail</p><p className="font-medium">{adv.email}</p></div>}
-            {adv.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium flex items-center gap-2">{adv.telefone} <WhatsAppLink phone={adv.telefone} /></p></div>}
-            {adv.celular && <div><p className="text-sm text-muted-foreground">Celular</p><p className="font-medium flex items-center gap-2">{adv.celular} <WhatsAppLink phone={adv.celular} /></p></div>}
+            {adv.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium flex items-center gap-2">{adv.telefone} <WhatsAppLink phone={adv.telefone} /> <CopyPhoneButton phone={adv.telefone} /></p></div>}
+            {adv.celular && <div><p className="text-sm text-muted-foreground">Celular</p><p className="font-medium flex items-center gap-2">{adv.celular} <WhatsAppLink phone={adv.celular} /> <CopyPhoneButton phone={adv.celular} /></p></div>}
+            {adv.telefone && adv.celular && <div><CopyAllPhonesButton phones={[adv.telefone, adv.celular].filter(Boolean) as string[]} /></div>}
             {adv.cep && <div><p className="text-sm text-muted-foreground">CEP</p><p className="font-medium">{adv.cep}</p></div>}
           </div>
           {(adv.logradouro || adv.municipio) && (
