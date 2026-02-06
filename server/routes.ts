@@ -20,24 +20,24 @@ import {
   type CalendarEvent 
 } from "./outlook";
 import {
-  insertLawyerSchema,
-  insertLawFirmSchema,
-  insertClaimantSchema,
+  insertAdvogadoSchema,
+  insertEscritorioSchema,
+  insertReclamanteSchema,
   insertLeadSchema,
-  insertLeadFinancialsSchema,
-  insertLeadCaseDetailsSchema,
+  insertLeadFinanceiroSchema,
+  insertLeadDetalhesCasoSchema,
   insertLeadChecklistSchema,
-  insertLeadAssignmentsSchema,
-  insertProductSchema,
-  insertActivitySchema,
-  insertProposalSchema,
-  insertProposalItemSchema,
-  insertInteractionSchema,
+  insertLeadResponsaveisSchema,
+  insertProdutoSchema,
+  insertAtividadeSchema,
+  insertPropostaSchema,
+  insertPropostaItemSchema,
+  insertInteracaoSchema,
   type Lead,
-  type Lawyer,
-  type LawFirm,
-  type Claimant,
-  type Lawsuit,
+  type Advogado,
+  type Escritorio,
+  type Reclamante,
+  type Processo,
 } from "@shared/schema";
 
 // Redis-based shared cache with TTL
@@ -181,9 +181,7 @@ class RedisCache {
 const aggregationCache = new RedisCache(30);
 
 // Backward compatibility aliases
-const insertTodosAdvogadosInfosSchema = insertLawyerSchema;
-const insertEscritorioSchema = insertLawFirmSchema;
-const insertReclamanteSchema = insertClaimantSchema;
+const insertTodosAdvogadosInfosSchema = insertAdvogadoSchema;
 const insertCaseSchema = insertLeadSchema;
 
 // Helper to extract params
@@ -230,7 +228,7 @@ export async function registerRoutes(
   app.post("/api/lawyers", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertLawyerSchema.safeParse({ ...req.body, ownerId: userId, enviadoParaPipeline: true });
+      const parsed = insertAdvogadoSchema.safeParse({ ...req.body, proprietarioId: userId, enviadoParaPipeline: true });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -240,10 +238,10 @@ export async function registerRoutes(
       
       const lead = await storage.createLead({
         titulo: lawyer.nome,
-        pipelineType: 'advogados',
-        stage: 'novo_lead',
+        tipoPipeline: 'advogados',
+        etapa: 'novo_lead',
         valor: null,
-        ownerId: userId,
+        proprietarioId: userId,
         vendedorId: userId,
       });
       wsManager.broadcastLeadCreated(lead);
@@ -259,7 +257,7 @@ export async function registerRoutes(
     try {
       const userId = (req as AuthRequest).user!.id;
       const id = parseInt(getParam(req.params.id), 10);
-      const partial = insertLawyerSchema.partial().safeParse(req.body);
+      const partial = insertAdvogadoSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
@@ -325,7 +323,7 @@ export async function registerRoutes(
   app.post("/api/todos-advogados-infos", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertLawyerSchema.safeParse({ ...req.body, ownerId: userId, enviadoParaPipeline: true });
+      const parsed = insertAdvogadoSchema.safeParse({ ...req.body, proprietarioId: userId, enviadoParaPipeline: true });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -335,10 +333,10 @@ export async function registerRoutes(
       
       const lead = await storage.createLead({
         titulo: lawyer.nome,
-        pipelineType: 'advogados',
-        stage: 'novo_lead',
+        tipoPipeline: 'advogados',
+        etapa: 'novo_lead',
         valor: null,
-        ownerId: userId,
+        proprietarioId: userId,
         vendedorId: userId,
       });
       wsManager.broadcastLeadCreated(lead);
@@ -354,7 +352,7 @@ export async function registerRoutes(
     try {
       const userId = (req as AuthRequest).user!.id;
       const id = parseInt(getParam(req.params.id), 10);
-      const partial = insertLawyerSchema.partial().safeParse(req.body);
+      const partial = insertAdvogadoSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
@@ -452,7 +450,7 @@ export async function registerRoutes(
   app.post("/api/law-firms", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertLawFirmSchema.safeParse({ ...req.body, ownerId: userId });
+      const parsed = insertEscritorioSchema.safeParse({ ...req.body, proprietarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -469,7 +467,7 @@ export async function registerRoutes(
   app.patch("/api/law-firms/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertLawFirmSchema.partial().safeParse(req.body);
+      const partial = insertEscritorioSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
@@ -594,7 +592,7 @@ export async function registerRoutes(
   app.post("/api/escritorios", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertLawFirmSchema.safeParse({ ...req.body, ownerId: userId });
+      const parsed = insertEscritorioSchema.safeParse({ ...req.body, proprietarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -611,7 +609,7 @@ export async function registerRoutes(
   app.patch("/api/escritorios/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertLawFirmSchema.partial().safeParse(req.body);
+      const partial = insertEscritorioSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
@@ -675,7 +673,7 @@ export async function registerRoutes(
   app.post("/api/claimants", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertClaimantSchema.safeParse({ ...req.body, ownerId: userId });
+      const parsed = insertReclamanteSchema.safeParse({ ...req.body, proprietarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -692,7 +690,7 @@ export async function registerRoutes(
   app.patch("/api/claimants/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertClaimantSchema.partial().safeParse(req.body);
+      const partial = insertReclamanteSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
@@ -756,7 +754,7 @@ export async function registerRoutes(
   app.post("/api/reclamantes", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertClaimantSchema.safeParse({ ...req.body, ownerId: userId });
+      const parsed = insertReclamanteSchema.safeParse({ ...req.body, proprietarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -773,7 +771,7 @@ export async function registerRoutes(
   app.patch("/api/reclamantes/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertClaimantSchema.partial().safeParse(req.body);
+      const partial = insertReclamanteSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
@@ -938,7 +936,7 @@ export async function registerRoutes(
       const cacheKey = 'lawyers-with-lawsuits';
       
       // Try cache first (dados públicos - cache global via Redis)
-      const cached = await aggregationCache.get<(Lawyer & { lawsuits: Lawsuit[] })[]>(cacheKey);
+      const cached = await aggregationCache.get<(Advogado & { lawsuits: Processo[] })[]>(cacheKey);
       if (cached) {
         return res.json(cached);
       }
@@ -958,7 +956,7 @@ export async function registerRoutes(
       const cacheKey = 'claimants-with-lawsuits';
       
       // Try cache first (dados públicos - cache global via Redis)
-      const cached = await aggregationCache.get<(Claimant & { lawsuits: Lawsuit[] })[]>(cacheKey);
+      const cached = await aggregationCache.get<(Reclamante & { lawsuits: Processo[] })[]>(cacheKey);
       if (cached) {
         return res.json(cached);
       }
@@ -978,7 +976,7 @@ export async function registerRoutes(
       const cacheKey = 'law-firms-with-lawsuits';
       
       // Try cache first (dados públicos - cache global via Redis)
-      const cached = await aggregationCache.get<(LawFirm & { lawsuits: Lawsuit[] })[]>(cacheKey);
+      const cached = await aggregationCache.get<(Escritorio & { lawsuits: Processo[] })[]>(cacheKey);
       if (cached) {
         return res.json(cached);
       }
@@ -1021,7 +1019,7 @@ export async function registerRoutes(
   app.post("/api/leads", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertLeadSchema.safeParse({ ...req.body, ownerId: userId, vendedorId: userId });
+      const parsed = insertLeadSchema.safeParse({ ...req.body, proprietarioId: userId, vendedorId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -1104,7 +1102,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Lead not found" });
         return;
       }
-      const parsed = insertLeadFinancialsSchema.partial().safeParse(req.body);
+      const parsed = insertLeadFinanceiroSchema.partial().safeParse(req.body);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -1136,7 +1134,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Lead not found" });
         return;
       }
-      const parsed = insertLeadCaseDetailsSchema.partial().safeParse(req.body);
+      const parsed = insertLeadDetalhesCasoSchema.partial().safeParse(req.body);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -1200,7 +1198,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Lead not found" });
         return;
       }
-      const parsed = insertLeadAssignmentsSchema.partial().safeParse(req.body);
+      const parsed = insertLeadResponsaveisSchema.partial().safeParse(req.body);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -1237,11 +1235,11 @@ export async function registerRoutes(
         res.status(404).json({ message: "Lead not found" });
         return;
       }
-      const parsed = insertInteractionSchema.safeParse({
+      const parsed = insertInteracaoSchema.safeParse({
         ...req.body,
         leadId: getParam(req.params.id),
         vendedorId: userId,
-        ownerId: userId,
+        proprietarioId: userId,
       });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
@@ -1301,7 +1299,7 @@ export async function registerRoutes(
   app.post("/api/products", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertProductSchema.safeParse({ ...req.body, ownerId: userId });
+      const parsed = insertProdutoSchema.safeParse({ ...req.body, proprietarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -1317,7 +1315,7 @@ export async function registerRoutes(
   app.patch("/api/products/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertProductSchema.partial().safeParse(req.body);
+      const partial = insertProdutoSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
@@ -1379,14 +1377,14 @@ export async function registerRoutes(
   app.post("/api/activities", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const body = { ...req.body, ownerId: userId };
-      if (body.dueDate && typeof body.dueDate === "string") {
-        body.dueDate = new Date(body.dueDate);
+      const body = { ...req.body, proprietarioId: userId };
+      if (body.dataVencimento && typeof body.dataVencimento === "string") {
+        body.dataVencimento = new Date(body.dataVencimento);
       }
-      if (body.completedAt && typeof body.completedAt === "string") {
-        body.completedAt = new Date(body.completedAt);
+      if (body.concluidoEm && typeof body.concluidoEm === "string") {
+        body.concluidoEm = new Date(body.concluidoEm);
       }
-      const parsed = insertActivitySchema.safeParse(body);
+      const parsed = insertAtividadeSchema.safeParse(body);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -1403,16 +1401,16 @@ export async function registerRoutes(
     try {
       const userId = (req as AuthRequest).user!.id;
       const body = { ...req.body };
-      if (body.dueDate && typeof body.dueDate === "string") {
-        body.dueDate = new Date(body.dueDate);
+      if (body.dataVencimento && typeof body.dataVencimento === "string") {
+        body.dataVencimento = new Date(body.dataVencimento);
       }
-      if (body.completedAt && typeof body.completedAt === "string") {
-        body.completedAt = new Date(body.completedAt);
+      if (body.concluidoEm && typeof body.concluidoEm === "string") {
+        body.concluidoEm = new Date(body.concluidoEm);
       }
-      if (body.completedAt === null) {
-        delete body.completedAt;
+      if (body.concluidoEm === null) {
+        delete body.concluidoEm;
       }
-      const partial = insertActivitySchema.partial().safeParse(body);
+      const partial = insertAtividadeSchema.partial().safeParse(body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
@@ -1474,7 +1472,7 @@ export async function registerRoutes(
   app.post("/api/proposals", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertProposalSchema.safeParse({ ...req.body, ownerId: userId });
+      const parsed = insertPropostaSchema.safeParse({ ...req.body, proprietarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -1490,7 +1488,7 @@ export async function registerRoutes(
   app.patch("/api/proposals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertProposalSchema.partial().safeParse(req.body);
+      const partial = insertPropostaSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
@@ -1547,9 +1545,9 @@ export async function registerRoutes(
         res.status(404).json({ message: "Proposal not found" });
         return;
       }
-      const parsed = insertProposalItemSchema.safeParse({
+      const parsed = insertPropostaItemSchema.safeParse({
         ...req.body,
-        proposalId: getParam(req.params.id),
+        propostaId: getParam(req.params.id),
       });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
@@ -1565,7 +1563,7 @@ export async function registerRoutes(
 
   app.patch("/api/proposal-items/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const partial = insertProposalItemSchema.partial().safeParse(req.body);
+      const partial = insertPropostaItemSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;

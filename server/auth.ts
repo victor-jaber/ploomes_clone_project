@@ -2,7 +2,7 @@ import { Request, Response, NextFunction, Express, RequestHandler } from "expres
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { db } from "./db";
-import { users, loginSchema, registerSchema } from "@shared/schema";
+import { usuarios, loginSchema, registerSchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 const JWT_SECRET = process.env.SESSION_SECRET || "hermes-crm-secret-key";
@@ -45,30 +45,30 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      const { name, email, password } = parsed.data;
+      const { nome, email, senha } = parsed.data;
 
-      const existingUser = await db.select().from(users).where(eq(users.email, email));
+      const existingUser = await db.select().from(usuarios).where(eq(usuarios.email, email));
       if (existingUser.length > 0) {
         res.status(400).json({ message: "Email já cadastrado" });
         return;
       }
 
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = await bcrypt.hash(senha, 10);
 
-      const [newUser] = await db.insert(users).values({
-        name,
+      const [newUser] = await db.insert(usuarios).values({
+        nome,
         email,
-        password: hashedPassword,
+        senha: hashedPassword,
       }).returning();
 
       const token = jwt.sign(
-        { id: newUser.id, email: newUser.email, name: newUser.name },
+        { id: newUser.id, email: newUser.email, name: newUser.nome },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
 
       res.status(201).json({
-        user: { id: newUser.id, name: newUser.name, email: newUser.email },
+        user: { id: newUser.id, name: newUser.nome, email: newUser.email },
         token,
       });
     } catch (error) {
@@ -85,28 +85,28 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      const { email, password } = parsed.data;
+      const { email, senha } = parsed.data;
 
-      const [user] = await db.select().from(users).where(eq(users.email, email));
+      const [user] = await db.select().from(usuarios).where(eq(usuarios.email, email));
       if (!user) {
         res.status(401).json({ message: "Credenciais inválidas" });
         return;
       }
 
-      const validPassword = await bcrypt.compare(password, user.password);
+      const validPassword = await bcrypt.compare(senha, user.senha);
       if (!validPassword) {
         res.status(401).json({ message: "Credenciais inválidas" });
         return;
       }
 
       const token = jwt.sign(
-        { id: user.id, email: user.email, name: user.name },
+        { id: user.id, email: user.email, name: user.nome },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
 
       res.json({
-        user: { id: user.id, name: user.name, email: user.email },
+        user: { id: user.id, name: user.nome, email: user.email },
         token,
       });
     } catch (error) {
@@ -123,13 +123,13 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      const [user] = await db.select().from(users).where(eq(users.id, authReq.user.id));
+      const [user] = await db.select().from(usuarios).where(eq(usuarios.id, authReq.user.id));
       if (!user) {
         res.status(404).json({ message: "User not found" });
         return;
       }
 
-      res.json({ id: user.id, name: user.name, email: user.email, preferences: user.preferences ? JSON.parse(user.preferences) : {} });
+      res.json({ id: user.id, name: user.nome, email: user.email, preferences: user.preferencias ? JSON.parse(user.preferencias) : {} });
     } catch (error) {
       console.error("Get user error:", error);
       res.status(500).json({ message: "Failed to get user" });
@@ -139,9 +139,9 @@ export function registerAuthRoutes(app: Express) {
   app.get("/api/auth/preferences", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthRequest;
-      const [user] = await db.select().from(users).where(eq(users.id, authReq.user!.id));
+      const [user] = await db.select().from(usuarios).where(eq(usuarios.id, authReq.user!.id));
       if (!user) { res.status(404).json({ message: "User not found" }); return; }
-      res.json(user.preferences ? JSON.parse(user.preferences) : {});
+      res.json(user.preferencias ? JSON.parse(user.preferencias) : {});
     } catch (error) {
       console.error("Get preferences error:", error);
       res.status(500).json({ message: "Failed to get preferences" });
@@ -151,11 +151,11 @@ export function registerAuthRoutes(app: Express) {
   app.put("/api/auth/preferences", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthRequest;
-      const [user] = await db.select().from(users).where(eq(users.id, authReq.user!.id));
+      const [user] = await db.select().from(usuarios).where(eq(usuarios.id, authReq.user!.id));
       if (!user) { res.status(404).json({ message: "User not found" }); return; }
-      const currentPrefs = user.preferences ? JSON.parse(user.preferences) : {};
+      const currentPrefs = user.preferencias ? JSON.parse(user.preferencias) : {};
       const merged = { ...currentPrefs, ...req.body };
-      await db.update(users).set({ preferences: JSON.stringify(merged) }).where(eq(users.id, authReq.user!.id));
+      await db.update(usuarios).set({ preferencias: JSON.stringify(merged) }).where(eq(usuarios.id, authReq.user!.id));
       res.json(merged);
     } catch (error) {
       console.error("Update preferences error:", error);

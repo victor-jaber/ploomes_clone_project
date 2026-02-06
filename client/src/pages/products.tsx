@@ -39,7 +39,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Product, InsertProduct } from "@shared/schema";
+import type { Produto, InsertProduto } from "@shared/schema";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -51,21 +51,21 @@ function formatCurrency(value: number) {
 export default function ProductsPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduto] = useState<Produto | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: products = [], isLoading } = useQuery<Product[]>({
+  const { data: products = [], isLoading } = useQuery<Produto[]>({
     queryKey: ["/api/products"],
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: InsertProduct) => {
+    mutationFn: async (data: InsertProduto) => {
       return apiRequest("POST", "/api/products", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       setIsDialogOpen(false);
-      setEditingProduct(null);
+      setEditingProduto(null);
       toast({ title: "Sucesso", description: "Produto criado com sucesso" });
     },
     onError: () => {
@@ -78,13 +78,13 @@ export default function ProductsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertProduct> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertProduto> }) => {
       return apiRequest("PATCH", `/api/products/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       setIsDialogOpen(false);
-      setEditingProduct(null);
+      setEditingProduto(null);
       toast({ title: "Sucesso", description: "Produto atualizado com sucesso" });
     },
     onError: () => {
@@ -115,23 +115,23 @@ export default function ProductsPage() {
 
   const filteredProducts = products.filter(
     (product) =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category?.toLowerCase().includes(searchTerm.toLowerCase())
+      product.categoria?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const data: InsertProduct = {
-      name: formData.get("name") as string,
-      description: formData.get("description") as string,
+    const data: InsertProduto = {
+      nome: formData.get("name") as string,
+      descricao: formData.get("description") as string,
       sku: formData.get("sku") as string,
-      price: formData.get("price") as string,
-      unit: formData.get("unit") as string || "un",
-      category: formData.get("category") as string,
-      isActive: formData.get("isActive") === "on",
-      ownerId: "",
+      preco: formData.get("price") as string,
+      unidade: formData.get("unit") as string || "un",
+      categoria: formData.get("category") as string,
+      ativo: formData.get("isActive") === "on",
+      proprietarioId: "",
     };
 
     if (editingProduct) {
@@ -141,20 +141,20 @@ export default function ProductsPage() {
     }
   };
 
-  const openEditDialog = (product: Product) => {
-    setEditingProduct(product);
+  const openEditDialog = (product: Produto) => {
+    setEditingProduto(product);
     setIsDialogOpen(true);
   };
 
   const openNewDialog = () => {
-    setEditingProduct(null);
+    setEditingProduto(null);
     setIsDialogOpen(true);
   };
 
-  const toggleActive = (product: Product) => {
+  const toggleActive = (product: Produto) => {
     updateMutation.mutate({
       id: product.id,
-      data: { isActive: !product.isActive },
+      data: { ativo: !product.ativo },
     });
   };
 
@@ -186,7 +186,7 @@ export default function ProductsPage() {
                 <Input
                   id="name"
                   name="name"
-                  defaultValue={editingProduct?.name}
+                  defaultValue={editingProduct?.nome}
                   required
                   data-testid="input-product-name"
                 />
@@ -206,7 +206,7 @@ export default function ProductsPage() {
                   <Input
                     id="category"
                     name="category"
-                    defaultValue={editingProduct?.category || ""}
+                    defaultValue={editingProduct?.categoria || ""}
                     placeholder="Ex: Software"
                     data-testid="input-product-category"
                   />
@@ -220,7 +220,7 @@ export default function ProductsPage() {
                     name="price"
                     type="number"
                     step="0.01"
-                    defaultValue={editingProduct?.price || ""}
+                    defaultValue={editingProduct?.preco || ""}
                     required
                     data-testid="input-product-price"
                   />
@@ -230,7 +230,7 @@ export default function ProductsPage() {
                   <Input
                     id="unit"
                     name="unit"
-                    defaultValue={editingProduct?.unit || "un"}
+                    defaultValue={editingProduct?.unidade || "un"}
                     placeholder="un, h, mês..."
                     data-testid="input-product-unit"
                   />
@@ -241,7 +241,7 @@ export default function ProductsPage() {
                 <Textarea
                   id="description"
                   name="description"
-                  defaultValue={editingProduct?.description || ""}
+                  defaultValue={editingProduct?.descricao || ""}
                   data-testid="input-product-description"
                 />
               </div>
@@ -249,7 +249,7 @@ export default function ProductsPage() {
                 <Switch
                   id="isActive"
                   name="isActive"
-                  defaultChecked={editingProduct?.isActive ?? true}
+                  defaultChecked={editingProduct?.ativo ?? true}
                   data-testid="switch-product-active"
                 />
                 <Label htmlFor="isActive">Produto ativo</Label>
@@ -318,10 +318,10 @@ export default function ProductsPage() {
                   <TableRow key={product.id} data-testid={`product-row-${product.id}`}>
                     <TableCell>
                       <div className="space-y-1">
-                        <p className="font-medium">{product.name}</p>
-                        {product.description && (
+                        <p className="font-medium">{product.nome}</p>
+                        {product.descricao && (
                           <p className="text-xs text-muted-foreground line-clamp-1">
-                            {product.description}
+                            {product.descricao}
                           </p>
                         )}
                       </div>
@@ -330,22 +330,22 @@ export default function ProductsPage() {
                       {product.sku || "-"}
                     </TableCell>
                     <TableCell>
-                      {product.category && (
-                        <Badge variant="secondary">{product.category}</Badge>
+                      {product.categoria && (
+                        <Badge variant="secondary">{product.categoria}</Badge>
                       )}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {formatCurrency(Number(product.price))}
+                      {formatCurrency(Number(product.preco))}
                       <span className="text-xs text-muted-foreground ml-1">
-                        /{product.unit}
+                        /{product.unidade}
                       </span>
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={product.isActive ? "default" : "secondary"}
-                        className={product.isActive ? "bg-green-500" : ""}
+                        variant={product.ativo ? "default" : "secondary"}
+                        className={product.ativo ? "bg-green-500" : ""}
                       >
-                        {product.isActive ? "Ativo" : "Inativo"}
+                        {product.ativo ? "Ativo" : "Inativo"}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -365,7 +365,7 @@ export default function ProductsPage() {
                             Editar
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => toggleActive(product)}>
-                            {product.isActive ? "Desativar" : "Ativar"}
+                            {product.ativo ? "Desativar" : "Ativar"}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => deleteMutation.mutate(product.id)}

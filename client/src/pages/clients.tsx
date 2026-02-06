@@ -57,7 +57,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { TodosAdvogadosInfos, Escritorio, Reclamante, InsertTodosAdvogadosInfos, InsertEscritorio, InsertReclamante } from "@shared/schema";
+import type { Advogado, Escritorio, Reclamante, InsertAdvogado, InsertEscritorio, InsertReclamante, Contato, Endereco } from "@shared/schema";
+
+type AdvogadoComDetalhes = Advogado & Partial<Contato> & Partial<Endereco>;
+type EscritorioComDetalhes = Escritorio & Partial<Contato> & Partial<Endereco> & { numeroCaso?: string; cidade?: string; endereco?: string };
+type ReclamanteComDetalhes = Reclamante & Partial<Contato> & Partial<Endereco>;
 
 type EntityType = "todosAdvogadosInfos" | "escritorios" | "reclamantes";
 
@@ -132,17 +136,17 @@ export default function ClientsPage() {
   const [activeTab, setActiveTab] = useState<EntityType>("todosAdvogadosInfos");
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingEntity, setEditingEntity] = useState<TodosAdvogadosInfos | Escritorio | Reclamante | null>(null);
-  const [viewingEntity, setViewingEntity] = useState<TodosAdvogadosInfos | Escritorio | Reclamante | null>(null);
+  const [editingEntity, setEditingEntity] = useState<Advogado | Escritorio | Reclamante | null>(null);
+  const [viewingEntity, setViewingEntity] = useState<Advogado | Escritorio | Reclamante | null>(null);
   
   const [escritorioAdvogados, setEscritorioAdvogados] = useState<number[]>([]);
   const [selectedAdvogadoId, setSelectedAdvogadoId] = useState<string>("");
 
-  const { data: todosAdvogadosInfos = [], isLoading: todosAdvogadosInfosLoading } = useQuery<TodosAdvogadosInfos[]>({
+  const { data: todosAdvogadosInfos = [], isLoading: todosAdvogadosInfosLoading } = useQuery<AdvogadoComDetalhes[]>({
     queryKey: ["/api/todos-advogados-infos"],
   });
 
-  type GroupedAdvogado = TodosAdvogadosInfos & { allIds: number[] };
+  type GroupedAdvogado = AdvogadoComDetalhes & { allIds: number[] };
 
   const groupedAdvogados = useMemo(() => {
     const grouped = new Map<string, GroupedAdvogado>();
@@ -165,16 +169,16 @@ export default function ClientsPage() {
     return Array.from(grouped.values());
   }, [todosAdvogadosInfos]);
 
-  const { data: escritorios = [], isLoading: escritoriosLoading } = useQuery<Escritorio[]>({
+  const { data: escritorios = [], isLoading: escritoriosLoading } = useQuery<EscritorioComDetalhes[]>({
     queryKey: ["/api/escritorios"],
   });
 
-  const { data: reclamantes = [], isLoading: reclamantesLoading } = useQuery<Reclamante[]>({
+  const { data: reclamantes = [], isLoading: reclamantesLoading } = useQuery<ReclamanteComDetalhes[]>({
     queryKey: ["/api/reclamantes"],
   });
 
   const createTodosAdvogadosInfosMutation = useMutation({
-    mutationFn: async (data: InsertTodosAdvogadosInfos) => apiRequest("POST", "/api/todos-advogados-infos", data),
+    mutationFn: async (data: InsertAdvogado) => apiRequest("POST", "/api/todos-advogados-infos", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
       setIsDialogOpen(false);
@@ -185,7 +189,7 @@ export default function ClientsPage() {
   });
 
   const updateTodosAdvogadosInfosMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertTodosAdvogadosInfos> }) => 
+    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertAdvogado> }) => 
       apiRequest("PATCH", `/api/todos-advogados-infos/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
@@ -315,7 +319,7 @@ export default function ClientsPage() {
   const handleSubmitTodosAdvogadosInfos = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const data: InsertTodosAdvogadosInfos = {
+    const data = {
       nome: formData.get("nome") as string,
       cpf: formData.get("cpf") as string || null,
       email: formData.get("email") as string || null,
@@ -329,8 +333,8 @@ export default function ClientsPage() {
       numero: formData.get("numero") as string || null,
       complemento: formData.get("complemento") as string || null,
       observacoes: formData.get("observacoes") as string || null,
-      ownerId: "",
-    };
+      proprietarioId: "",
+    } as any;
     if (editingEntity) {
       updateTodosAdvogadosInfosMutation.mutate({ id: String(editingEntity.id), data });
     } else {
@@ -341,7 +345,7 @@ export default function ClientsPage() {
   const handleSubmitEscritorio = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const data: InsertEscritorio = {
+    const data = {
       nome: formData.get("nome") as string,
       cnpj: formData.get("cnpj") as string || null,
       email: formData.get("email") as string || null,
@@ -350,8 +354,8 @@ export default function ClientsPage() {
       cidade: formData.get("cidade") as string || null,
       estado: formData.get("estado") as string || null,
       observacoes: formData.get("observacoes") as string || null,
-      ownerId: "",
-    };
+      proprietarioId: "",
+    } as any;
     if (editingEntity) {
       updateEscritorioMutation.mutate({ id: String(editingEntity.id), data, advogadoIds: escritorioAdvogados });
     } else {
@@ -373,14 +377,14 @@ export default function ClientsPage() {
   const handleSubmitReclamante = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const data: InsertReclamante = {
+    const data = {
       nome: formData.get("nome") as string,
       cpf: formData.get("cpf") as string || null,
       email: formData.get("email") as string || null,
       telefone: formData.get("telefone") as string || null,
       observacoes: formData.get("observacoes") as string || null,
-      ownerId: "",
-    };
+      proprietarioId: "",
+    } as any;
     if (editingEntity) {
       updateReclamanteMutation.mutate({ id: String(editingEntity.id), data });
     } else {
@@ -409,7 +413,7 @@ export default function ClientsPage() {
     setIsDialogOpen(true);
   };
 
-  const openEditDialog = (entity: TodosAdvogadosInfos | Escritorio | Reclamante) => {
+  const openEditDialog = (entity: Advogado | Escritorio | Reclamante) => {
     setEditingEntity(entity);
     // Initialize escritório-specific states
     if (activeTab === "escritorios") {
@@ -429,7 +433,7 @@ export default function ClientsPage() {
                     createReclamanteMutation.isPending || updateReclamanteMutation.isPending;
 
   const renderTodosAdvogadosInfosForm = () => {
-    const adv = editingEntity as TodosAdvogadosInfos | null;
+    const adv = editingEntity as AdvogadoComDetalhes | null;
     return (
       <form onSubmit={handleSubmitTodosAdvogadosInfos} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
@@ -504,7 +508,7 @@ export default function ClientsPage() {
   };
 
   const renderEscritorioForm = () => {
-    const esc = editingEntity as Escritorio | null;
+    const esc = editingEntity as EscritorioComDetalhes | null;
     const availableAdvogados = todosAdvogadosInfos.filter(a => !escritorioAdvogados.includes(a.id));
     
     return (
@@ -602,7 +606,7 @@ export default function ClientsPage() {
   };
 
   const renderReclamanteForm = () => {
-    const rec = editingEntity as Reclamante | null;
+    const rec = editingEntity as ReclamanteComDetalhes | null;
     return (
       <form onSubmit={handleSubmitReclamante} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
@@ -727,7 +731,7 @@ export default function ClientsPage() {
   };
 
   const renderEscritoriosTable = () => {
-    const data = filteredData as Escritorio[];
+    const data = filteredData as EscritorioComDetalhes[];
     return (
       <Table>
         <TableHeader>
@@ -803,7 +807,7 @@ export default function ClientsPage() {
   };
 
   const renderReclamantesTable = () => {
-    const data = filteredData as Reclamante[];
+    const data = filteredData as ReclamanteComDetalhes[];
     return (
       <Table>
         <TableHeader>
@@ -915,7 +919,7 @@ export default function ClientsPage() {
     }
 
     if (activeTab === "escritorios") {
-      const esc = viewingEntity as Escritorio;
+      const esc = viewingEntity as EscritorioComDetalhes;
       return (
         <div className="space-y-4">
           <div className="flex items-center gap-4">
@@ -940,7 +944,7 @@ export default function ClientsPage() {
     }
 
     if (activeTab === "reclamantes") {
-      const rec = viewingEntity as Reclamante;
+      const rec = viewingEntity as ReclamanteComDetalhes;
       return (
         <div className="space-y-4">
           <div className="flex items-center gap-4">

@@ -30,7 +30,7 @@ import {
   User,
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Lead, Lawyer, LawFirm, Claimant } from "@shared/schema";
+import type { Lead, Advogado, Escritorio, Reclamante } from "@shared/schema";
 import { PIPELINE_STAGES } from "@shared/schema";
 
 const PIPELINE_LABELS: Record<string, { label: string; icon: any }> = {
@@ -149,15 +149,15 @@ export default function OpportunitiesPage() {
     queryKey: ["/api/leads"],
   });
 
-  const { data: lawyers = [] } = useQuery<Lawyer[]>({
+  const { data: lawyers = [] } = useQuery<Advogado[]>({
     queryKey: ["/api/lawyers"],
   });
 
-  const { data: lawFirms = [] } = useQuery<LawFirm[]>({
+  const { data: lawFirms = [] } = useQuery<Escritorio[]>({
     queryKey: ["/api/law-firms"],
   });
 
-  const { data: claimants = [] } = useQuery<Claimant[]>({
+  const { data: claimants = [] } = useQuery<Reclamante[]>({
     queryKey: ["/api/claimants"],
   });
 
@@ -175,27 +175,27 @@ export default function OpportunitiesPage() {
   });
 
   const getEntityName = (lead: Lead) => {
-    if (lead.lawyerId) {
-      return lawyers.find(a => a.id === lead.lawyerId)?.nome || "-";
+    if (lead.advogadoId) {
+      return lawyers.find(a => a.id === lead.advogadoId)?.nome || "-";
     }
-    if (lead.lawFirmId) {
-      return lawFirms.find(e => e.id === lead.lawFirmId)?.nome || "-";
+    if (lead.escritorioId) {
+      return lawFirms.find(e => e.id === lead.escritorioId)?.nome || "-";
     }
-    if (lead.claimantId) {
-      return claimants.find(r => r.id === lead.claimantId)?.nome || "-";
+    if (lead.reclamanteId) {
+      return claimants.find(r => r.id === lead.reclamanteId)?.nome || "-";
     }
     return "-";
   };
 
   const getStageInfo = (lead: Lead) => {
-    const stages = PIPELINE_STAGES[lead.pipelineType as keyof typeof PIPELINE_STAGES] || [];
-    return stages.find(s => s.id === lead.stage) || { label: lead.stage, color: "bg-gray-500" };
+    const stages = PIPELINE_STAGES[lead.tipoPipeline as keyof typeof PIPELINE_STAGES] || [];
+    return stages.find(s => s.id === lead.etapa) || { label: lead.etapa, color: "bg-gray-500" };
   };
 
   const filteredLeads = leads.filter((lead) => {
     const matchesSearch = lead.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getEntityName(lead).toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPipeline = pipelineFilter === "all" || lead.pipelineType === pipelineFilter;
+    const matchesPipeline = pipelineFilter === "all" || lead.tipoPipeline === pipelineFilter;
     return matchesSearch && matchesPipeline;
   });
 
@@ -312,7 +312,7 @@ export default function OpportunitiesPage() {
                 <TableBody>
                   {filteredLeads.map((lead) => {
                     const stageInfo = getStageInfo(lead);
-                    const stageOptions = (PIPELINE_STAGES[lead.pipelineType as keyof typeof PIPELINE_STAGES] || []).map(s => ({
+                    const stageOptions = (PIPELINE_STAGES[lead.tipoPipeline as keyof typeof PIPELINE_STAGES] || []).map(s => ({
                       value: s.id,
                       label: s.label,
                       color: s.color
@@ -329,14 +329,14 @@ export default function OpportunitiesPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {PIPELINE_LABELS[lead.pipelineType]?.label || lead.pipelineType}
+                            {PIPELINE_LABELS[lead.tipoPipeline]?.label || lead.tipoPipeline}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <InlineEditSelect
-                            value={lead.stage}
+                            value={lead.etapa}
                             options={stageOptions}
-                            onSave={(val) => handleUpdateField(lead.id, "stage", val)}
+                            onSave={(val) => handleUpdateField(lead.id, "etapa", val)}
                           />
                         </TableCell>
                         <TableCell>
