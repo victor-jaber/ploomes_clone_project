@@ -61,11 +61,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { WhatsAppLink } from "@/components/whatsapp-link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
   Plus, GripVertical, Building2, DollarSign, Trash2, Pencil,
   Phone, Mail, MessageSquare, ArrowRight, Clock, CheckCircle2,
   Send, Paperclip, FileText, Kanban, User, Scale, Users, FileSearch, Handshake, MapPin, RefreshCw,
-  Minimize2, Maximize2, Filter, X
+  Minimize2, Maximize2, Filter, X,
+  Bold, Italic, Underline, Strikethrough, List, Calendar, CalendarPlus, CircleCheck, Circle,
+  PhoneCall, Video, MapPinIcon, MessageCircle
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Lead, TodosAdvogadosInfos, Escritorio, Reclamante, Activity, Interaction, InsertLead, Lawsuit, LeadFinancials, LeadCaseDetails, LeadChecklist, LeadAssignments } from "@shared/schema";
@@ -257,6 +260,12 @@ function LeadDetailPanel({
 }) {
   const { toast } = useToast();
   const [commentText, setCommentText] = useState("");
+  const [activeTab, setActiveTab] = useState<"interaction" | "task">("interaction");
+  const [interactionType, setInteractionType] = useState<string>("comment");
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDescription, setTaskDescription] = useState("");
+  const [taskType, setTaskType] = useState<string>("task");
+  const [taskDueDate, setTaskDueDate] = useState("");
   const [showNewAdvogado, setShowNewAdvogado] = useState(false);
   const [showNewEscritorio, setShowNewEscritorio] = useState(false);
   const [showNewReclamante, setShowNewReclamante] = useState(false);
@@ -409,7 +418,8 @@ function LeadDetailPanel({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/interactions`] });
       setCommentText("");
-      toast({ title: "Comentário adicionado" });
+      setInteractionType("comment");
+      toast({ title: "Interação registrada" });
     },
     onError: () => {
       toast({ title: "Erro ao adicionar comentário", variant: "destructive" });
@@ -467,9 +477,85 @@ function LeadDetailPanel({
     },
   });
 
+  const createActivityMutation = useMutation({
+    mutationFn: async (data: { title: string; type: string; description?: string; dueDate?: string; leadId: string }) => {
+      return apiRequest("POST", "/api/activities", {
+        title: data.title,
+        type: data.type,
+        description: data.description || "",
+        dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : null,
+        leadId: data.leadId,
+        status: "pending",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      setTaskTitle("");
+      setTaskDescription("");
+      setTaskDueDate("");
+      setActiveTab("interaction");
+      toast({ title: "Tarefa agendada com sucesso" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao agendar tarefa", variant: "destructive" });
+    },
+  });
+
+  const toggleActivityStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      return apiRequest("PATCH", `/api/activities/${id}`, {
+        status: status === "completed" ? "pending" : "completed",
+        completedAt: status === "completed" ? null : new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+    },
+  });
+
   const handleSendComment = () => {
     if (!commentText.trim()) return;
-    createInteractionMutation.mutate({ type: "comment", content: commentText });
+    createInteractionMutation.mutate({ type: interactionType, content: commentText });
+  };
+
+  const handleCreateTask = () => {
+    if (!taskTitle.trim()) return;
+    createActivityMutation.mutate({
+      title: taskTitle,
+      type: taskType,
+      description: taskDescription,
+      dueDate: taskDueDate || undefined,
+      leadId: lead.id,
+    });
+  };
+
+  const applyFormatting = (format: string) => {
+    const textarea = document.querySelector('[data-testid="input-comment"]') as HTMLTextAreaElement;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = commentText.substring(start, end);
+    let newText = commentText;
+    let wrapper = "";
+    switch (format) {
+      case "bold": wrapper = "**"; break;
+      case "italic": wrapper = "_"; break;
+      case "underline": wrapper = "__"; break;
+      case "strike": wrapper = "~~"; break;
+      default: break;
+    }
+    if (format === "bullet") {
+      const lines = selectedText ? selectedText.split("\n").map(l => `• ${l}`).join("\n") : "• ";
+      newText = commentText.substring(0, start) + lines + commentText.substring(end);
+    } else if (wrapper) {
+      newText = commentText.substring(0, start) + wrapper + (selectedText || "") + wrapper + commentText.substring(end);
+    }
+    setCommentText(newText);
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = selectedText ? start + newText.length - commentText.length : start + wrapper.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
   };
 
   const getInteractionIcon = (type: string) => {
@@ -477,8 +563,11 @@ function LeadDetailPanel({
       case "comment": return <MessageSquare className="h-4 w-4" />;
       case "file": return <FileText className="h-4 w-4" />;
       case "status_change": return <ArrowRight className="h-4 w-4" />;
-      case "call_log": return <Phone className="h-4 w-4" />;
+      case "call_log": return <PhoneCall className="h-4 w-4" />;
       case "email_log": return <Mail className="h-4 w-4" />;
+      case "whatsapp": return <MessageCircle className="h-4 w-4" />;
+      case "meeting": return <Video className="h-4 w-4" />;
+      case "visit": return <MapPinIcon className="h-4 w-4" />;
       default: return <MessageSquare className="h-4 w-4" />;
     }
   };
@@ -488,8 +577,11 @@ function LeadDetailPanel({
       case "comment": return "Comentário";
       case "file": return "Arquivo";
       case "status_change": return "Mudança de Status";
-      case "call_log": return "Registro de Ligação";
-      case "email_log": return "Registro de E-mail";
+      case "call_log": return "Ligação";
+      case "email_log": return "E-mail";
+      case "whatsapp": return "WhatsApp";
+      case "meeting": return "Reunião";
+      case "visit": return "Visita";
       default: return "Interação";
     }
   };
@@ -1377,12 +1469,199 @@ function LeadDetailPanel({
         </div>
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="p-4 border-b">
+          <div className="border-b">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "interaction" | "task")}>
+              <TabsList className="w-full rounded-none bg-transparent border-b-0 px-4 pt-2 gap-1">
+                <TabsTrigger 
+                  value="interaction" 
+                  className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary gap-1.5 text-xs"
+                  data-testid="tab-interaction"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Registrar Interação
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="task" 
+                  className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary gap-1.5 text-xs"
+                  data-testid="tab-task"
+                >
+                  <CalendarPlus className="h-3.5 w-3.5" />
+                  Agendar Tarefa
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="interaction" className="m-0 px-4 pb-3 pt-2">
+                <div className="flex items-center gap-1 mb-2 flex-wrap">
+                  {[
+                    { id: "comment", icon: MessageSquare, label: "Comentário" },
+                    { id: "call_log", icon: PhoneCall, label: "Ligação" },
+                    { id: "email_log", icon: Mail, label: "E-mail" },
+                    { id: "whatsapp", icon: MessageCircle, label: "WhatsApp" },
+                    { id: "meeting", icon: Video, label: "Reunião" },
+                    { id: "visit", icon: MapPinIcon, label: "Visita" },
+                  ].map((item) => (
+                    <Button
+                      key={item.id}
+                      variant={interactionType === item.id ? "default" : "ghost"}
+                      size="sm"
+                      className={`gap-1 text-xs ${interactionType === item.id ? "" : "text-muted-foreground"}`}
+                      onClick={() => setInteractionType(item.id)}
+                      data-testid={`button-type-${item.id}`}
+                    >
+                      <item.icon className="h-3.5 w-3.5" />
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="rounded-md border bg-background">
+                  <div className="flex items-center gap-0.5 px-2 py-1 border-b bg-muted/30">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyFormatting("bold")} title="Negrito" data-testid="format-bold">
+                      <Bold className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyFormatting("italic")} title="Itálico" data-testid="format-italic">
+                      <Italic className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyFormatting("underline")} title="Sublinhado" data-testid="format-underline">
+                      <Underline className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyFormatting("strike")} title="Tachado" data-testid="format-strike">
+                      <Strikethrough className="h-3.5 w-3.5" />
+                    </Button>
+                    <Separator orientation="vertical" className="h-4 mx-1" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyFormatting("bullet")} title="Lista" data-testid="format-list">
+                      <List className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <Textarea
+                    placeholder="Digite sua mensagem..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendComment();
+                      }
+                    }}
+                    className="min-h-[70px] resize-none border-0 focus-visible:ring-0 rounded-t-none"
+                    data-testid="input-comment"
+                  />
+                </div>
+
+                <div className="flex justify-between items-center gap-2 mt-2">
+                  <Button variant="outline" size="sm" disabled title="Em breve" data-testid="button-attach">
+                    <Paperclip className="h-4 w-4 mr-1" />
+                    Anexar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSendComment}
+                    disabled={!commentText.trim() || createInteractionMutation.isPending}
+                    data-testid="button-send-comment"
+                  >
+                    <Send className="h-4 w-4 mr-1" />
+                    {createInteractionMutation.isPending ? "Enviando..." : "Enviar"}
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="task" className="m-0 px-4 pb-3 pt-2">
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Título da tarefa *"
+                    value={taskTitle}
+                    onChange={(e) => setTaskTitle(e.target.value)}
+                    data-testid="input-task-title"
+                  />
+                  <div className="flex gap-2">
+                    <Select value={taskType} onValueChange={setTaskType}>
+                      <SelectTrigger className="w-[140px]" data-testid="select-task-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="task">Tarefa</SelectItem>
+                        <SelectItem value="call">Ligação</SelectItem>
+                        <SelectItem value="email">E-mail</SelectItem>
+                        <SelectItem value="meeting">Reunião</SelectItem>
+                        <SelectItem value="note">Nota</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="datetime-local"
+                      value={taskDueDate}
+                      onChange={(e) => setTaskDueDate(e.target.value)}
+                      className="flex-1"
+                      data-testid="input-task-due-date"
+                    />
+                  </div>
+                  <Textarea
+                    placeholder="Descrição (opcional)"
+                    value={taskDescription}
+                    onChange={(e) => setTaskDescription(e.target.value)}
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-task-description"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setActiveTab("interaction")} data-testid="button-cancel-task">
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleCreateTask}
+                      disabled={!taskTitle.trim() || createActivityMutation.isPending}
+                      data-testid="button-create-task"
+                    >
+                      <CalendarPlus className="h-4 w-4 mr-1" />
+                      {createActivityMutation.isPending ? "Agendando..." : "Agendar"}
+                    </Button>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {leadActivities.filter(a => a.status !== "completed").length > 0 && (
+            <div className="border-b px-4 py-3">
+              <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" />
+                Tarefas em Aberto ({leadActivities.filter(a => a.status !== "completed").length})
+              </h4>
+              <div className="space-y-1.5">
+                {leadActivities.filter(a => a.status !== "completed").map((activity) => (
+                  <div 
+                    key={activity.id} 
+                    className="flex items-center gap-2 p-2 rounded-md hover-elevate cursor-pointer group"
+                    onClick={() => toggleActivityStatus.mutate({ id: activity.id, status: activity.status || "pending" })}
+                    data-testid={`task-item-${activity.id}`}
+                  >
+                    <Circle className="h-4 w-4 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm truncate block">{activity.title}</span>
+                      {activity.dueDate && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(activity.dueDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      )}
+                    </div>
+                    <Badge variant="outline" className="text-xs shrink-0">
+                      {activity.type === "call" ? "Ligação" :
+                       activity.type === "email" ? "E-mail" :
+                       activity.type === "meeting" ? "Reunião" :
+                       activity.type === "task" ? "Tarefa" : "Nota"}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div className="px-4 py-2 border-b">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               Histórico de Interações
             </h3>
           </div>
-          
+
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
               {loadingInteractions ? (
@@ -1390,17 +1669,24 @@ function LeadDetailPanel({
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
-              ) : interactionsList.length === 0 && leadActivities.length === 0 ? (
-                <div className="text-center py-12">
-                  <MessageSquare className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-muted-foreground">Nenhuma interação registrada</p>
-                  <p className="text-xs text-muted-foreground mt-1">Adicione um comentário abaixo</p>
+              ) : interactionsList.length === 0 && leadActivities.filter(a => a.status === "completed").length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Nenhuma interação registrada</p>
+                  <p className="text-xs text-muted-foreground mt-1">Use as abas acima para registrar</p>
                 </div>
               ) : (
                 <>
                   {interactionsList.map((interaction: any) => (
                     <div key={interaction.id} className="flex gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
+                        interaction.type === "call_log" ? "bg-blue-500/10 text-blue-500" :
+                        interaction.type === "email_log" ? "bg-orange-500/10 text-orange-500" :
+                        interaction.type === "whatsapp" ? "bg-green-500/10 text-green-500" :
+                        interaction.type === "meeting" ? "bg-purple-500/10 text-purple-500" :
+                        interaction.type === "visit" ? "bg-rose-500/10 text-rose-500" :
+                        "bg-primary/10 text-primary"
+                      }`}>
                         {getInteractionIcon(interaction.type)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1423,7 +1709,20 @@ function LeadDetailPanel({
                           </span>
                         </div>
                         {interaction.content && (
-                          <p className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap">{interaction.content}</p>
+                          <div className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap"
+                            dangerouslySetInnerHTML={{
+                              __html: interaction.content
+                                .replace(/&/g, '&amp;')
+                                .replace(/</g, '&lt;')
+                                .replace(/>/g, '&gt;')
+                                .replace(/"/g, '&quot;')
+                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                .replace(/__(.*?)__/g, '<u>$1</u>')
+                                .replace(/_(.*?)_/g, '<em>$1</em>')
+                                .replace(/~~(.*?)~~/g, '<s>$1</s>')
+                                .replace(/\n/g, '<br/>')
+                            }}
+                          />
                         )}
                         {interaction.fileName && (
                           <div className="flex items-center gap-2 text-sm text-primary mt-1">
@@ -1435,40 +1734,30 @@ function LeadDetailPanel({
                     </div>
                   ))}
                   
-                  {leadActivities.length > 0 && (
+                  {leadActivities.filter(a => a.status === "completed").length > 0 && (
                     <>
                       <Separator className="my-4" />
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                        Atividades
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                        <CircleCheck className="h-3.5 w-3.5 text-green-500" />
+                        Tarefas Concluídas
                       </h4>
-                      {leadActivities.map((activity) => (
-                        <div key={activity.id} className="flex gap-3">
-                          <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
-                            activity.status === "completed" ? "bg-green-500/10 text-green-500" : "bg-muted"
-                          }`}>
-                            {activity.status === "completed" ? (
-                              <CheckCircle2 className="h-4 w-4" />
-                            ) : (
-                              <Clock className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </div>
+                      {leadActivities.filter(a => a.status === "completed").map((activity) => (
+                        <div 
+                          key={activity.id} 
+                          className="flex items-center gap-2 p-2 rounded-md hover-elevate cursor-pointer opacity-60"
+                          onClick={() => toggleActivityStatus.mutate({ id: activity.id, status: activity.status || "completed" })}
+                          data-testid={`task-completed-${activity.id}`}
+                        >
+                          <CircleCheck className="h-4 w-4 text-green-500 shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium text-sm">{activity.title}</span>
-                              <span className="text-xs text-muted-foreground shrink-0">
-                                {activity.createdAt && new Date(activity.createdAt).toLocaleDateString("pt-BR")}
-                              </span>
-                            </div>
-                            {activity.description && (
-                              <p className="text-sm text-muted-foreground mt-1">{activity.description}</p>
-                            )}
-                            <Badge variant="outline" className="mt-2 text-xs">
-                              {activity.type === "call" ? "Ligação" :
-                               activity.type === "email" ? "E-mail" :
-                               activity.type === "meeting" ? "Reunião" :
-                               activity.type === "task" ? "Tarefa" : "Nota"}
-                            </Badge>
+                            <span className="text-sm line-through truncate block">{activity.title}</span>
                           </div>
+                          <Badge variant="outline" className="text-xs shrink-0">
+                            {activity.type === "call" ? "Ligação" :
+                             activity.type === "email" ? "E-mail" :
+                             activity.type === "meeting" ? "Reunião" :
+                             activity.type === "task" ? "Tarefa" : "Nota"}
+                          </Badge>
                         </div>
                       ))}
                     </>
@@ -1477,44 +1766,6 @@ function LeadDetailPanel({
               )}
             </div>
           </ScrollArea>
-
-          <div className="p-4 border-t bg-muted/20">
-            <div className="flex gap-2">
-              <Textarea
-                placeholder="Digite um comentário... (Enter para enviar)"
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendComment();
-                  }
-                }}
-                className="min-h-[80px] resize-none"
-                data-testid="input-comment"
-              />
-            </div>
-            <div className="flex justify-end gap-2 mt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                title="Em breve"
-              >
-                <Paperclip className="h-4 w-4 mr-1" />
-                Anexar
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSendComment}
-                disabled={!commentText.trim() || createInteractionMutation.isPending}
-                data-testid="button-send-comment"
-              >
-                <Send className="h-4 w-4 mr-1" />
-                Enviar
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
