@@ -408,6 +408,22 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/sync-processos-to-leads", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.id;
+      const result = await storage.syncLawsuitsToLeads(userId);
+      
+      for (const lead of result.leads) {
+        wsManager.broadcastLeadCreated(lead);
+      }
+      
+      res.json({ synced: result.synced, skipped: result.skipped });
+    } catch (error) {
+      logger.error("syncing lawsuits to leads", error as Error);
+      res.status(500).json({ message: "Failed to sync lawsuits to leads" });
+    }
+  });
+
   // Law Firms (Escritórios)
   app.get("/api/law-firms", isAuthenticated, async (req: Request, res: Response) => {
     try {

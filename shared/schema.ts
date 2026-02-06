@@ -172,6 +172,8 @@ export const lawsuits = pgTable("lawsuits", {
   // Dados brutos da API (JSONB como text)
   apiData: text("api_data"),
   
+  enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
+  
   // Metadados
   ownerId: varchar("owner_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
