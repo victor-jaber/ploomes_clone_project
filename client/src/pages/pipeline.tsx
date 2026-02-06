@@ -562,11 +562,7 @@ function LeadDetailPanel({
                 <div className="space-y-3 text-sm">
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Título</Label>
-                    <InlineEditField
-                      value={lead.titulo}
-                      onSave={(val) => handleUpdateField("titulo", val)}
-                      className="font-medium block"
-                    />
+                    <p className="font-medium">{lead.titulo}</p>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Valor (R$)</Label>
