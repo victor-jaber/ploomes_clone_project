@@ -36,20 +36,20 @@ interface User {
 export default function UsersPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ name: "", email: "", password: "" });
+  const [newUser, setNewUser] = useState({ nome: "", email: "", senha: "" });
 
   const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; email: string; password: string }) => {
+    mutationFn: async (data: { nome: string; email: string; senha: string }) => {
       return apiRequest("POST", "/api/users", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setIsDialogOpen(false);
-      setNewUser({ name: "", email: "", password: "" });
+      setNewUser({ nome: "", email: "", senha: "" });
       toast({ title: "Usuário criado com sucesso" });
     },
     onError: (error: any) => {
@@ -76,7 +76,7 @@ export default function UsersPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUser.name.trim() || !newUser.email.trim() || !newUser.password.trim()) {
+    if (!newUser.nome.trim() || !newUser.email.trim() || !newUser.senha.trim()) {
       toast({ title: "Preencha todos os campos", variant: "destructive" });
       return;
     }
@@ -109,12 +109,12 @@ export default function UsersPage() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
+                <Label htmlFor="nome">Nome</Label>
                 <Input
-                  id="name"
+                  id="nome"
                   placeholder="Nome completo"
-                  value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  value={newUser.nome}
+                  onChange={(e) => setNewUser({ ...newUser, nome: e.target.value })}
                   data-testid="input-user-name"
                 />
               </div>
@@ -130,13 +130,13 @@ export default function UsersPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="senha">Senha</Label>
                 <Input
-                  id="password"
+                  id="senha"
                   type="password"
                   placeholder="Senha"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  value={newUser.senha}
+                  onChange={(e) => setNewUser({ ...newUser, senha: e.target.value })}
                   data-testid="input-user-password"
                 />
               </div>
