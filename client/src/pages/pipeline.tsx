@@ -3361,7 +3361,7 @@ export default function PipelinePage() {
         
         return (
           <Sheet open={true} onOpenChange={(open) => !open && setSelectedLeadId(null)}>
-            <SheetContent className="w-full sm:max-w-5xl p-0 overflow-hidden">
+            <SheetContent className="w-full sm:max-w-4xl p-0 overflow-hidden">
               <LeadDetailPanel
                 lead={selectedLead}
                 todosAdvogadosInfos={todosAdvogadosInfos}
