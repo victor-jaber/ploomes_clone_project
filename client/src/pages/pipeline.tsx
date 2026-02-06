@@ -596,6 +596,56 @@ function LeadDetailPanel({
               </Card>
             </div>
 
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Dados do Caso
+              </h3>
+              <Card className="p-4">
+                <div className="space-y-3 text-sm">
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">CNJ</Label>
+                    <InlineEditField
+                      value={caseDetails?.cnj || ""}
+                      onSave={(val) => handleUpdateField("cnj", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Tribunal</Label>
+                    <InlineEditField
+                      value={caseDetails?.tribunal || ""}
+                      onSave={(val) => handleUpdateField("tribunal", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Assunto Principal</Label>
+                    <InlineEditField
+                      value={caseDetails?.assuntoPrincipal || ""}
+                      onSave={(val) => handleUpdateField("assuntoPrincipal", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Assuntos</Label>
+                    <InlineEditField
+                      value={caseDetails?.assuntos || ""}
+                      onSave={(val) => handleUpdateField("assuntos", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">Órgão Julgador</Label>
+                    <InlineEditField
+                      value={caseDetails?.orgaoJulgador || ""}
+                      onSave={(val) => handleUpdateField("orgaoJulgador", val)}
+                      placeholder="Adicionar..."
+                    />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
             {pipelineType === "reclamantes" ? (
               <div>
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
@@ -1484,55 +1534,6 @@ function LeadDetailPanel({
               </Card>
             </div>
 
-            <div>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Dados do Caso
-              </h3>
-              <Card className="p-4">
-                <div className="space-y-3 text-sm">
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-xs">CNJ</Label>
-                    <InlineEditField
-                      value={caseDetails?.cnj || ""}
-                      onSave={(val) => handleUpdateField("cnj", val)}
-                      placeholder="Adicionar..."
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-xs">Tribunal</Label>
-                    <InlineEditField
-                      value={caseDetails?.tribunal || ""}
-                      onSave={(val) => handleUpdateField("tribunal", val)}
-                      placeholder="Adicionar..."
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-xs">Assunto Principal</Label>
-                    <InlineEditField
-                      value={caseDetails?.assuntoPrincipal || ""}
-                      onSave={(val) => handleUpdateField("assuntoPrincipal", val)}
-                      placeholder="Adicionar..."
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-xs">Assuntos</Label>
-                    <InlineEditField
-                      value={caseDetails?.assuntos || ""}
-                      onSave={(val) => handleUpdateField("assuntos", val)}
-                      placeholder="Adicionar..."
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-xs">Órgão Julgador</Label>
-                    <InlineEditField
-                      value={caseDetails?.orgaoJulgador || ""}
-                      onSave={(val) => handleUpdateField("orgaoJulgador", val)}
-                      placeholder="Adicionar..."
-                    />
-                  </div>
-                </div>
-              </Card>
-            </div>
           </div>
         </div>
 
