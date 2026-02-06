@@ -596,22 +596,6 @@ function LeadDetailPanel({
                       className="text-muted-foreground"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-xs">Estágio</Label>
-                    <Select 
-                      value={lead.stage} 
-                      onValueChange={(v) => handleUpdateField("stage", v)}
-                    >
-                      <SelectTrigger data-testid="select-stage">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stages.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                   {lead.createdAt && (
                     <div className="flex justify-between items-center pt-2 border-t">
                       <span className="text-muted-foreground">Criado em</span>
