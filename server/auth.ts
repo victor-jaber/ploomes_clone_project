@@ -129,10 +129,37 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      res.json({ id: user.id, name: user.name, email: user.email });
+      res.json({ id: user.id, name: user.name, email: user.email, preferences: user.preferences ? JSON.parse(user.preferences) : {} });
     } catch (error) {
       console.error("Get user error:", error);
       res.status(500).json({ message: "Failed to get user" });
+    }
+  });
+
+  app.get("/api/auth/preferences", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      const [user] = await db.select().from(users).where(eq(users.id, authReq.user!.id));
+      if (!user) { res.status(404).json({ message: "User not found" }); return; }
+      res.json(user.preferences ? JSON.parse(user.preferences) : {});
+    } catch (error) {
+      console.error("Get preferences error:", error);
+      res.status(500).json({ message: "Failed to get preferences" });
+    }
+  });
+
+  app.put("/api/auth/preferences", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      const [user] = await db.select().from(users).where(eq(users.id, authReq.user!.id));
+      if (!user) { res.status(404).json({ message: "User not found" }); return; }
+      const currentPrefs = user.preferences ? JSON.parse(user.preferences) : {};
+      const merged = { ...currentPrefs, ...req.body };
+      await db.update(users).set({ preferences: JSON.stringify(merged) }).where(eq(users.id, authReq.user!.id));
+      res.json(merged);
+    } catch (error) {
+      console.error("Update preferences error:", error);
+      res.status(500).json({ message: "Failed to update preferences" });
     }
   });
 }

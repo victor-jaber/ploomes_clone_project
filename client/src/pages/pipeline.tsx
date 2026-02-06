@@ -2430,6 +2430,42 @@ export default function PipelinePage() {
   const [minimizedColumns, setMinimizedColumns] = useState<Set<string>>(new Set());
   const [activeFilters, setActiveFilters] = useState<PipelineFilter[]>([]);
 
+  const { data: userPreferences } = useQuery<{ minimizedColumns?: Record<string, string[]> }>({
+    queryKey: ["/api/auth/preferences"],
+  });
+
+  const prefsLoaded = useRef(false);
+  useEffect(() => {
+    if (userPreferences && !prefsLoaded.current) {
+      prefsLoaded.current = true;
+      const saved = userPreferences.minimizedColumns?.[pipelineType];
+      if (saved && saved.length > 0) {
+        setMinimizedColumns(new Set(saved));
+      }
+    }
+  }, [userPreferences, pipelineType]);
+
+  useEffect(() => {
+    if (prefsLoaded.current) {
+      const saved = userPreferences?.minimizedColumns?.[pipelineType];
+      if (saved && saved.length > 0) {
+        setMinimizedColumns(new Set(saved));
+      } else {
+        setMinimizedColumns(new Set());
+      }
+    }
+  }, [pipelineType]);
+
+  const saveMinimizedColumns = useCallback((newSet: Set<string>) => {
+    const currentMinimized = userPreferences?.minimizedColumns || {};
+    const updated = { ...currentMinimized, [pipelineType]: Array.from(newSet) };
+    apiRequest("PUT", "/api/auth/preferences", { minimizedColumns: updated });
+    queryClient.setQueryData(["/api/auth/preferences"], (old: any) => ({
+      ...old,
+      minimizedColumns: updated,
+    }));
+  }, [pipelineType, userPreferences]);
+
   const addFilter = useCallback((filter: PipelineFilter) => {
     setActiveFilters(prev => {
       const exists = prev.some(f => f.type === filter.type && f.value === filter.value);
@@ -2455,9 +2491,10 @@ export default function PipelinePage() {
       } else {
         newSet.add(stageId);
       }
+      saveMinimizedColumns(newSet);
       return newSet;
     });
-  }, []);
+  }, [saveMinimizedColumns]);
   
   // Inline entity creation states
   const [showInlineCreate, setShowInlineCreate] = useState(false);
