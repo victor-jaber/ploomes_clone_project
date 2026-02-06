@@ -3,49 +3,46 @@ import { pgTable, text, varchar, timestamp, integer, numeric, boolean, pgEnum, u
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Users table for JWT auth (Vendedores)
-export const users = pgTable("users", {
+export const usuarios = pgTable("usuarios", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
+  nome: text("nome").notNull(),
   email: text("email").notNull().unique(),
-  password: text("password").notNull(),
-  preferences: text("preferences"),
-  createdAt: timestamp("created_at").defaultNow(),
+  senha: text("senha").notNull(),
+  preferencias: text("preferencias"),
+  criadoEm: timestamp("criado_em").defaultNow(),
 });
 
-// OAuth tokens for Microsoft Calendar (per-user)
-export const userOAuthTokens = pgTable("user_oauth_tokens", {
+export const tokensOAuthUsuario = pgTable("tokens_oauth_usuario", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  provider: varchar("provider", { length: 50 }).notNull().default("microsoft"),
+  usuarioId: varchar("usuario_id").notNull().references(() => usuarios.id, { onDelete: "cascade" }),
+  provedor: varchar("provedor", { length: 50 }).notNull().default("microsoft"),
   accessToken: text("access_token").notNull(),
   refreshToken: text("refresh_token"),
-  expiresAt: timestamp("expires_at"),
-  scope: text("scope"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  expiraEm: timestamp("expira_em"),
+  escopo: text("escopo"),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
 
-export const insertUserOAuthTokenSchema = createInsertSchema(userOAuthTokens).omit({ id: true, createdAt: true, updatedAt: true });
-export type UserOAuthToken = typeof userOAuthTokens.$inferSelect;
-export type InsertUserOAuthToken = z.infer<typeof insertUserOAuthTokenSchema>;
+export const insertTokenOAuthUsuarioSchema = createInsertSchema(tokensOAuthUsuario).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export type TokenOAuthUsuario = typeof tokensOAuthUsuario.$inferSelect;
+export type InsertTokenOAuthUsuario = z.infer<typeof insertTokenOAuthUsuarioSchema>;
 
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+export const insertUsuarioSchema = createInsertSchema(usuarios).omit({ id: true, criadoEm: true });
 export const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  senha: z.string().min(6),
 });
 export const registerSchema = z.object({
-  name: z.string().min(2),
+  nome: z.string().min(2),
   email: z.string().email(),
-  password: z.string().min(6),
+  senha: z.string().min(6),
 });
 
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type Usuario = typeof usuarios.$inferSelect;
+export type InsertUsuario = z.infer<typeof insertUsuarioSchema>;
 
-// Pipeline Types
-export const pipelineTypeEnum = pgEnum("pipeline_type", [
+export const tipoPipelineEnum = pgEnum("tipo_pipeline", [
   "advogados",
   "escritorios",
   "reclamantes",
@@ -53,197 +50,184 @@ export const pipelineTypeEnum = pgEnum("pipeline_type", [
   "fechamento"
 ]);
 
-// Activity enums
-export const activityTypeEnum = pgEnum("activity_type", [
-  "call",
+export const tipoAtividadeEnum = pgEnum("tipo_atividade", [
+  "ligacao",
   "email",
-  "meeting",
-  "task",
-  "note"
+  "reuniao",
+  "tarefa",
+  "nota"
 ]);
 
-export const activityStatusEnum = pgEnum("activity_status", [
-  "pending",
-  "completed",
-  "cancelled"
+export const statusAtividadeEnum = pgEnum("status_atividade", [
+  "pendente",
+  "concluido",
+  "cancelado"
 ]);
 
-export const proposalStatusEnum = pgEnum("proposal_status", [
-  "draft",
-  "sent",
-  "accepted",
-  "rejected",
-  "expired"
+export const statusPropostaEnum = pgEnum("status_proposta", [
+  "rascunho",
+  "enviado",
+  "aceito",
+  "rejeitado",
+  "expirado"
 ]);
 
-// Lawyers (Advogados) - formerly todos_advogados_infos
-export const lawyers = pgTable("lawyers", {
-  id: serial("id").primaryKey(),
-  cpf: varchar("cpf", { length: 14 }),
-  nome: text("nome").notNull(),
-  email: text("email"),
-  telefone: text("telefone"),
-  celular: text("celular"),
+export const tipoInteracaoEnum = pgEnum("tipo_interacao", [
+  "comentario",
+  "arquivo",
+  "mudanca_status",
+  "registro_ligacao",
+  "registro_email",
+  "whatsapp",
+  "reuniao",
+  "visita"
+]);
+
+export const enderecos = pgTable("enderecos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   cep: text("cep"),
   estado: varchar("estado", { length: 2 }),
   municipio: text("municipio"),
+  cidade: text("cidade"),
   bairro: text("bairro"),
   logradouro: text("logradouro"),
   numero: text("numero"),
   complemento: text("complemento"),
-  observacoes: text("observacoes"),
-  enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
-  ownerId: varchar("owner_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
 
-// Law Firms (Escritórios)
-export const lawFirms = pgTable("law_firms", {
+export const contatos = pgTable("contatos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email"),
+  telefone: text("telefone"),
+  celular: text("celular"),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
+});
+
+export const advogados = pgTable("advogados", {
+  id: serial("id").primaryKey(),
+  cpf: varchar("cpf", { length: 14 }),
+  nome: text("nome").notNull(),
+  observacoes: text("observacoes"),
+  enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
+  enderecoId: varchar("endereco_id").references(() => enderecos.id, { onDelete: "set null" }),
+  contatoId: varchar("contato_id").references(() => contatos.id, { onDelete: "set null" }),
+  proprietarioId: varchar("proprietario_id").notNull(),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
+});
+
+export const escritorios = pgTable("escritorios", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   nome: text("nome").notNull(),
   cnpj: varchar("cnpj", { length: 18 }),
-  email: text("email"),
-  telefone: varchar("telefone", { length: 20 }),
-  endereco: text("endereco"),
-  cidade: text("cidade"),
-  estado: varchar("estado", { length: 2 }),
-  cep: varchar("cep", { length: 10 }),
   observacoes: text("observacoes"),
-  ownerId: varchar("owner_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  enderecoId: varchar("endereco_id").references(() => enderecos.id, { onDelete: "set null" }),
+  contatoId: varchar("contato_id").references(() => contatos.id, { onDelete: "set null" }),
+  proprietarioId: varchar("proprietario_id").notNull(),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
 
-// Claimants (Reclamantes)
-export const claimants = pgTable("claimants", {
+export const reclamantes = pgTable("reclamantes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   nome: text("nome").notNull(),
   cpf: varchar("cpf", { length: 14 }),
-  email: text("email"),
-  telefone: varchar("telefone", { length: 20 }),
-  celular: varchar("celular", { length: 20 }),
-  endereco: text("endereco"),
-  cidade: text("cidade"),
-  estado: varchar("estado", { length: 2 }),
-  cep: varchar("cep", { length: 10 }),
   observacoes: text("observacoes"),
   enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
-  ownerId: varchar("owner_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  enderecoId: varchar("endereco_id").references(() => enderecos.id, { onDelete: "set null" }),
+  contatoId: varchar("contato_id").references(() => contatos.id, { onDelete: "set null" }),
+  proprietarioId: varchar("proprietario_id").notNull(),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
 
-// Lawsuits (Processos)
-export const lawsuits = pgTable("lawsuits", {
+export const processos = pgTable("processos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   cnj: varchar("cnj", { length: 30 }).unique(),
-  
-  // Dados do processo
   tribunal: varchar("tribunal", { length: 100 }),
   vara: varchar("vara", { length: 200 }),
   classe: varchar("classe", { length: 200 }),
   assunto: text("assunto"),
   status: varchar("status", { length: 100 }),
   valorCausa: numeric("valor_causa", { precision: 12, scale: 2 }),
-  
-  // Partes
   autor: text("autor"),
   reu: text("reu"),
-  
-  // Datas
   dataDistribuicao: timestamp("data_distribuicao"),
   dataUltimaMovimentacao: timestamp("data_ultima_movimentacao"),
-  
-  // Dados da tese (API)
   teseId: varchar("tese_id", { length: 100 }),
   teseNome: text("tese_nome"),
   teseDescricao: text("tese_descricao"),
   probabilidadeSucesso: numeric("probabilidade_sucesso", { precision: 5, scale: 2 }),
   valorEstimado: numeric("valor_estimado", { precision: 12, scale: 2 }),
-  
-  // Dados brutos da API (JSONB como text)
   apiData: text("api_data"),
-  
   enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
-  
-  // Metadados
-  ownerId: varchar("owner_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  proprietarioId: varchar("proprietario_id").notNull(),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
 
-// Law Firm Lawyers junction table (N:N)
-export const lawFirmLawyers = pgTable("law_firm_lawyers", {
+export const escritorioAdvogados = pgTable("escritorio_advogados", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  lawFirmId: varchar("law_firm_id").notNull().references(() => lawFirms.id, { onDelete: "cascade" }),
-  lawyerId: integer("lawyer_id").notNull().references(() => lawyers.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").defaultNow(),
+  escritorioId: varchar("escritorio_id").notNull().references(() => escritorios.id, { onDelete: "cascade" }),
+  advogadoId: integer("advogado_id").notNull().references(() => advogados.id, { onDelete: "cascade" }),
+  criadoEm: timestamp("criado_em").defaultNow(),
 }, (table) => [
-  unique("law_firm_lawyer_unique").on(table.lawFirmId, table.lawyerId),
+  unique("escritorio_advogado_unique").on(table.escritorioId, table.advogadoId),
 ]);
 
-// Tabela N:N entre lawsuits e lawyers (um processo pode ter múltiplos advogados)
-export const lawsuitLawyers = pgTable("lawsuit_lawyers", {
+export const processoAdvogados = pgTable("processo_advogados", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  lawsuitId: varchar("lawsuit_id").notNull().references(() => lawsuits.id, { onDelete: "cascade" }),
-  lawyerId: integer("lawyer_id").notNull().references(() => lawyers.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").defaultNow(),
+  processoId: varchar("processo_id").notNull().references(() => processos.id, { onDelete: "cascade" }),
+  advogadoId: integer("advogado_id").notNull().references(() => advogados.id, { onDelete: "cascade" }),
+  criadoEm: timestamp("criado_em").defaultNow(),
 }, (table) => [
-  unique("lawsuit_lawyer_unique").on(table.lawsuitId, table.lawyerId),
+  unique("processo_advogado_unique").on(table.processoId, table.advogadoId),
 ]);
 
-// Tabela N:N entre lawsuits e claimants (um processo pode ter múltiplos reclamantes)
-export const lawsuitClaimants = pgTable("lawsuit_claimants", {
+export const processoReclamantes = pgTable("processo_reclamantes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  lawsuitId: varchar("lawsuit_id").notNull().references(() => lawsuits.id, { onDelete: "cascade" }),
-  claimantId: varchar("claimant_id").notNull().references(() => claimants.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").defaultNow(),
+  processoId: varchar("processo_id").notNull().references(() => processos.id, { onDelete: "cascade" }),
+  reclamanteId: varchar("reclamante_id").notNull().references(() => reclamantes.id, { onDelete: "cascade" }),
+  criadoEm: timestamp("criado_em").defaultNow(),
 }, (table) => [
-  unique("lawsuit_claimant_unique").on(table.lawsuitId, table.claimantId),
+  unique("processo_reclamante_unique").on(table.processoId, table.reclamanteId),
 ]);
 
-// Leads (Cases no pipeline) - Tabela simplificada, dados detalhados em tabelas auxiliares 1:1
 export const leads = pgTable("leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   titulo: text("titulo").notNull(),
-  pipelineType: pipelineTypeEnum("pipeline_type").notNull().default("advogados"),
-  stage: text("stage").notNull().default("novo_lead"),
-  position: integer("position").default(0),
-  
-  // Valores principais (mantidos na tabela principal para performance)
+  tipoPipeline: tipoPipelineEnum("tipo_pipeline").notNull().default("advogados"),
+  etapa: text("etapa").notNull().default("novo_lead"),
+  posicao: integer("posicao").default(0),
   valor: numeric("valor", { precision: 12, scale: 2 }),
   probabilidade: integer("probabilidade").default(0),
   previsaoFechamento: timestamp("previsao_fechamento"),
   descricao: text("descricao"),
   motivoPerda: text("motivo_perda"),
-  
-  // Relacionamentos com entidades principais
-  lawyerId: integer("lawyer_id").references(() => lawyers.id, { onDelete: "set null" }),
-  lawFirmId: varchar("law_firm_id").references(() => lawFirms.id, { onDelete: "set null" }),
-  claimantId: varchar("claimant_id").references(() => claimants.id, { onDelete: "set null" }),
-  
-  // Metadados
+  advogadoId: integer("advogado_id").references(() => advogados.id, { onDelete: "set null" }),
+  escritorioId: varchar("escritorio_id").references(() => escritorios.id, { onDelete: "set null" }),
+  reclamanteId: varchar("reclamante_id").references(() => reclamantes.id, { onDelete: "set null" }),
   vendedorId: varchar("vendedor_id"),
-  ownerId: varchar("owner_id"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  proprietarioId: varchar("proprietario_id"),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
 
-// Lead Financials (Valores de fechamento) - Normalização 1:1
-export const leadFinancials = pgTable("lead_financials", {
+export const leadFinanceiros = pgTable("lead_financeiros", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }).unique(),
   valorFechamento: numeric("valor_fechamento", { precision: 12, scale: 2 }),
   percentualComissao: numeric("percentual_comissao", { precision: 5, scale: 2 }),
   formaPagamento: text("forma_pagamento"),
   observacoesFinanceiras: text("observacoes_financeiras"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
 
-// Lead Case Details (Dados do processo) - Normalização 1:1
-export const leadCaseDetails = pgTable("lead_case_details", {
+export const leadDetalhesCaso = pgTable("lead_detalhes_caso", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }).unique(),
   tribunal: text("tribunal"),
@@ -254,11 +238,10 @@ export const leadCaseDetails = pgTable("lead_case_details", {
   cliente: text("cliente"),
   abordagem: text("abordagem"),
   origem: text("origem"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
 
-// Lead Checklist (Partes e valores específicos) - Normalização 1:1
 export const leadChecklist = pgTable("lead_checklist", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }).unique(),
@@ -273,339 +256,237 @@ export const leadChecklist = pgTable("lead_checklist", {
   dataPlanilha: timestamp("data_planilha"),
   valorOutros: numeric("valor_outros", { precision: 12, scale: 2 }),
   prazoCaso: timestamp("prazo_caso"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
 
-// Lead Assignments (Responsáveis) - Normalização 1:1
-export const leadAssignments = pgTable("lead_assignments", {
+export const leadResponsaveis = pgTable("lead_responsaveis", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }).unique(),
   comercialResponsavel: text("comercial_responsavel"),
   advogadoResponsavel: text("advogado_responsavel"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
 
-// Interaction Types
-export const interactionTypeEnum = pgEnum("interaction_type", [
-  "comment",
-  "file",
-  "status_change",
-  "call_log",
-  "email_log",
-  "whatsapp",
-  "meeting",
-  "visit"
-]);
-
-// Interactions (Comentários)
-export const interactions = pgTable("interactions", {
+export const interacoes = pgTable("interacoes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   leadId: varchar("lead_id").references(() => leads.id, { onDelete: "cascade" }),
-  type: interactionTypeEnum("type").notNull(),
-  content: text("content"),
-  fileName: text("file_name"),
-  fileUrl: text("file_url"),
-  fileType: text("file_type"),
-  metadata: text("metadata"),
-  vendedorId: varchar("vendedor_id").notNull().references(() => users.id),
-  ownerId: varchar("owner_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  tipo: tipoInteracaoEnum("tipo").notNull(),
+  conteudo: text("conteudo"),
+  nomeArquivo: text("nome_arquivo"),
+  urlArquivo: text("url_arquivo"),
+  tipoArquivo: text("tipo_arquivo"),
+  metadados: text("metadados"),
+  vendedorId: varchar("vendedor_id").notNull().references(() => usuarios.id),
+  proprietarioId: varchar("proprietario_id").notNull(),
+  criadoEm: timestamp("criado_em").defaultNow(),
 });
 
-// Activities (Tarefas)
-export const activities = pgTable("activities", {
+export const atividades = pgTable("atividades", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
-  type: activityTypeEnum("type").notNull(),
-  status: activityStatusEnum("status").default("pending"),
-  description: text("description"),
-  dueDate: timestamp("due_date"),
-  completedAt: timestamp("completed_at"),
+  titulo: text("titulo").notNull(),
+  tipo: tipoAtividadeEnum("tipo").notNull(),
+  status: statusAtividadeEnum("status").default("pendente"),
+  descricao: text("descricao"),
+  dataVencimento: timestamp("data_vencimento"),
+  concluidoEm: timestamp("concluido_em"),
   leadId: varchar("lead_id").references(() => leads.id, { onDelete: "cascade" }),
-  ownerId: varchar("owner_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  proprietarioId: varchar("proprietario_id").notNull(),
+  criadoEm: timestamp("criado_em").defaultNow(),
 });
 
-// Products
-export const products = pgTable("products", {
+export const produtos = pgTable("produtos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  description: text("description"),
+  nome: text("nome").notNull(),
+  descricao: text("descricao"),
   sku: varchar("sku", { length: 50 }),
-  price: numeric("price", { precision: 12, scale: 2 }).notNull(),
-  unit: varchar("unit", { length: 20 }).default("un"),
-  category: text("category"),
-  isActive: boolean("is_active").default(true),
-  ownerId: varchar("owner_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  preco: numeric("preco", { precision: 12, scale: 2 }).notNull(),
+  unidade: varchar("unidade", { length: 20 }).default("un"),
+  categoria: text("categoria"),
+  ativo: boolean("ativo").default(true),
+  proprietarioId: varchar("proprietario_id").notNull(),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
 
-// Proposals
-export const proposals = pgTable("proposals", {
+export const propostas = pgTable("propostas", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  number: varchar("number", { length: 20 }).notNull(),
+  numero: varchar("numero", { length: 20 }).notNull(),
   leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
-  status: proposalStatusEnum("status").default("draft"),
-  validUntil: timestamp("valid_until"),
+  status: statusPropostaEnum("status").default("rascunho"),
+  validoAte: timestamp("valido_ate"),
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).default("0"),
-  discount: numeric("discount", { precision: 12, scale: 2 }).default("0"),
+  desconto: numeric("desconto", { precision: 12, scale: 2 }).default("0"),
   total: numeric("total", { precision: 12, scale: 2 }).default("0"),
-  notes: text("notes"),
-  terms: text("terms"),
-  ownerId: varchar("owner_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  observacoes: text("observacoes"),
+  termos: text("termos"),
+  proprietarioId: varchar("proprietario_id").notNull(),
+  criadoEm: timestamp("criado_em").defaultNow(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
 
-// Proposal Items
-export const proposalItems = pgTable("proposal_items", {
+export const propostaItens = pgTable("proposta_itens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  proposalId: varchar("proposal_id").notNull().references(() => proposals.id, { onDelete: "cascade" }),
-  productId: varchar("product_id").references(() => products.id),
-  description: text("description").notNull(),
-  quantity: numeric("quantity", { precision: 10, scale: 2 }).default("1"),
-  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
-  discount: numeric("discount", { precision: 12, scale: 2 }).default("0"),
+  propostaId: varchar("proposta_id").notNull().references(() => propostas.id, { onDelete: "cascade" }),
+  produtoId: varchar("produto_id").references(() => produtos.id),
+  descricao: text("descricao").notNull(),
+  quantidade: numeric("quantidade", { precision: 10, scale: 2 }).default("1"),
+  precoUnitario: numeric("preco_unitario", { precision: 12, scale: 2 }).notNull(),
+  desconto: numeric("desconto", { precision: 12, scale: 2 }).default("0"),
   total: numeric("total", { precision: 12, scale: 2 }).notNull(),
 });
 
-// Relations
-export const lawyersRelations = relations(lawyers, ({ many }) => ({
-  lawFirmLawyers: many(lawFirmLawyers),
-  lawsuitLawyers: many(lawsuitLawyers),
+export const enderecosRelations = relations(enderecos, ({ many }) => ({}));
+export const contatosRelations = relations(contatos, ({ many }) => ({}));
+
+export const advogadosRelations = relations(advogados, ({ one, many }) => ({
+  endereco: one(enderecos, { fields: [advogados.enderecoId], references: [enderecos.id] }),
+  contato: one(contatos, { fields: [advogados.contatoId], references: [contatos.id] }),
+  escritorioAdvogados: many(escritorioAdvogados),
+  processoAdvogados: many(processoAdvogados),
 }));
 
-export const claimantsRelations = relations(claimants, ({ many }) => ({
-  lawsuitClaimants: many(lawsuitClaimants),
+export const reclamantesRelations = relations(reclamantes, ({ one, many }) => ({
+  endereco: one(enderecos, { fields: [reclamantes.enderecoId], references: [enderecos.id] }),
+  contato: one(contatos, { fields: [reclamantes.contatoId], references: [contatos.id] }),
+  processoReclamantes: many(processoReclamantes),
 }));
 
-export const lawFirmsRelations = relations(lawFirms, ({ many }) => ({
-  lawFirmLawyers: many(lawFirmLawyers),
+export const escritoriosRelations = relations(escritorios, ({ one, many }) => ({
+  endereco: one(enderecos, { fields: [escritorios.enderecoId], references: [enderecos.id] }),
+  contato: one(contatos, { fields: [escritorios.contatoId], references: [contatos.id] }),
+  escritorioAdvogados: many(escritorioAdvogados),
 }));
 
-export const lawFirmLawyersRelations = relations(lawFirmLawyers, ({ one }) => ({
-  lawFirm: one(lawFirms, {
-    fields: [lawFirmLawyers.lawFirmId],
-    references: [lawFirms.id],
-  }),
-  lawyer: one(lawyers, {
-    fields: [lawFirmLawyers.lawyerId],
-    references: [lawyers.id],
-  }),
+export const escritorioAdvogadosRelations = relations(escritorioAdvogados, ({ one }) => ({
+  escritorio: one(escritorios, { fields: [escritorioAdvogados.escritorioId], references: [escritorios.id] }),
+  advogado: one(advogados, { fields: [escritorioAdvogados.advogadoId], references: [advogados.id] }),
 }));
 
-export const lawsuitsRelations = relations(lawsuits, ({ many }) => ({
-  lawsuitLawyers: many(lawsuitLawyers),
-  lawsuitClaimants: many(lawsuitClaimants),
+export const processosRelations = relations(processos, ({ many }) => ({
+  processoAdvogados: many(processoAdvogados),
+  processoReclamantes: many(processoReclamantes),
 }));
 
-export const lawsuitLawyersRelations = relations(lawsuitLawyers, ({ one }) => ({
-  lawsuit: one(lawsuits, {
-    fields: [lawsuitLawyers.lawsuitId],
-    references: [lawsuits.id],
-  }),
-  lawyer: one(lawyers, {
-    fields: [lawsuitLawyers.lawyerId],
-    references: [lawyers.id],
-  }),
+export const processoAdvogadosRelations = relations(processoAdvogados, ({ one }) => ({
+  processo: one(processos, { fields: [processoAdvogados.processoId], references: [processos.id] }),
+  advogado: one(advogados, { fields: [processoAdvogados.advogadoId], references: [advogados.id] }),
 }));
 
-export const lawsuitClaimantsRelations = relations(lawsuitClaimants, ({ one }) => ({
-  lawsuit: one(lawsuits, {
-    fields: [lawsuitClaimants.lawsuitId],
-    references: [lawsuits.id],
-  }),
-  claimant: one(claimants, {
-    fields: [lawsuitClaimants.claimantId],
-    references: [claimants.id],
-  }),
+export const processoReclamantesRelations = relations(processoReclamantes, ({ one }) => ({
+  processo: one(processos, { fields: [processoReclamantes.processoId], references: [processos.id] }),
+  reclamante: one(reclamantes, { fields: [processoReclamantes.reclamanteId], references: [reclamantes.id] }),
 }));
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
-  vendedor: one(users, {
-    fields: [leads.vendedorId],
-    references: [users.id],
-  }),
-  lawyer: one(lawyers, {
-    fields: [leads.lawyerId],
-    references: [lawyers.id],
-  }),
-  lawFirm: one(lawFirms, {
-    fields: [leads.lawFirmId],
-    references: [lawFirms.id],
-  }),
-  claimant: one(claimants, {
-    fields: [leads.claimantId],
-    references: [claimants.id],
-  }),
-  // Tabelas normalizadas 1:1
-  financials: one(leadFinancials, {
-    fields: [leads.id],
-    references: [leadFinancials.leadId],
-  }),
-  caseDetails: one(leadCaseDetails, {
-    fields: [leads.id],
-    references: [leadCaseDetails.leadId],
-  }),
-  checklist: one(leadChecklist, {
-    fields: [leads.id],
-    references: [leadChecklist.leadId],
-  }),
-  assignments: one(leadAssignments, {
-    fields: [leads.id],
-    references: [leadAssignments.leadId],
-  }),
-  interactions: many(interactions),
-  activities: many(activities),
-  proposals: many(proposals),
+  vendedor: one(usuarios, { fields: [leads.vendedorId], references: [usuarios.id] }),
+  advogado: one(advogados, { fields: [leads.advogadoId], references: [advogados.id] }),
+  escritorio: one(escritorios, { fields: [leads.escritorioId], references: [escritorios.id] }),
+  reclamante: one(reclamantes, { fields: [leads.reclamanteId], references: [reclamantes.id] }),
+  financeiros: one(leadFinanceiros, { fields: [leads.id], references: [leadFinanceiros.leadId] }),
+  detalhesCaso: one(leadDetalhesCaso, { fields: [leads.id], references: [leadDetalhesCaso.leadId] }),
+  checklist: one(leadChecklist, { fields: [leads.id], references: [leadChecklist.leadId] }),
+  responsaveis: one(leadResponsaveis, { fields: [leads.id], references: [leadResponsaveis.leadId] }),
+  interacoes: many(interacoes),
+  atividades: many(atividades),
+  propostas: many(propostas),
 }));
 
-// Relations para tabelas normalizadas
-export const leadFinancialsRelations = relations(leadFinancials, ({ one }) => ({
-  lead: one(leads, {
-    fields: [leadFinancials.leadId],
-    references: [leads.id],
-  }),
+export const leadFinanceirosRelations = relations(leadFinanceiros, ({ one }) => ({
+  lead: one(leads, { fields: [leadFinanceiros.leadId], references: [leads.id] }),
 }));
 
-export const leadCaseDetailsRelations = relations(leadCaseDetails, ({ one }) => ({
-  lead: one(leads, {
-    fields: [leadCaseDetails.leadId],
-    references: [leads.id],
-  }),
+export const leadDetalhesCasoRelations = relations(leadDetalhesCaso, ({ one }) => ({
+  lead: one(leads, { fields: [leadDetalhesCaso.leadId], references: [leads.id] }),
 }));
 
 export const leadChecklistRelations = relations(leadChecklist, ({ one }) => ({
-  lead: one(leads, {
-    fields: [leadChecklist.leadId],
-    references: [leads.id],
-  }),
+  lead: one(leads, { fields: [leadChecklist.leadId], references: [leads.id] }),
 }));
 
-export const leadAssignmentsRelations = relations(leadAssignments, ({ one }) => ({
-  lead: one(leads, {
-    fields: [leadAssignments.leadId],
-    references: [leads.id],
-  }),
+export const leadResponsaveisRelations = relations(leadResponsaveis, ({ one }) => ({
+  lead: one(leads, { fields: [leadResponsaveis.leadId], references: [leads.id] }),
 }));
 
-export const interactionsRelations = relations(interactions, ({ one }) => ({
-  lead: one(leads, {
-    fields: [interactions.leadId],
-    references: [leads.id],
-  }),
-  vendedor: one(users, {
-    fields: [interactions.vendedorId],
-    references: [users.id],
-  }),
+export const interacoesRelations = relations(interacoes, ({ one }) => ({
+  lead: one(leads, { fields: [interacoes.leadId], references: [leads.id] }),
+  vendedor: one(usuarios, { fields: [interacoes.vendedorId], references: [usuarios.id] }),
 }));
 
-export const activitiesRelations = relations(activities, ({ one }) => ({
-  lead: one(leads, {
-    fields: [activities.leadId],
-    references: [leads.id],
-  }),
+export const atividadesRelations = relations(atividades, ({ one }) => ({
+  lead: one(leads, { fields: [atividades.leadId], references: [leads.id] }),
 }));
 
-export const proposalsRelations = relations(proposals, ({ one, many }) => ({
-  lead: one(leads, {
-    fields: [proposals.leadId],
-    references: [leads.id],
-  }),
-  items: many(proposalItems),
+export const propostasRelations = relations(propostas, ({ one, many }) => ({
+  lead: one(leads, { fields: [propostas.leadId], references: [leads.id] }),
+  itens: many(propostaItens),
 }));
 
-export const proposalItemsRelations = relations(proposalItems, ({ one }) => ({
-  proposal: one(proposals, {
-    fields: [proposalItems.proposalId],
-    references: [proposals.id],
-  }),
-  product: one(products, {
-    fields: [proposalItems.productId],
-    references: [products.id],
-  }),
+export const propostaItensRelations = relations(propostaItens, ({ one }) => ({
+  proposta: one(propostas, { fields: [propostaItens.propostaId], references: [propostas.id] }),
+  produto: one(produtos, { fields: [propostaItens.produtoId], references: [produtos.id] }),
 }));
 
-// Insert schemas
-export const insertLawyerSchema = createInsertSchema(lawyers).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertLawFirmSchema = createInsertSchema(lawFirms).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertClaimantSchema = createInsertSchema(claimants).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertLawsuitSchema = createInsertSchema(lawsuits).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertLawFirmLawyerSchema = createInsertSchema(lawFirmLawyers).omit({ id: true, createdAt: true });
-export const insertLawsuitLawyerSchema = createInsertSchema(lawsuitLawyers).omit({ id: true, createdAt: true });
-export const insertLawsuitClaimantSchema = createInsertSchema(lawsuitClaimants).omit({ id: true, createdAt: true });
-export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertLeadFinancialsSchema = createInsertSchema(leadFinancials).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertLeadCaseDetailsSchema = createInsertSchema(leadCaseDetails).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertLeadChecklistSchema = createInsertSchema(leadChecklist).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertLeadAssignmentsSchema = createInsertSchema(leadAssignments).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertInteractionSchema = createInsertSchema(interactions).omit({ id: true, createdAt: true });
-export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, createdAt: true });
-export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertProposalSchema = createInsertSchema(proposals).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertProposalItemSchema = createInsertSchema(proposalItems).omit({ id: true });
+export const insertEnderecoSchema = createInsertSchema(enderecos).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertContatoSchema = createInsertSchema(contatos).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertAdvogadoSchema = createInsertSchema(advogados).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertEscritorioSchema = createInsertSchema(escritorios).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertReclamanteSchema = createInsertSchema(reclamantes).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertProcessoSchema = createInsertSchema(processos).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertEscritorioAdvogadoSchema = createInsertSchema(escritorioAdvogados).omit({ id: true, criadoEm: true });
+export const insertProcessoAdvogadoSchema = createInsertSchema(processoAdvogados).omit({ id: true, criadoEm: true });
+export const insertProcessoReclamanteSchema = createInsertSchema(processoReclamantes).omit({ id: true, criadoEm: true });
+export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertLeadFinanceiroSchema = createInsertSchema(leadFinanceiros).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertLeadDetalhesCasoSchema = createInsertSchema(leadDetalhesCaso).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertLeadChecklistSchema = createInsertSchema(leadChecklist).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertLeadResponsaveisSchema = createInsertSchema(leadResponsaveis).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertInteracaoSchema = createInsertSchema(interacoes).omit({ id: true, criadoEm: true });
+export const insertAtividadeSchema = createInsertSchema(atividades).omit({ id: true, criadoEm: true });
+export const insertProdutoSchema = createInsertSchema(produtos).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertPropostaSchema = createInsertSchema(propostas).omit({ id: true, criadoEm: true, atualizadoEm: true });
+export const insertPropostaItemSchema = createInsertSchema(propostaItens).omit({ id: true });
 
-// Types
-export type Lawyer = typeof lawyers.$inferSelect;
-export type InsertLawyer = z.infer<typeof insertLawyerSchema>;
-export type LawFirm = typeof lawFirms.$inferSelect;
-export type InsertLawFirm = z.infer<typeof insertLawFirmSchema>;
-export type Claimant = typeof claimants.$inferSelect;
-export type InsertClaimant = z.infer<typeof insertClaimantSchema>;
-export type Lawsuit = typeof lawsuits.$inferSelect;
-export type InsertLawsuit = z.infer<typeof insertLawsuitSchema>;
-export type LawFirmLawyer = typeof lawFirmLawyers.$inferSelect;
-export type InsertLawFirmLawyer = z.infer<typeof insertLawFirmLawyerSchema>;
-export type LawsuitLawyer = typeof lawsuitLawyers.$inferSelect;
-export type InsertLawsuitLawyer = z.infer<typeof insertLawsuitLawyerSchema>;
-export type LawsuitClaimant = typeof lawsuitClaimants.$inferSelect;
-export type InsertLawsuitClaimant = z.infer<typeof insertLawsuitClaimantSchema>;
+export type Endereco = typeof enderecos.$inferSelect;
+export type InsertEndereco = z.infer<typeof insertEnderecoSchema>;
+export type Contato = typeof contatos.$inferSelect;
+export type InsertContato = z.infer<typeof insertContatoSchema>;
+export type Advogado = typeof advogados.$inferSelect;
+export type InsertAdvogado = z.infer<typeof insertAdvogadoSchema>;
+export type Escritorio = typeof escritorios.$inferSelect;
+export type InsertEscritorio = z.infer<typeof insertEscritorioSchema>;
+export type Reclamante = typeof reclamantes.$inferSelect;
+export type InsertReclamante = z.infer<typeof insertReclamanteSchema>;
+export type Processo = typeof processos.$inferSelect;
+export type InsertProcesso = z.infer<typeof insertProcessoSchema>;
+export type EscritorioAdvogado = typeof escritorioAdvogados.$inferSelect;
+export type InsertEscritorioAdvogado = z.infer<typeof insertEscritorioAdvogadoSchema>;
+export type ProcessoAdvogado = typeof processoAdvogados.$inferSelect;
+export type InsertProcessoAdvogado = z.infer<typeof insertProcessoAdvogadoSchema>;
+export type ProcessoReclamante = typeof processoReclamantes.$inferSelect;
+export type InsertProcessoReclamante = z.infer<typeof insertProcessoReclamanteSchema>;
 export type Lead = typeof leads.$inferSelect;
 export type InsertLead = z.infer<typeof insertLeadSchema>;
-export type LeadFinancials = typeof leadFinancials.$inferSelect;
-export type InsertLeadFinancials = z.infer<typeof insertLeadFinancialsSchema>;
-export type LeadCaseDetails = typeof leadCaseDetails.$inferSelect;
-export type InsertLeadCaseDetails = z.infer<typeof insertLeadCaseDetailsSchema>;
+export type LeadFinanceiro = typeof leadFinanceiros.$inferSelect;
+export type InsertLeadFinanceiro = z.infer<typeof insertLeadFinanceiroSchema>;
+export type LeadDetalhesCaso = typeof leadDetalhesCaso.$inferSelect;
+export type InsertLeadDetalhesCaso = z.infer<typeof insertLeadDetalhesCasoSchema>;
 export type LeadChecklist = typeof leadChecklist.$inferSelect;
 export type InsertLeadChecklist = z.infer<typeof insertLeadChecklistSchema>;
-export type LeadAssignments = typeof leadAssignments.$inferSelect;
-export type InsertLeadAssignments = z.infer<typeof insertLeadAssignmentsSchema>;
-export type Interaction = typeof interactions.$inferSelect;
-export type InsertInteraction = z.infer<typeof insertInteractionSchema>;
-export type Activity = typeof activities.$inferSelect;
-export type InsertActivity = z.infer<typeof insertActivitySchema>;
-export type Product = typeof products.$inferSelect;
-export type InsertProduct = z.infer<typeof insertProductSchema>;
-export type Proposal = typeof proposals.$inferSelect;
-export type InsertProposal = z.infer<typeof insertProposalSchema>;
-export type ProposalItem = typeof proposalItems.$inferSelect;
-export type InsertProposalItem = z.infer<typeof insertProposalItemSchema>;
+export type LeadResponsaveis = typeof leadResponsaveis.$inferSelect;
+export type InsertLeadResponsaveis = z.infer<typeof insertLeadResponsaveisSchema>;
+export type Interacao = typeof interacoes.$inferSelect;
+export type InsertInteracao = z.infer<typeof insertInteracaoSchema>;
+export type Atividade = typeof atividades.$inferSelect;
+export type InsertAtividade = z.infer<typeof insertAtividadeSchema>;
+export type Produto = typeof produtos.$inferSelect;
+export type InsertProduto = z.infer<typeof insertProdutoSchema>;
+export type Proposta = typeof propostas.$inferSelect;
+export type InsertProposta = z.infer<typeof insertPropostaSchema>;
+export type PropostaItem = typeof propostaItens.$inferSelect;
+export type InsertPropostaItem = z.infer<typeof insertPropostaItemSchema>;
 
-// Backward compatibility aliases
-export const todosAdvogadosInfos = lawyers;
-export type TodosAdvogadosInfos = Lawyer;
-export type InsertTodosAdvogadosInfos = InsertLawyer;
-export const insertTodosAdvogadosInfosSchema = insertLawyerSchema;
-
-export const escritorios = lawFirms;
-export type Escritorio = LawFirm;
-export type InsertEscritorio = InsertLawFirm;
-export const insertEscritorioSchema = insertLawFirmSchema;
-
-export const reclamantes = claimants;
-export type Reclamante = Claimant;
-export type InsertReclamante = InsertClaimant;
-export const insertReclamanteSchema = insertClaimantSchema;
-
-export const cases = leads;
-export type Case = Lead;
-export type InsertCase = InsertLead;
-export const insertCaseSchema = insertLeadSchema;
-
-// Pipeline stage configurations
 export const PIPELINE_STAGES = {
   advogados: [
     { id: "novo_lead", label: "Novo Lead", color: "bg-blue-500" },
@@ -617,7 +498,7 @@ export const PIPELINE_STAGES = {
   escritorios: [
     { id: "novo_lead", label: "Novo Lead", color: "bg-blue-500" },
     { id: "contato_inicial", label: "Contato Inicial", color: "bg-purple-500" },
-    { id: "reuniao_agendada", label: "Reunião Agendada", color: "bg-yellow-500" },
+    { id: "reuniao_agendada", label: "Reuniao Agendada", color: "bg-yellow-500" },
     { id: "proposta_enviada", label: "Proposta Enviada", color: "bg-orange-500" },
     { id: "qualificado", label: "Qualificado", color: "bg-green-500" },
   ],
@@ -634,8 +515,8 @@ export const PIPELINE_STAGES = {
     { id: "triagem", label: "Triagem", color: "bg-yellow-500" },
     { id: "acompanhar", label: "Acompanhar", color: "bg-purple-500" },
     { id: "discutir", label: "Discutir", color: "bg-orange-500" },
-    { id: "analise_financeira", label: "Análise Financeira", color: "bg-cyan-500" },
-    { id: "negociacao_valores", label: "Negociação de Valores", color: "bg-indigo-500" },
+    { id: "analise_financeira", label: "Analise Financeira", color: "bg-cyan-500" },
+    { id: "negociacao_valores", label: "Negociacao de Valores", color: "bg-indigo-500" },
     { id: "contrato", label: "Contrato", color: "bg-amber-500" },
     { id: "assinatura", label: "Assinatura", color: "bg-teal-500" },
     { id: "fechado", label: "Fechado", color: "bg-green-500" },

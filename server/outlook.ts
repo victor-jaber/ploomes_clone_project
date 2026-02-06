@@ -1,7 +1,7 @@
 import { Client } from "@microsoft/microsoft-graph-client";
 import logger from "./logger";
 import { db } from "./db";
-import { userOAuthTokens } from "@shared/schema";
+import { tokensOAuthUsuario } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 const MICROSOFT_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID;
@@ -132,27 +132,27 @@ export async function saveUserTokens(userId: string, tokens: {
   const expiresAt = new Date(Date.now() + tokens.expiresIn * 1000);
   
   const existing = await db.select()
-    .from(userOAuthTokens)
-    .where(eq(userOAuthTokens.userId, userId))
+    .from(tokensOAuthUsuario)
+    .where(eq(tokensOAuthUsuario.usuarioId, userId))
     .limit(1);
   
   if (existing.length > 0) {
-    await db.update(userOAuthTokens)
+    await db.update(tokensOAuthUsuario)
       .set({
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
-        expiresAt: expiresAt,
-        updatedAt: new Date()
+        expiraEm: expiresAt,
+        atualizadoEm: new Date()
       })
-      .where(eq(userOAuthTokens.userId, userId));
+      .where(eq(tokensOAuthUsuario.usuarioId, userId));
   } else {
-    await db.insert(userOAuthTokens).values({
-      userId: userId,
-      provider: "microsoft",
+    await db.insert(tokensOAuthUsuario).values({
+      usuarioId: userId,
+      provedor: "microsoft",
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
-      expiresAt: expiresAt,
-      scope: SCOPES
+      expiraEm: expiresAt,
+      escopo: SCOPES
     });
   }
   
@@ -165,8 +165,8 @@ export async function getUserTokens(userId: string): Promise<{
   expiresAt: Date | null;
 } | null> {
   const tokens = await db.select()
-    .from(userOAuthTokens)
-    .where(eq(userOAuthTokens.userId, userId))
+    .from(tokensOAuthUsuario)
+    .where(eq(tokensOAuthUsuario.usuarioId, userId))
     .limit(1);
   
   if (tokens.length === 0) {
@@ -176,13 +176,13 @@ export async function getUserTokens(userId: string): Promise<{
   return {
     accessToken: tokens[0].accessToken,
     refreshToken: tokens[0].refreshToken,
-    expiresAt: tokens[0].expiresAt
+    expiresAt: tokens[0].expiraEm
   };
 }
 
 export async function deleteUserTokens(userId: string): Promise<void> {
-  await db.delete(userOAuthTokens)
-    .where(eq(userOAuthTokens.userId, userId));
+  await db.delete(tokensOAuthUsuario)
+    .where(eq(tokensOAuthUsuario.usuarioId, userId));
   
   logger.info("Tokens Microsoft removidos para usuário", { prefix: "OAuth" });
 }

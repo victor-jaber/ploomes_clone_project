@@ -46,43 +46,43 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Activity, Client, Opportunity, InsertActivity } from "@shared/schema";
+import type { Atividade, InsertAtividade, Lead } from "@shared/schema";
 
 const activityTypes = [
-  { value: "call", label: "Ligação", icon: Phone },
+  { value: "ligacao", label: "Ligação", icon: Phone },
   { value: "email", label: "E-mail", icon: Mail },
-  { value: "meeting", label: "Reunião", icon: Users },
-  { value: "task", label: "Tarefa", icon: CheckSquare },
-  { value: "note", label: "Nota", icon: FileText },
+  { value: "reuniao", label: "Reunião", icon: Users },
+  { value: "tarefa", label: "Tarefa", icon: CheckSquare },
+  { value: "nota", label: "Nota", icon: FileText },
 ];
 
 const activityStatuses = [
-  { value: "pending", label: "Pendente", color: "bg-yellow-500" },
-  { value: "completed", label: "Concluída", color: "bg-green-500" },
-  { value: "cancelled", label: "Cancelada", color: "bg-gray-500" },
+  { value: "pendente", label: "Pendente", color: "bg-yellow-500" },
+  { value: "concluido", label: "Concluída", color: "bg-green-500" },
+  { value: "cancelado", label: "Cancelada", color: "bg-gray-500" },
 ];
 
 export default function ActivitiesPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [editingActivity, setEditingActivity] = useState<Atividade | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("pending");
+  const [activeTab, setActiveTab] = useState("pendente");
 
-  const { data: activities = [], isLoading } = useQuery<Activity[]>({
+  const { data: activities = [], isLoading } = useQuery<Atividade[]>({
     queryKey: ["/api/activities"],
   });
 
-  const { data: clients = [] } = useQuery<Client[]>({
+  const { data: clients = [] } = useQuery<Lead[]>({
     queryKey: ["/api/clients"],
   });
 
-  const { data: opportunities = [] } = useQuery<Opportunity[]>({
+  const { data: opportunities = [] } = useQuery<Lead[]>({
     queryKey: ["/api/opportunities"],
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: InsertActivity) => {
+    mutationFn: async (data: InsertAtividade) => {
       return apiRequest("POST", "/api/activities", data);
     },
     onSuccess: () => {
@@ -101,7 +101,7 @@ export default function ActivitiesPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertActivity> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertAtividade> }) => {
       return apiRequest("PATCH", `/api/activities/${id}`, data);
     },
     onSuccess: () => {
@@ -136,38 +136,37 @@ export default function ActivitiesPage() {
     },
   });
 
-  const toggleComplete = (activity: Activity) => {
-    const newStatus = activity.status === "completed" ? "pending" : "completed";
+  const toggleComplete = (activity: Atividade) => {
+    const newStatus = activity.status === "concluido" ? "pendente" : "concluido";
     updateMutation.mutate({
       id: activity.id,
       data: {
         status: newStatus,
-        completedAt: newStatus === "completed" ? new Date() : null,
+        concluidoEm: newStatus === "concluido" ? new Date() : null,
       },
     });
   };
 
   const filteredActivities = activities.filter((activity) => {
-    const matchesSearch = activity.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = activity.titulo.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTab =
       activeTab === "all" ||
-      (activeTab === "pending" && activity.status === "pending") ||
-      (activeTab === "completed" && activity.status === "completed");
+      (activeTab === "pendente" && activity.status === "pendente") ||
+      (activeTab === "concluido" && activity.status === "concluido");
     return matchesSearch && matchesTab;
   });
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const data: InsertActivity = {
-      title: formData.get("title") as string,
-      type: formData.get("type") as any,
-      status: "pending",
-      description: formData.get("description") as string,
-      dueDate: formData.get("dueDate") ? new Date(formData.get("dueDate") as string) : null,
-      clientId: formData.get("clientId") as string || null,
-      opportunityId: formData.get("opportunityId") as string || null,
-      ownerId: "",
+    const data: InsertAtividade = {
+      titulo: formData.get("title") as string,
+      tipo: formData.get("type") as any,
+      status: "pendente",
+      descricao: formData.get("description") as string,
+      dataVencimento: formData.get("dueDate") ? new Date(formData.get("dueDate") as string) : null,
+      leadId: formData.get("leadId") as string || null,
+      proprietarioId: "",
     };
 
     if (editingActivity) {
@@ -177,7 +176,7 @@ export default function ActivitiesPage() {
     }
   };
 
-  const openEditDialog = (activity: Activity) => {
+  const openEditDialog = (activity: Atividade) => {
     setEditingActivity(activity);
     setIsDialogOpen(true);
   };
@@ -194,17 +193,17 @@ export default function ActivitiesPage() {
 
   const getClientName = (clientId: string | null) => {
     if (!clientId) return null;
-    return clients.find((c) => c.id === clientId)?.companyName;
+    return clients.find((c) => c.id === clientId)?.titulo;
   };
 
   const getOpportunityTitle = (oppId: string | null) => {
     if (!oppId) return null;
-    return opportunities.find((o) => o.id === oppId)?.title;
+    return opportunities.find((o) => o.id === oppId)?.titulo;
   };
 
-  const isOverdue = (activity: Activity) => {
-    if (activity.status !== "pending" || !activity.dueDate) return false;
-    return new Date(activity.dueDate) < new Date();
+  const isOverdue = (activity: Atividade) => {
+    if (activity.status !== "pendente" || !activity.dataVencimento) return false;
+    return new Date(activity.dataVencimento) < new Date();
   };
 
   return (
@@ -235,7 +234,7 @@ export default function ActivitiesPage() {
                 <Input
                   id="title"
                   name="title"
-                  defaultValue={editingActivity?.title}
+                  defaultValue={editingActivity?.titulo}
                   required
                   data-testid="input-activity-title"
                 />
@@ -243,7 +242,7 @@ export default function ActivitiesPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="type">Tipo *</Label>
-                  <Select name="type" defaultValue={editingActivity?.type || "task"} required>
+                  <Select name="type" defaultValue={editingActivity?.tipo || "tarefa"} required>
                     <SelectTrigger data-testid="select-activity-type">
                       <SelectValue />
                     </SelectTrigger>
@@ -266,8 +265,8 @@ export default function ActivitiesPage() {
                     name="dueDate"
                     type="datetime-local"
                     defaultValue={
-                      editingActivity?.dueDate
-                        ? new Date(editingActivity.dueDate).toISOString().slice(0, 16)
+                      editingActivity?.dataVencimento
+                        ? new Date(editingActivity.dataVencimento).toISOString().slice(0, 16)
                         : ""
                     }
                     data-testid="input-activity-due-date"
@@ -276,7 +275,7 @@ export default function ActivitiesPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="clientId">Cliente (opcional)</Label>
-                <Select name="clientId" defaultValue={editingActivity?.clientId || ""}>
+                <Select name="leadId" defaultValue={editingActivity?.leadId || ""}>
                   <SelectTrigger data-testid="select-activity-client">
                     <SelectValue placeholder="Selecione um cliente" />
                   </SelectTrigger>
@@ -284,7 +283,7 @@ export default function ActivitiesPage() {
                     <SelectItem value="">Nenhum</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
-                        {client.companyName}
+                        {client.titulo}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -292,7 +291,7 @@ export default function ActivitiesPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="opportunityId">Oportunidade (opcional)</Label>
-                <Select name="opportunityId" defaultValue={editingActivity?.opportunityId || ""}>
+                <Select name="leadId" defaultValue={editingActivity?.leadId || ""}>
                   <SelectTrigger data-testid="select-activity-opportunity">
                     <SelectValue placeholder="Selecione uma oportunidade" />
                   </SelectTrigger>
@@ -300,7 +299,7 @@ export default function ActivitiesPage() {
                     <SelectItem value="">Nenhuma</SelectItem>
                     {opportunities.map((opp) => (
                       <SelectItem key={opp.id} value={opp.id}>
-                        {opp.title}
+                        {opp.titulo}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -311,7 +310,7 @@ export default function ActivitiesPage() {
                 <Textarea
                   id="description"
                   name="description"
-                  defaultValue={editingActivity?.description || ""}
+                  defaultValue={editingActivity?.descricao || ""}
                   data-testid="input-activity-description"
                 />
               </div>
@@ -347,11 +346,11 @@ export default function ActivitiesPage() {
             </div>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList>
-                <TabsTrigger value="pending" data-testid="tab-pending">
+                <TabsTrigger value="pendente" data-testid="tab-pending">
                   <Clock className="h-4 w-4 mr-2" />
                   Pendentes
                 </TabsTrigger>
-                <TabsTrigger value="completed" data-testid="tab-completed">
+                <TabsTrigger value="concluido" data-testid="tab-completed">
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   Concluídas
                 </TabsTrigger>
@@ -382,13 +381,13 @@ export default function ActivitiesPage() {
           ) : (
             <div className="space-y-3">
               {filteredActivities.map((activity) => {
-                const TypeIcon = getTypeIcon(activity.type);
+                const TypeIcon = getTypeIcon(activity.tipo);
                 const overdue = isOverdue(activity);
                 return (
                   <div
                     key={activity.id}
                     className={`flex items-start gap-4 p-4 rounded-lg border ${
-                      activity.status === "completed"
+                      activity.status === "concluido"
                         ? "bg-muted/30"
                         : overdue
                         ? "border-destructive/50 bg-destructive/5"
@@ -397,7 +396,7 @@ export default function ActivitiesPage() {
                     data-testid={`activity-item-${activity.id}`}
                   >
                     <Checkbox
-                      checked={activity.status === "completed"}
+                      checked={activity.status === "concluido"}
                       onCheckedChange={() => toggleComplete(activity)}
                       className="mt-1"
                       data-testid={`checkbox-activity-${activity.id}`}
@@ -407,12 +406,12 @@ export default function ActivitiesPage() {
                         <TypeIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <p
                           className={`font-medium ${
-                            activity.status === "completed"
+                            activity.status === "concluido"
                               ? "line-through text-muted-foreground"
                               : ""
                           }`}
                         >
-                          {activity.title}
+                          {activity.titulo}
                         </p>
                         {overdue && (
                           <Badge variant="destructive" className="text-xs">
@@ -421,10 +420,10 @@ export default function ActivitiesPage() {
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                        {activity.dueDate && (
+                        {activity.dataVencimento && (
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {new Date(activity.dueDate).toLocaleString("pt-BR", {
+                            {new Date(activity.dataVencimento).toLocaleString("pt-BR", {
                               day: "2-digit",
                               month: "2-digit",
                               hour: "2-digit",
@@ -432,20 +431,20 @@ export default function ActivitiesPage() {
                             })}
                           </span>
                         )}
-                        {getClientName(activity.clientId) && (
+                        {getClientName(activity.leadId) && (
                           <Badge variant="secondary" className="text-xs">
-                            {getClientName(activity.clientId)}
+                            {getClientName(activity.leadId)}
                           </Badge>
                         )}
-                        {getOpportunityTitle(activity.opportunityId) && (
+                        {getOpportunityTitle(activity.leadId) && (
                           <Badge variant="outline" className="text-xs">
-                            {getOpportunityTitle(activity.opportunityId)}
+                            {getOpportunityTitle(activity.leadId)}
                           </Badge>
                         )}
                       </div>
-                      {activity.description && (
+                      {activity.descricao && (
                         <p className="text-sm text-muted-foreground line-clamp-2">
-                          {activity.description}
+                          {activity.descricao}
                         </p>
                       )}
                     </div>

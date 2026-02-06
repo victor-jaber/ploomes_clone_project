@@ -48,14 +48,14 @@ import {
   Target,
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Proposal, Opportunity, InsertProposal } from "@shared/schema";
+import type { Proposta, Lead, InsertProposta } from "@shared/schema";
 
 const proposalStatuses = [
-  { value: "draft", label: "Rascunho", color: "bg-gray-500" },
-  { value: "sent", label: "Enviada", color: "bg-blue-500" },
-  { value: "accepted", label: "Aceita", color: "bg-green-500" },
-  { value: "rejected", label: "Rejeitada", color: "bg-red-500" },
-  { value: "expired", label: "Expirada", color: "bg-orange-500" },
+  { value: "rascunho", label: "Rascunho", color: "bg-gray-500" },
+  { value: "enviado", label: "Enviada", color: "bg-blue-500" },
+  { value: "aceito", label: "Aceita", color: "bg-green-500" },
+  { value: "rejeitado", label: "Rejeitada", color: "bg-red-500" },
+  { value: "expirado", label: "Expirada", color: "bg-orange-500" },
 ];
 
 function formatCurrency(value: number) {
@@ -68,21 +68,21 @@ function formatCurrency(value: number) {
 export default function ProposalsPage() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
-  const [viewingProposal, setViewingProposal] = useState<Proposal | null>(null);
+  const [editingProposal, setEditingProposal] = useState<Proposta | null>(null);
+  const [viewingProposal, setViewingProposal] = useState<Proposta | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { data: proposals = [], isLoading } = useQuery<Proposal[]>({
+  const { data: proposals = [], isLoading } = useQuery<Proposta[]>({
     queryKey: ["/api/proposals"],
   });
 
-  const { data: opportunities = [] } = useQuery<Opportunity[]>({
-    queryKey: ["/api/opportunities"],
+  const { data: opportunities = [] } = useQuery<Lead[]>({
+    queryKey: ["/api/leads"],
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: InsertProposal) => {
+    mutationFn: async (data: InsertProposta) => {
       return apiRequest("POST", "/api/proposals", data);
     },
     onSuccess: () => {
@@ -101,7 +101,7 @@ export default function ProposalsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertProposal> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertProposta> }) => {
       return apiRequest("PATCH", `/api/proposals/${id}`, data);
     },
     onSuccess: () => {
@@ -137,7 +137,7 @@ export default function ProposalsPage() {
   });
 
   const filteredProposals = proposals.filter((proposal) => {
-    const matchesSearch = proposal.number.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = proposal.numero.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || proposal.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -151,19 +151,19 @@ export default function ProposalsPage() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const data: InsertProposal = {
-      number: formData.get("number") as string || generateProposalNumber(),
-      opportunityId: formData.get("opportunityId") as string,
-      status: (formData.get("status") as any) || "draft",
-      validUntil: formData.get("validUntil")
+    const data: InsertProposta = {
+      numero: formData.get("number") as string || generateProposalNumber(),
+      leadId: formData.get("opportunityId") as string,
+      status: (formData.get("status") as any) || "rascunho",
+      validoAte: formData.get("validUntil")
         ? new Date(formData.get("validUntil") as string)
         : null,
       subtotal: formData.get("subtotal") as string || "0",
-      discount: formData.get("discount") as string || "0",
+      desconto: formData.get("discount") as string || "0",
       total: formData.get("total") as string || "0",
-      notes: formData.get("notes") as string,
-      terms: formData.get("terms") as string,
-      ownerId: "",
+      observacoes: formData.get("notes") as string,
+      termos: formData.get("terms") as string,
+      proprietarioId: "",
     };
 
     if (editingProposal) {
@@ -173,7 +173,7 @@ export default function ProposalsPage() {
     }
   };
 
-  const openEditDialog = (proposal: Proposal) => {
+  const openEditDialog = (proposal: Proposta) => {
     setEditingProposal(proposal);
     setIsDialogOpen(true);
   };
@@ -194,8 +194,8 @@ export default function ProposalsPage() {
     );
   };
 
-  const getOpportunityTitle = (oppId: string) => {
-    return opportunities.find((o) => o.id === oppId)?.title || "-";
+  const getLeadTitle = (leadId: string) => {
+    return opportunities.find((o) => o.id === leadId)?.titulo || "-";
   };
 
   return (
@@ -227,7 +227,7 @@ export default function ProposalsPage() {
                   <Input
                     id="number"
                     name="number"
-                    defaultValue={editingProposal?.number || generateProposalNumber()}
+                    defaultValue={editingProposal?.numero || generateProposalNumber()}
                     data-testid="input-proposal-number"
                   />
                 </div>
@@ -235,7 +235,7 @@ export default function ProposalsPage() {
                   <Label htmlFor="status">Status</Label>
                   <Select
                     name="status"
-                    defaultValue={editingProposal?.status || "draft"}
+                    defaultValue={editingProposal?.status || "rascunho"}
                   >
                     <SelectTrigger data-testid="select-proposal-status">
                       <SelectValue />
@@ -257,7 +257,7 @@ export default function ProposalsPage() {
                 <Label htmlFor="opportunityId">Oportunidade *</Label>
                 <Select
                   name="opportunityId"
-                  defaultValue={editingProposal?.opportunityId}
+                  defaultValue={editingProposal?.leadId}
                   required
                 >
                   <SelectTrigger data-testid="select-proposal-opportunity">
@@ -266,7 +266,7 @@ export default function ProposalsPage() {
                   <SelectContent>
                     {opportunities.map((opp) => (
                       <SelectItem key={opp.id} value={opp.id}>
-                        {opp.title}
+                        {opp.titulo}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -279,8 +279,8 @@ export default function ProposalsPage() {
                   name="validUntil"
                   type="date"
                   defaultValue={
-                    editingProposal?.validUntil
-                      ? new Date(editingProposal.validUntil).toISOString().split("T")[0]
+                    editingProposal?.validoAte
+                      ? new Date(editingProposal.validoAte).toISOString().split("T")[0]
                       : ""
                   }
                   data-testid="input-proposal-valid-until"
@@ -305,7 +305,7 @@ export default function ProposalsPage() {
                     name="discount"
                     type="number"
                     step="0.01"
-                    defaultValue={editingProposal?.discount || "0"}
+                    defaultValue={editingProposal?.desconto || "0"}
                     data-testid="input-proposal-discount"
                   />
                 </div>
@@ -326,7 +326,7 @@ export default function ProposalsPage() {
                 <Textarea
                   id="notes"
                   name="notes"
-                  defaultValue={editingProposal?.notes || ""}
+                  defaultValue={editingProposal?.observacoes || ""}
                   data-testid="input-proposal-notes"
                 />
               </div>
@@ -335,7 +335,7 @@ export default function ProposalsPage() {
                 <Textarea
                   id="terms"
                   name="terms"
-                  defaultValue={editingProposal?.terms || ""}
+                  defaultValue={editingProposal?.termos || ""}
                   data-testid="input-proposal-terms"
                 />
               </div>
@@ -420,12 +420,12 @@ export default function ProposalsPage() {
                 {filteredProposals.map((proposal) => (
                   <TableRow key={proposal.id} data-testid={`proposal-row-${proposal.id}`}>
                     <TableCell className="font-mono text-sm">
-                      {proposal.number}
+                      {proposal.numero}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm">
                         <Target className="h-3 w-3 text-muted-foreground" />
-                        {getOpportunityTitle(proposal.opportunityId)}
+                        {getLeadTitle(proposal.leadId)}
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">
@@ -433,10 +433,10 @@ export default function ProposalsPage() {
                     </TableCell>
                     <TableCell>{getStatusBadge(proposal.status)}</TableCell>
                     <TableCell>
-                      {proposal.validUntil ? (
+                      {proposal.validoAte ? (
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Calendar className="h-3 w-3" />
-                          {new Date(proposal.validUntil).toLocaleDateString("pt-BR")}
+                          {new Date(proposal.validoAte).toLocaleDateString("pt-BR")}
                         </div>
                       ) : (
                         "-"
@@ -483,7 +483,7 @@ export default function ProposalsPage() {
       <Dialog open={!!viewingProposal} onOpenChange={() => setViewingProposal(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Proposta {viewingProposal?.number}</DialogTitle>
+            <DialogTitle>Proposta {viewingProposal?.numero}</DialogTitle>
           </DialogHeader>
           {viewingProposal && (
             <div className="space-y-4">
@@ -492,13 +492,13 @@ export default function ProposalsPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Oportunidade</p>
-                <p className="font-medium">{getOpportunityTitle(viewingProposal.opportunityId)}</p>
+                <p className="font-medium">{getLeadTitle(viewingProposal.leadId)}</p>
               </div>
-              {viewingProposal.validUntil && (
+              {viewingProposal.validoAte && (
                 <div>
                   <p className="text-sm text-muted-foreground">Válida até</p>
                   <p className="font-medium">
-                    {new Date(viewingProposal.validUntil).toLocaleDateString("pt-BR")}
+                    {new Date(viewingProposal.validoAte).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
               )}
@@ -510,7 +510,7 @@ export default function ProposalsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Desconto</p>
                   <p className="font-medium text-destructive">
-                    -{formatCurrency(Number(viewingProposal.discount || 0))}
+                    -{formatCurrency(Number(viewingProposal.desconto || 0))}
                   </p>
                 </div>
                 <div>
@@ -520,16 +520,16 @@ export default function ProposalsPage() {
                   </p>
                 </div>
               </div>
-              {viewingProposal.notes && (
+              {viewingProposal.observacoes && (
                 <div>
                   <p className="text-sm text-muted-foreground">Observações</p>
-                  <p className="text-sm">{viewingProposal.notes}</p>
+                  <p className="text-sm">{viewingProposal.observacoes}</p>
                 </div>
               )}
-              {viewingProposal.terms && (
+              {viewingProposal.termos && (
                 <div>
                   <p className="text-sm text-muted-foreground">Termos e Condições</p>
-                  <p className="text-sm">{viewingProposal.terms}</p>
+                  <p className="text-sm">{viewingProposal.termos}</p>
                 </div>
               )}
             </div>

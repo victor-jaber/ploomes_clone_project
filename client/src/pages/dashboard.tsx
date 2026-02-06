@@ -40,7 +40,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import type { Lead, Lawyer, LawFirm, Claimant, Activity as ActivityType } from "@shared/schema";
+import type { Lead, Advogado, Escritorio, Reclamante, Atividade } from "@shared/schema";
 
 const PIPELINE_COLORS = {
   advogados: "#8b5cf6",
@@ -164,19 +164,19 @@ export default function DashboardPage() {
     queryKey: ["/api/leads"],
   });
 
-  const { data: lawyers = [], isLoading: lawyersLoading } = useQuery<Lawyer[]>({
+  const { data: lawyers = [], isLoading: lawyersLoading } = useQuery<Advogado[]>({
     queryKey: ["/api/lawyers"],
   });
 
-  const { data: lawFirms = [], isLoading: lawFirmsLoading } = useQuery<LawFirm[]>({
+  const { data: lawFirms = [], isLoading: lawFirmsLoading } = useQuery<Escritorio[]>({
     queryKey: ["/api/law-firms"],
   });
 
-  const { data: claimants = [], isLoading: claimantsLoading } = useQuery<Claimant[]>({
+  const { data: claimants = [], isLoading: claimantsLoading } = useQuery<Reclamante[]>({
     queryKey: ["/api/claimants"],
   });
 
-  const { data: activities = [], isLoading: activitiesLoading } = useQuery<ActivityType[]>({
+  const { data: activities = [], isLoading: activitiesLoading } = useQuery<Atividade[]>({
     queryKey: ["/api/activities"],
   });
 
@@ -186,14 +186,14 @@ export default function DashboardPage() {
   const totalValue = leads.reduce((acc, l) => acc + Number(l.valor || 0), 0);
   
   const leadsByPipeline = {
-    advogados: leads.filter(l => l.pipelineType === "advogados"),
-    escritorios: leads.filter(l => l.pipelineType === "escritorios"),
-    reclamantes: leads.filter(l => l.pipelineType === "reclamantes"),
-    triagem: leads.filter(l => l.pipelineType === "triagem"),
+    advogados: leads.filter(l => l.tipoPipeline === "advogados"),
+    escritorios: leads.filter(l => l.tipoPipeline === "escritorios"),
+    reclamantes: leads.filter(l => l.tipoPipeline === "reclamantes"),
+    triagem: leads.filter(l => l.tipoPipeline === "triagem"),
   };
 
   const qualifiedLeads = leads.filter(l => 
-    l.stage === "qualificado" || l.stage === "qualificar" || l.stage === "fechado"
+    l.etapa === "qualificado" || l.etapa === "qualificar" || l.etapa === "fechado"
   ).length;
 
   const conversionRate = totalLeads > 0 ? Math.round((qualifiedLeads / totalLeads) * 100) : 0;
@@ -207,10 +207,10 @@ export default function DashboardPage() {
 
   const getStageData = (pipelineType: string) => {
     const stages = PIPELINE_STAGES[pipelineType] || [];
-    const pipelineLeads = leads.filter(l => l.pipelineType === pipelineType);
+    const pipelineLeads = leads.filter(l => l.tipoPipeline === pipelineType);
     return stages.map((stage, index) => ({
       name: stage.label,
-      value: pipelineLeads.filter(l => l.stage === stage.id).length,
+      value: pipelineLeads.filter(l => l.etapa === stage.id).length,
       color: STAGE_COLORS[index % STAGE_COLORS.length],
     }));
   };
@@ -218,11 +218,11 @@ export default function DashboardPage() {
   const advogadosStageData = getStageData("advogados");
 
   const recentLeads = [...leads]
-    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .sort((a, b) => new Date(b.criadoEm || 0).getTime() - new Date(a.criadoEm || 0).getTime())
     .slice(0, 5);
 
-  const pendingActivities = activities.filter(a => a.status === "pending").length;
-  const completedActivities = activities.filter(a => a.status === "completed").length;
+  const pendingActivities = activities.filter(a => a.status === "pendente").length;
+  const completedActivities = activities.filter(a => a.status === "concluido").length;
 
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
@@ -232,7 +232,7 @@ export default function DashboardPage() {
 
   const weeklyData = last7Days.map(date => {
     const dayLeads = leads.filter(l => {
-      const leadDate = new Date(l.createdAt || 0);
+      const leadDate = new Date(l.criadoEm || 0);
       return leadDate.toDateString() === date.toDateString();
     });
     return {
@@ -250,16 +250,16 @@ export default function DashboardPage() {
   };
 
   const getEntityName = (lead: Lead) => {
-    if (lead.lawyerId) {
-      const lawyer = lawyers.find(a => a.id === lead.lawyerId);
+    if (lead.advogadoId) {
+      const lawyer = lawyers.find(a => a.id === lead.advogadoId);
       return lawyer?.nome || "Advogado";
     }
-    if (lead.lawFirmId) {
-      const lawFirm = lawFirms.find(e => e.id === lead.lawFirmId);
+    if (lead.escritorioId) {
+      const lawFirm = lawFirms.find(e => e.id === lead.escritorioId);
       return lawFirm?.nome || "Escritório";
     }
-    if (lead.claimantId) {
-      const claimant = claimants.find(r => r.id === lead.claimantId);
+    if (lead.reclamanteId) {
+      const claimant = claimants.find(r => r.id === lead.reclamanteId);
       return claimant?.nome || "Reclamante";
     }
     return "-";
@@ -606,7 +606,7 @@ export default function DashboardPage() {
                         <div className="min-w-0">
                           <p className="font-medium text-sm truncate">{lead.titulo}</p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {getEntityName(lead)} • {pipelineLabels[lead.pipelineType || "advogados"]}
+                            {getEntityName(lead)} • {pipelineLabels[lead.tipoPipeline || "advogados"]}
                           </p>
                         </div>
                       </div>
@@ -615,7 +615,7 @@ export default function DashboardPage() {
                           {formatCurrency(Number(lead.valor || 0))}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {lead.createdAt && new Date(lead.createdAt).toLocaleDateString("pt-BR", { 
+                          {lead.criadoEm && new Date(lead.criadoEm).toLocaleDateString("pt-BR", { 
                             day: "2-digit", 
                             month: "short" 
                           })}
@@ -687,7 +687,7 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-3">
                 {activities
-                  .filter(a => a.status === "pending")
+                  .filter(a => a.status === "pendente")
                   .slice(0, 4)
                   .map((activity) => (
                     <div
@@ -698,10 +698,10 @@ export default function DashboardPage() {
                         <AlertCircle className="h-4 w-4 text-orange-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{activity.title}</p>
+                        <p className="text-sm font-medium truncate">{activity.titulo}</p>
                         <p className="text-xs text-muted-foreground">
-                          {activity.dueDate 
-                            ? new Date(activity.dueDate).toLocaleDateString("pt-BR")
+                          {activity.dataVencimento 
+                            ? new Date(activity.dataVencimento).toLocaleDateString("pt-BR")
                             : "Sem prazo"}
                         </p>
                       </div>

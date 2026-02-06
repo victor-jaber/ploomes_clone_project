@@ -71,20 +71,24 @@ import {
   PhoneCall, Video, MapPinIcon, MessageCircle, Copy, Check
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Lead, TodosAdvogadosInfos, Escritorio, Reclamante, Activity, Interaction, InsertLead, Lawsuit, LeadFinancials, LeadCaseDetails, LeadChecklist, LeadAssignments } from "@shared/schema";
+import type { Lead, Advogado, Escritorio, Reclamante, Atividade, Interacao, InsertLead, Processo, LeadFinanceiro, LeadDetalhesCaso, LeadChecklist, LeadResponsaveis } from "@shared/schema";
 import { PIPELINE_STAGES, type PipelineType } from "@shared/schema";
 
 // Tipo combinado para lead com detalhes normalizados
 type LeadWithDetails = Lead & {
-  financials?: LeadFinancials | null;
-  caseDetails?: LeadCaseDetails | null;
+  financials?: LeadFinanceiro | null;
+  caseDetails?: LeadDetalhesCaso | null;
   checklist?: LeadChecklist | null;
-  assignments?: LeadAssignments | null;
+  assignments?: LeadResponsaveis | null;
 };
 
-type LawyerWithLawsuits = TodosAdvogadosInfos & { lawsuits: Lawsuit[] };
-type ClaimantWithLawsuits = Reclamante & { lawsuits: Lawsuit[] };
-type LawFirmWithLawsuits = Escritorio & { lawsuits: Lawsuit[] };
+type AdvogadoComDetalhes = Advogado & { email?: string | null; telefone?: string | null; celular?: string | null; estado?: string | null; municipio?: string | null };
+type EscritorioComDetalhes = Escritorio & { email?: string | null; telefone?: string | null; numeroCaso?: string | null };
+type ReclamanteComDetalhes = Reclamante & { email?: string | null; telefone?: string | null };
+
+type LawyerWithLawsuits = AdvogadoComDetalhes & { lawsuits: Processo[] };
+type ClaimantWithLawsuits = ReclamanteComDetalhes & { lawsuits: Processo[] };
+type LawFirmWithLawsuits = EscritorioComDetalhes & { lawsuits: Processo[] };
 
 const PIPELINE_LABELS: Record<PipelineType, { label: string; icon: JSX.Element; description: string }> = {
   advogados: { label: "Advogados", icon: <Scale className="h-4 w-4" />, description: "Pipeline de advogados" },
@@ -258,17 +262,17 @@ function InlineEditField({
   );
 }
 
-function getEntityName(lead: Lead, todosAdvogadosInfos: TodosAdvogadosInfos[], escritorios: Escritorio[], reclamantes: Reclamante[]): string {
-  if (lead.lawyerId) {
-    const adv = todosAdvogadosInfos.find(a => a.id === lead.lawyerId);
+function getEntityName(lead: Lead, todosAdvogadosInfos: AdvogadoComDetalhes[], escritorios: EscritorioComDetalhes[], reclamantes: ReclamanteComDetalhes[]): string {
+  if (lead.advogadoId) {
+    const adv = todosAdvogadosInfos.find(a => a.id === lead.advogadoId);
     return adv?.nome || "Advogado";
   }
-  if (lead.lawFirmId) {
-    const esc = escritorios.find(e => e.id === lead.lawFirmId);
+  if (lead.escritorioId) {
+    const esc = escritorios.find(e => e.id === lead.escritorioId);
     return esc?.nome || "Escritório";
   }
-  if (lead.claimantId) {
-    const rec = reclamantes.find(r => r.id === lead.claimantId);
+  if (lead.reclamanteId) {
+    const rec = reclamantes.find(r => r.id === lead.reclamanteId);
     return rec?.nome || "Reclamante";
   }
   return "—";
@@ -290,10 +294,10 @@ function LeadDetailPanel({
   onNavigatePipeline,
 }: {
   lead: Lead;
-  todosAdvogadosInfos: TodosAdvogadosInfos[];
-  escritorios: Escritorio[];
-  reclamantes: Reclamante[];
-  activities: Activity[];
+  todosAdvogadosInfos: AdvogadoComDetalhes[];
+  escritorios: EscritorioComDetalhes[];
+  reclamantes: ReclamanteComDetalhes[];
+  activities: Atividade[];
   pipelineType: PipelineType;
   onClose: () => void;
   onAdvanceStage: () => void;
@@ -306,10 +310,10 @@ function LeadDetailPanel({
   const { toast } = useToast();
   const [commentText, setCommentText] = useState("");
   const [activeTab, setActiveTab] = useState<"interaction" | "task">("interaction");
-  const [interactionType, setInteractionType] = useState<string>("comment");
+  const [interactionType, setInteractionType] = useState<string>("comentario");
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [taskType, setTaskType] = useState<string>("task");
+  const [taskType, setTaskType] = useState<string>("tarefa");
   const [taskDueDate, setTaskDueDate] = useState("");
   const [showNewAdvogado, setShowNewAdvogado] = useState(false);
   const [showNewEscritorio, setShowNewEscritorio] = useState(false);
@@ -319,17 +323,17 @@ function LeadDetailPanel({
   const [newReclamante, setNewReclamante] = useState({ nome: "", cpf: "", telefone: "", email: "" });
   
   const stages = PIPELINE_STAGES[pipelineType];
-  const currentStageIndex = stages.findIndex(s => s.id === lead.stage);
+  const currentStageIndex = stages.findIndex(s => s.id === lead.etapa);
   const currentStage = stages[currentStageIndex];
   const nextStage = currentStageIndex < stages.length - 1 ? stages[currentStageIndex + 1] : null;
   const leadActivities = activities.filter(a => a.leadId === lead.id);
 
-  const { data: interactionsList = [], isLoading: loadingInteractions } = useQuery<Interaction[]>({
+  const { data: interactionsList = [], isLoading: loadingInteractions } = useQuery<Interacao[]>({
     queryKey: [`/api/leads/${lead.id}/interactions`],
   });
 
   // Queries para dados normalizados
-  const { data: financials } = useQuery<LeadFinancials>({
+  const { data: financials } = useQuery<LeadFinanceiro>({
     queryKey: ["/api/leads", lead.id, "financials"],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/leads/${lead.id}/financials`);
@@ -337,7 +341,7 @@ function LeadDetailPanel({
     },
   });
 
-  const { data: caseDetails } = useQuery<LeadCaseDetails>({
+  const { data: caseDetails } = useQuery<LeadDetalhesCaso>({
     queryKey: ["/api/leads", lead.id, "case-details"],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/leads/${lead.id}/case-details`);
@@ -353,7 +357,7 @@ function LeadDetailPanel({
     },
   });
 
-  const { data: assignments } = useQuery<LeadAssignments>({
+  const { data: assignments } = useQuery<LeadResponsaveis>({
     queryKey: ["/api/leads", lead.id, "assignments"],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/leads/${lead.id}/assignments`);
@@ -456,14 +460,14 @@ function LeadDetailPanel({
   const createInteractionMutation = useMutation({
     mutationFn: async (data: { type: string; content: string }) => {
       return apiRequest("POST", `/api/leads/${lead.id}/interactions`, {
-        type: data.type,
-        content: data.content,
+        tipo: data.type,
+        conteudo: data.content,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/leads/${lead.id}/interactions`] });
       setCommentText("");
-      setInteractionType("comment");
+      setInteractionType("comentario");
       toast({ title: "Interação registrada" });
     },
     onError: () => {
@@ -478,7 +482,7 @@ function LeadDetailPanel({
     onSuccess: async (response) => {
       const created = await response.json();
       queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
-      handleUpdateField("lawyerId", created.id);
+      handleUpdateField("advogadoId", created.id);
       setShowNewAdvogado(false);
       setNewAdvogado({ nome: "", cpf: "", telefone: "", email: "" });
       toast({ title: "Advogado criado e vinculado" });
@@ -495,7 +499,7 @@ function LeadDetailPanel({
     onSuccess: async (response) => {
       const created = await response.json();
       queryClient.invalidateQueries({ queryKey: ["/api/escritorios"] });
-      handleUpdateField("lawFirmId", created.id);
+      handleUpdateField("escritorioId", created.id);
       setShowNewEscritorio(false);
       setNewEscritorio({ nome: "", cnpj: "", telefone: "", email: "", numeroCaso: "" });
       toast({ title: "Escritório criado e vinculado" });
@@ -512,7 +516,7 @@ function LeadDetailPanel({
     onSuccess: async (response) => {
       const created = await response.json();
       queryClient.invalidateQueries({ queryKey: ["/api/reclamantes"] });
-      handleUpdateField("claimantId", created.id);
+      handleUpdateField("reclamanteId", created.id);
       setShowNewReclamante(false);
       setNewReclamante({ nome: "", cpf: "", telefone: "", email: "" });
       toast({ title: "Reclamante criado e vinculado" });
@@ -525,12 +529,12 @@ function LeadDetailPanel({
   const createActivityMutation = useMutation({
     mutationFn: async (data: { title: string; type: string; description?: string; dueDate?: string; leadId: string }) => {
       return apiRequest("POST", "/api/activities", {
-        title: data.title,
-        type: data.type,
-        description: data.description || "",
-        dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : null,
+        titulo: data.title,
+        tipo: data.type,
+        descricao: data.description || "",
+        dataVencimento: data.dueDate ? new Date(data.dueDate).toISOString() : null,
         leadId: data.leadId,
-        status: "pending",
+        status: "pendente",
       });
     },
     onSuccess: () => {
@@ -549,8 +553,8 @@ function LeadDetailPanel({
   const toggleActivityStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       return apiRequest("PATCH", `/api/activities/${id}`, {
-        status: status === "completed" ? "pending" : "completed",
-        completedAt: status === "completed" ? null : new Date().toISOString(),
+        status: status === "concluido" ? "pendente" : "concluido",
+        concluidoEm: status === "concluido" ? null : new Date().toISOString(),
       });
     },
     onSuccess: () => {
@@ -605,35 +609,35 @@ function LeadDetailPanel({
 
   const getInteractionIcon = (type: string) => {
     switch (type) {
-      case "comment": return <MessageSquare className="h-4 w-4" />;
-      case "file": return <FileText className="h-4 w-4" />;
-      case "status_change": return <ArrowRight className="h-4 w-4" />;
-      case "call_log": return <PhoneCall className="h-4 w-4" />;
-      case "email_log": return <Mail className="h-4 w-4" />;
+      case "comentario": return <MessageSquare className="h-4 w-4" />;
+      case "arquivo": return <FileText className="h-4 w-4" />;
+      case "mudanca_status": return <ArrowRight className="h-4 w-4" />;
+      case "registro_ligacao": return <PhoneCall className="h-4 w-4" />;
+      case "registro_email": return <Mail className="h-4 w-4" />;
       case "whatsapp": return <MessageCircle className="h-4 w-4" />;
-      case "meeting": return <Video className="h-4 w-4" />;
-      case "visit": return <MapPinIcon className="h-4 w-4" />;
+      case "reuniao": return <Video className="h-4 w-4" />;
+      case "visita": return <MapPinIcon className="h-4 w-4" />;
       default: return <MessageSquare className="h-4 w-4" />;
     }
   };
 
   const getInteractionLabel = (type: string) => {
     switch (type) {
-      case "comment": return "Comentário";
-      case "file": return "Arquivo";
-      case "status_change": return "Mudança de Status";
-      case "call_log": return "Ligação";
-      case "email_log": return "E-mail";
+      case "comentario": return "Comentário";
+      case "arquivo": return "Arquivo";
+      case "mudanca_status": return "Mudança de Status";
+      case "registro_ligacao": return "Ligação";
+      case "registro_email": return "E-mail";
       case "whatsapp": return "WhatsApp";
-      case "meeting": return "Reunião";
-      case "visit": return "Visita";
+      case "reuniao": return "Reunião";
+      case "visita": return "Visita";
       default: return "Interação";
     }
   };
 
-  const advogado = lead.lawyerId ? todosAdvogadosInfos.find(a => a.id === lead.lawyerId) : null;
-  const escritorio = lead.lawFirmId ? escritorios.find(e => e.id === lead.lawFirmId) : null;
-  const reclamante = lead.claimantId ? reclamantes.find(r => r.id === lead.claimantId) : null;
+  const advogado = lead.advogadoId ? todosAdvogadosInfos.find(a => a.id === lead.advogadoId) : null;
+  const escritorio = lead.escritorioId ? escritorios.find(e => e.id === lead.escritorioId) : null;
+  const reclamante = lead.reclamanteId ? reclamantes.find(r => r.id === lead.reclamanteId) : null;
 
   return (
     <div className="h-full flex flex-col">
@@ -867,8 +871,8 @@ function LeadDetailPanel({
                 </h3>
                 <Card className="p-4">
                   {(() => {
-                    const claimantLawsuits = lead.claimantId 
-                      ? claimantsWithLawsuits.find(c => c.id === lead.claimantId)?.lawsuits || []
+                    const claimantLawsuits = lead.reclamanteId 
+                      ? claimantsWithLawsuits.find(c => c.id === lead.reclamanteId)?.lawsuits || []
                       : [];
                     const cnjs = claimantLawsuits.map(l => l.cnj).filter(Boolean) as string[];
                     
@@ -940,15 +944,15 @@ function LeadDetailPanel({
                   Escritórios Relacionados
                 </h3>
                 <Card className="p-4">
-                  {lead.lawyerId ? (
+                  {lead.advogadoId ? (
                     <Button 
                       variant="outline" 
                       className="w-full gap-2 justify-start"
                       onClick={() => {
                         onNavigatePipeline("escritorios", [{
                           type: "advogado" as const,
-                          id: lead.lawyerId!,
-                          value: String(lead.lawyerId),
+                          id: lead.advogadoId!,
+                          value: String(lead.advogadoId),
                           label: `Advogado: ${advogado?.nome || ""}`,
                         }]);
                       }}
@@ -986,8 +990,8 @@ function LeadDetailPanel({
                   {(() => {
                     let cnjs: string[] = [];
                     if (pipelineType === "reclamantes") {
-                      const claimantLawsuits = lead.claimantId 
-                        ? claimantsWithLawsuits.find(c => c.id === lead.claimantId)?.lawsuits || []
+                      const claimantLawsuits = lead.reclamanteId 
+                        ? claimantsWithLawsuits.find(c => c.id === lead.reclamanteId)?.lawsuits || []
                         : [];
                       cnjs = claimantLawsuits.map(l => l.cnj).filter(Boolean) as string[];
                     } else {
@@ -1084,8 +1088,8 @@ function LeadDetailPanel({
                   ) : (
                     <>
                       <Select 
-                        value={lead.lawFirmId || "none"} 
-                        onValueChange={(v) => handleUpdateField("lawFirmId", v === "none" ? null : v)}
+                        value={lead.escritorioId || "none"} 
+                        onValueChange={(v) => handleUpdateField("escritorioId", v === "none" ? null : v)}
                       >
                         <SelectTrigger data-testid="select-escritorio">
                           <SelectValue placeholder="Selecione um escritório" />
@@ -1133,8 +1137,8 @@ function LeadDetailPanel({
                 </h3>
                 <Card className="p-4">
                   {(() => {
-                    const lawyerLawsuits = lead.lawyerId 
-                      ? lawyersWithLawsuits.find(a => a.id === lead.lawyerId)?.lawsuits || []
+                    const lawyerLawsuits = lead.advogadoId 
+                      ? lawyersWithLawsuits.find(a => a.id === lead.advogadoId)?.lawsuits || []
                       : [];
                     const cnjs = lawyerLawsuits.map(l => l.cnj).filter(Boolean) as string[];
                     
@@ -1172,8 +1176,8 @@ function LeadDetailPanel({
                   {(() => {
                     let cnjs: string[] = [];
                     if (pipelineType === "escritorios") {
-                      const firmLawsuits = lead.lawFirmId 
-                        ? lawFirmsWithLawsuits.find(f => f.id === lead.lawFirmId)?.lawsuits || []
+                      const firmLawsuits = lead.escritorioId 
+                        ? lawFirmsWithLawsuits.find(f => f.id === lead.escritorioId)?.lawsuits || []
                         : [];
                       cnjs = firmLawsuits.map(l => l.cnj).filter(Boolean) as string[];
                     } else {
@@ -1210,14 +1214,14 @@ function LeadDetailPanel({
 
             {(() => {
               const linkedLawsuits = (() => {
-                if (pipelineType === "advogados" && lead.lawyerId) {
-                  return lawyersWithLawsuits.find(a => a.id === lead.lawyerId)?.lawsuits || [];
+                if (pipelineType === "advogados" && lead.advogadoId) {
+                  return lawyersWithLawsuits.find(a => a.id === lead.advogadoId)?.lawsuits || [];
                 }
-                if (pipelineType === "reclamantes" && lead.claimantId) {
-                  return claimantsWithLawsuits.find(c => c.id === lead.claimantId)?.lawsuits || [];
+                if (pipelineType === "reclamantes" && lead.reclamanteId) {
+                  return claimantsWithLawsuits.find(c => c.id === lead.reclamanteId)?.lawsuits || [];
                 }
-                if (pipelineType === "escritorios" && lead.lawFirmId) {
-                  return lawFirmsWithLawsuits.find(l => l.id === lead.lawFirmId)?.lawsuits || [];
+                if (pipelineType === "escritorios" && lead.escritorioId) {
+                  return lawFirmsWithLawsuits.find(l => l.id === lead.escritorioId)?.lawsuits || [];
                 }
                 return [];
               })();
@@ -1553,12 +1557,12 @@ function LeadDetailPanel({
               <TabsContent value="interaction" className="m-0 pt-3">
                 <div className="flex items-center gap-1 mb-1.5 flex-wrap">
                   {[
-                    { id: "comment", icon: MessageSquare, label: "Comentário" },
-                    { id: "call_log", icon: PhoneCall, label: "Ligação" },
-                    { id: "email_log", icon: Mail, label: "E-mail" },
+                    { id: "comentario", icon: MessageSquare, label: "Comentário" },
+                    { id: "registro_ligacao", icon: PhoneCall, label: "Ligação" },
+                    { id: "registro_email", icon: Mail, label: "E-mail" },
                     { id: "whatsapp", icon: MessageCircle, label: "WhatsApp" },
-                    { id: "meeting", icon: Video, label: "Reunião" },
-                    { id: "visit", icon: MapPinIcon, label: "Visita" },
+                    { id: "reuniao", icon: Video, label: "Reunião" },
+                    { id: "visita", icon: MapPinIcon, label: "Visita" },
                   ].map((item) => (
                     <Button
                       key={item.id}
@@ -1639,11 +1643,11 @@ function LeadDetailPanel({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="task">Tarefa</SelectItem>
-                        <SelectItem value="call">Ligação</SelectItem>
+                        <SelectItem value="tarefa">Tarefa</SelectItem>
+                        <SelectItem value="ligacao">Ligação</SelectItem>
                         <SelectItem value="email">E-mail</SelectItem>
-                        <SelectItem value="meeting">Reunião</SelectItem>
-                        <SelectItem value="note">Nota</SelectItem>
+                        <SelectItem value="reuniao">Reunião</SelectItem>
+                        <SelectItem value="nota">Nota</SelectItem>
                       </SelectContent>
                     </Select>
                     <Input
@@ -1679,14 +1683,14 @@ function LeadDetailPanel({
               </TabsContent>
             </Tabs>
 
-            {leadActivities.filter(a => a.status !== "completed").length > 0 && (
+            {leadActivities.filter(a => a.status !== "concluido").length > 0 && (
               <div className="border rounded-md p-3">
                 <h4 className="text-xs font-semibold text-primary uppercase tracking-wide mb-2 flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  Tarefas em Aberto ({leadActivities.filter(a => a.status !== "completed").length})
+                  Tarefas em Aberto ({leadActivities.filter(a => a.status !== "concluido").length})
                 </h4>
                 <div className="space-y-1.5">
-                  {leadActivities.filter(a => a.status !== "completed").map((activity) => (
+                  {leadActivities.filter(a => a.status !== "concluido").map((activity) => (
                     <div 
                       key={activity.id} 
                       className="flex items-center gap-2 p-2 rounded-md hover-elevate cursor-pointer group"
@@ -1695,19 +1699,19 @@ function LeadDetailPanel({
                     >
                       <Circle className="h-4 w-4 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm truncate block">{activity.title}</span>
-                        {activity.dueDate && (
+                        <span className="text-sm truncate block">{activity.titulo}</span>
+                        {activity.dataVencimento && (
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {new Date(activity.dueDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            {new Date(activity.dataVencimento).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                           </span>
                         )}
                       </div>
                       <Badge variant="outline" className="text-xs shrink-0">
-                        {activity.type === "call" ? "Ligação" :
-                         activity.type === "email" ? "E-mail" :
-                         activity.type === "meeting" ? "Reunião" :
-                         activity.type === "task" ? "Tarefa" : "Nota"}
+                        {activity.tipo === "ligacao" ? "Ligação" :
+                         activity.tipo === "email" ? "E-mail" :
+                         activity.tipo === "reuniao" ? "Reunião" :
+                         activity.tipo === "tarefa" ? "Tarefa" : "Nota"}
                       </Badge>
                     </div>
                   ))}
@@ -1727,7 +1731,7 @@ function LeadDetailPanel({
                   <Skeleton className="h-16 w-full" />
                   <Skeleton className="h-16 w-full" />
                 </div>
-              ) : interactionsList.length === 0 && leadActivities.filter(a => a.status === "completed").length === 0 ? (
+              ) : interactionsList.length === 0 && leadActivities.filter(a => a.status === "concluido").length === 0 ? (
                 <div className="text-center py-8">
                   <MessageSquare className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">Nenhuma interação registrada</p>
@@ -1738,14 +1742,14 @@ function LeadDetailPanel({
                   {interactionsList.map((interaction: any) => (
                     <div key={interaction.id} className="flex gap-3">
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
-                        interaction.type === "call_log" ? "bg-blue-500/10 text-blue-500" :
-                        interaction.type === "email_log" ? "bg-orange-500/10 text-orange-500" :
-                        interaction.type === "whatsapp" ? "bg-green-500/10 text-green-500" :
-                        interaction.type === "meeting" ? "bg-purple-500/10 text-purple-500" :
-                        interaction.type === "visit" ? "bg-rose-500/10 text-rose-500" :
+                        interaction.tipo === "registro_ligacao" ? "bg-blue-500/10 text-blue-500" :
+                        interaction.tipo === "registro_email" ? "bg-orange-500/10 text-orange-500" :
+                        interaction.tipo === "whatsapp" ? "bg-green-500/10 text-green-500" :
+                        interaction.tipo === "reuniao" ? "bg-purple-500/10 text-purple-500" :
+                        interaction.tipo === "visita" ? "bg-rose-500/10 text-rose-500" :
                         "bg-primary/10 text-primary"
                       }`}>
-                        {getInteractionIcon(interaction.type)}
+                        {getInteractionIcon(interaction.tipo)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -1755,10 +1759,10 @@ function LeadDetailPanel({
                             </span>
                           )}
                           <Badge variant="outline" className="text-xs">
-                            {getInteractionLabel(interaction.type)}
+                            {getInteractionLabel(interaction.tipo)}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            {interaction.createdAt && new Date(interaction.createdAt).toLocaleDateString("pt-BR", {
+                            {interaction.criadoEm && new Date(interaction.criadoEm).toLocaleDateString("pt-BR", {
                               day: "2-digit",
                               month: "short",
                               hour: "2-digit",
@@ -1766,10 +1770,10 @@ function LeadDetailPanel({
                             })}
                           </span>
                         </div>
-                        {interaction.content && (
+                        {interaction.conteudo && (
                           <div className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap"
                             dangerouslySetInnerHTML={{
-                              __html: interaction.content
+                              __html: interaction.conteudo
                                 .replace(/&/g, '&amp;')
                                 .replace(/</g, '&lt;')
                                 .replace(/>/g, '&gt;')
@@ -1782,24 +1786,24 @@ function LeadDetailPanel({
                             }}
                           />
                         )}
-                        {interaction.fileName && (
+                        {interaction.nomeArquivo && (
                           <div className="flex items-center gap-2 text-sm text-primary mt-1">
                             <Paperclip className="h-3 w-3" />
-                            {interaction.fileName}
+                            {interaction.nomeArquivo}
                           </div>
                         )}
                       </div>
                     </div>
                   ))}
                   
-                  {leadActivities.filter(a => a.status === "completed").length > 0 && (
+                  {leadActivities.filter(a => a.status === "concluido").length > 0 && (
                     <>
                       <Separator className="my-4" />
                       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1.5">
                         <CircleCheck className="h-3.5 w-3.5 text-green-500" />
                         Tarefas Concluídas
                       </h4>
-                      {leadActivities.filter(a => a.status === "completed").map((activity) => (
+                      {leadActivities.filter(a => a.status === "concluido").map((activity) => (
                         <div 
                           key={activity.id} 
                           className="flex items-center gap-2 p-2 rounded-md hover-elevate cursor-pointer opacity-60"
@@ -1808,13 +1812,13 @@ function LeadDetailPanel({
                         >
                           <CircleCheck className="h-4 w-4 text-green-500 shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <span className="text-sm line-through truncate block">{activity.title}</span>
+                            <span className="text-sm line-through truncate block">{activity.titulo}</span>
                           </div>
                           <Badge variant="outline" className="text-xs shrink-0">
-                            {activity.type === "call" ? "Ligação" :
-                             activity.type === "email" ? "E-mail" :
-                             activity.type === "meeting" ? "Reunião" :
-                             activity.type === "task" ? "Tarefa" : "Nota"}
+                            {activity.tipo === "ligacao" ? "Ligação" :
+                             activity.tipo === "email" ? "E-mail" :
+                             activity.tipo === "reuniao" ? "Reunião" :
+                             activity.tipo === "tarefa" ? "Tarefa" : "Nota"}
                           </Badge>
                         </div>
                       ))}
@@ -1851,10 +1855,10 @@ function LeadCard({
   isUpdating,
 }: {
   lead: Lead;
-  todosAdvogadosInfos: TodosAdvogadosInfos[];
-  escritorios: Escritorio[];
-  reclamantes: Reclamante[];
-  activities: Activity[];
+  todosAdvogadosInfos: AdvogadoComDetalhes[];
+  escritorios: EscritorioComDetalhes[];
+  reclamantes: ReclamanteComDetalhes[];
+  activities: Atividade[];
   lawyersWithLawsuits: LawyerWithLawsuits[];
   claimantsWithLawsuits: ClaimantWithLawsuits[];
   lawFirmsWithLawsuits: LawFirmWithLawsuits[];
@@ -1870,7 +1874,7 @@ function LeadCard({
   isUpdating: boolean;
 }) {
   const stages = PIPELINE_STAGES[pipelineType];
-  const currentStageIndex = stages.findIndex(s => s.id === lead.stage);
+  const currentStageIndex = stages.findIndex(s => s.id === lead.etapa);
   const nextStage = currentStageIndex < stages.length - 1 ? stages[currentStageIndex + 1] : null;
 
   const handleAdvanceStage = () => {
@@ -1894,18 +1898,18 @@ function LeadCard({
   const currentStage = stages[currentStageIndex];
   const entityName = getEntityName(lead, todosAdvogadosInfos, escritorios, reclamantes);
   const prevStage = currentStageIndex > 0 ? stages[currentStageIndex - 1] : null;
-  const linkedAdvogado = lead.lawyerId 
-    ? todosAdvogadosInfos.find(a => a.id === lead.lawyerId)
+  const linkedAdvogado = lead.advogadoId 
+    ? todosAdvogadosInfos.find(a => a.id === lead.advogadoId)
     : null;
 
-  const lawyerWithLawsuits = lead.lawyerId 
-    ? lawyersWithLawsuits.find(a => a.id === lead.lawyerId)
+  const lawyerWithLawsuits = lead.advogadoId 
+    ? lawyersWithLawsuits.find(a => a.id === lead.advogadoId)
     : null;
-  const claimantWithLawsuits = lead.claimantId 
-    ? claimantsWithLawsuits.find(c => c.id === lead.claimantId)
+  const claimantWithLawsuits = lead.reclamanteId 
+    ? claimantsWithLawsuits.find(c => c.id === lead.reclamanteId)
     : null;
-  const lawFirmWithLawsuits = lead.lawFirmId 
-    ? lawFirmsWithLawsuits.find(l => l.id === lead.lawFirmId)
+  const lawFirmWithLawsuits = lead.escritorioId 
+    ? lawFirmsWithLawsuits.find(l => l.id === lead.escritorioId)
     : null;
 
   const linkedLawsuits = (() => {
@@ -2015,8 +2019,8 @@ function LeadCard({
               </div>
             )}
 
-            {lead.claimantId && (() => {
-              const linkedReclamante = reclamantes.find(r => r.id === lead.claimantId);
+            {lead.reclamanteId && (() => {
+              const linkedReclamante = reclamantes.find(r => r.id === lead.reclamanteId);
               return linkedReclamante ? (
                 <div className="space-y-1">
                   <div className="flex items-center gap-1 text-xs">
@@ -2110,8 +2114,8 @@ function LeadCard({
             <ContextMenuSeparator />
           </>
         )}
-        {lead.lawFirmId && (() => {
-          const escritorio = escritorios.find(e => e.id === lead.lawFirmId);
+        {lead.escritorioId && (() => {
+          const escritorio = escritorios.find(e => e.id === lead.escritorioId);
           return escritorio ? (
             <>
               <ContextMenuItem 
@@ -2128,8 +2132,8 @@ function LeadCard({
             </>
           ) : null;
         })()}
-        {lead.claimantId && (() => {
-          const reclamante = reclamantes.find(r => r.id === lead.claimantId);
+        {lead.reclamanteId && (() => {
+          const reclamante = reclamantes.find(r => r.id === lead.reclamanteId);
           return reclamante ? (
             <>
               <ContextMenuItem 
@@ -2206,10 +2210,10 @@ function PipelineColumn({
 }: {
   stage: { id: string; label: string; color: string };
   leads: Lead[];
-  todosAdvogadosInfos: TodosAdvogadosInfos[];
-  escritorios: Escritorio[];
-  reclamantes: Reclamante[];
-  activities: Activity[];
+  todosAdvogadosInfos: AdvogadoComDetalhes[];
+  escritorios: EscritorioComDetalhes[];
+  reclamantes: ReclamanteComDetalhes[];
+  activities: Atividade[];
   lawyersWithLawsuits: LawyerWithLawsuits[];
   claimantsWithLawsuits: ClaimantWithLawsuits[];
   lawFirmsWithLawsuits: LawFirmWithLawsuits[];
@@ -2238,7 +2242,7 @@ function PipelineColumn({
   const totalValue = leads.reduce((acc, l) => acc + Number(l.valor || 0), 0);
   
   // Sort leads by position
-  const sortedLeads = [...leads].sort((a, b) => (a.position || 0) - (b.position || 0));
+  const sortedLeads = [...leads].sort((a, b) => (a.posicao || 0) - (b.posicao || 0));
 
   if (isMinimized) {
     return (
@@ -2516,19 +2520,19 @@ export default function PipelinePage() {
     queryKey: ["/api/leads"],
   });
 
-  const { data: todosAdvogadosInfos = [], isLoading: advogadosLoading } = useQuery<TodosAdvogadosInfos[]>({
+  const { data: todosAdvogadosInfos = [], isLoading: advogadosLoading } = useQuery<AdvogadoComDetalhes[]>({
     queryKey: ["/api/todos-advogados-infos"],
   });
 
-  const { data: escritorios = [], isLoading: escritoriosLoading } = useQuery<Escritorio[]>({
+  const { data: escritorios = [], isLoading: escritoriosLoading } = useQuery<EscritorioComDetalhes[]>({
     queryKey: ["/api/escritorios"],
   });
 
-  const { data: reclamantes = [], isLoading: reclamantesLoading } = useQuery<Reclamante[]>({
+  const { data: reclamantes = [], isLoading: reclamantesLoading } = useQuery<ReclamanteComDetalhes[]>({
     queryKey: ["/api/reclamantes"],
   });
 
-  const { data: activities = [] } = useQuery<Activity[]>({
+  const { data: activities = [] } = useQuery<Atividade[]>({
     queryKey: ["/api/activities"],
   });
 
@@ -2601,7 +2605,7 @@ export default function PipelinePage() {
   // Apply pipeline type filter first (skip if CNJ filter is active)
   const pipelineFilteredLeads = hasCnjFilter 
     ? leads 
-    : leads.filter(l => l.pipelineType === selectedPipeline);
+    : leads.filter(l => l.tipoPipeline === selectedPipeline);
   
   // Apply active filters
   const filteredLeads = pipelineFilteredLeads.filter(lead => {
@@ -2610,24 +2614,24 @@ export default function PipelinePage() {
     return activeFilters.every(filter => {
       switch (filter.type) {
         case "advogado":
-          return lead.lawyerId === filter.id;
+          return lead.advogadoId === filter.id;
         
         case "reclamante":
-          return lead.claimantId === filter.id;
+          return lead.reclamanteId === filter.id;
         
         case "escritorio":
-          return lead.lawFirmId === filter.id;
+          return lead.escritorioId === filter.id;
         
         case "cnj":
           // Check CNJ on linked lawsuits via junction tables
-          const lawyerLawsuits = lead.lawyerId 
-            ? lawyersWithLawsuits.find(a => a.id === lead.lawyerId)?.lawsuits || []
+          const lawyerLawsuits = lead.advogadoId 
+            ? lawyersWithLawsuits.find(a => a.id === lead.advogadoId)?.lawsuits || []
             : [];
-          const claimantLawsuits = lead.claimantId 
-            ? claimantsWithLawsuits.find(c => c.id === lead.claimantId)?.lawsuits || []
+          const claimantLawsuits = lead.reclamanteId 
+            ? claimantsWithLawsuits.find(c => c.id === lead.reclamanteId)?.lawsuits || []
             : [];
-          const lawFirmLawsuits = lead.lawFirmId 
-            ? lawFirmsWithLawsuits.find(l => l.id === lead.lawFirmId)?.lawsuits || []
+          const lawFirmLawsuits = lead.escritorioId 
+            ? lawFirmsWithLawsuits.find(l => l.id === lead.escritorioId)?.lawsuits || []
             : [];
           const allLawsuits = [...lawyerLawsuits, ...claimantLawsuits, ...lawFirmLawsuits];
           return allLawsuits.some(lawsuit => lawsuit.cnj === filter.value);
@@ -2640,21 +2644,21 @@ export default function PipelinePage() {
   
   // Get unique pipeline types from filtered leads when CNJ filter is active
   const uniquePipelineTypes = hasCnjFilter 
-    ? [...new Set(filteredLeads.map(l => l.pipelineType))] as (keyof typeof PIPELINE_STAGES)[]
+    ? Array.from(new Set(filteredLeads.map(l => l.tipoPipeline))) as (keyof typeof PIPELINE_STAGES)[]
     : [selectedPipeline];
   
   // Combine all stages from active pipelines (removing duplicates by id)
-  const stages = hasCnjFilter
-    ? uniquePipelineTypes.flatMap(pt => PIPELINE_STAGES[pt]).filter((stage, index, self) => 
+  const stages: readonly { readonly id: string; readonly label: string; readonly color: string }[] = hasCnjFilter
+    ? uniquePipelineTypes.flatMap(pt => PIPELINE_STAGES[pt] as readonly { readonly id: string; readonly label: string; readonly color: string }[]).filter((stage, index, self) => 
         self.findIndex(s => s.id === stage.id) === index
       )
     : PIPELINE_STAGES[selectedPipeline];
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, stage, position }: { id: string; stage?: string; position?: number }) => {
-      const data: { stage?: string; position?: number } = {};
-      if (stage !== undefined) data.stage = stage;
-      if (position !== undefined) data.position = position;
+      const data: { etapa?: string; posicao?: number } = {};
+      if (stage !== undefined) data.etapa = stage;
+      if (position !== undefined) data.posicao = position;
       return apiRequest("PATCH", `/api/leads/${id}`, data);
     },
     onMutate: async ({ id, stage, position }) => {
@@ -2664,8 +2668,8 @@ export default function PipelinePage() {
         old?.map((lead) => {
           if (lead.id !== id) return lead;
           const updates: Partial<Lead> = {};
-          if (stage !== undefined) updates.stage = stage;
-          if (position !== undefined) updates.position = position;
+          if (stage !== undefined) updates.etapa = stage;
+          if (position !== undefined) updates.posicao = position;
           return { ...lead, ...updates };
         }) ?? []
       );
@@ -2906,8 +2910,8 @@ export default function PipelinePage() {
     }
     
     const stageLeads = filteredLeads
-      .filter(l => l.stage === stageId)
-      .sort((a, b) => (a.position || 0) - (b.position || 0));
+      .filter(l => l.etapa === stageId)
+      .sort((a, b) => (a.posicao || 0) - (b.posicao || 0));
     
     const targetIndex = stageLeads.findIndex(l => l.id === targetLeadId);
     const draggedLead = filteredLeads.find(l => l.id === draggedId);
@@ -2920,12 +2924,12 @@ export default function PipelinePage() {
     }
     
     // Calculate new position (insert above target)
-    const targetPosition = stageLeads[targetIndex].position || 0;
-    const prevPosition = targetIndex > 0 ? (stageLeads[targetIndex - 1].position || 0) : targetPosition - 1000;
+    const targetPosition = stageLeads[targetIndex].posicao || 0;
+    const prevPosition = targetIndex > 0 ? (stageLeads[targetIndex - 1].posicao || 0) : targetPosition - 1000;
     const newPosition = Math.floor((prevPosition + targetPosition) / 2);
     
     // If same stage, just update position
-    if (draggedLead.stage === stageId) {
+    if (draggedLead.etapa === stageId) {
       updateMutation.mutate({ id: draggedId, position: newPosition });
     } else {
       // Different stage - update stage and position
@@ -2943,11 +2947,11 @@ export default function PipelinePage() {
       const lead = filteredLeads.find((l) => l.id === draggedId);
       if (lead) {
         // Get max position in the target stage and put at the end
-        const stageLeads = filteredLeads.filter(l => l.stage === stageId);
-        const maxPosition = stageLeads.reduce((max, l) => Math.max(max, l.position || 0), 0);
+        const stageLeads = filteredLeads.filter(l => l.etapa === stageId);
+        const maxPosition = stageLeads.reduce((max, l) => Math.max(max, l.posicao || 0), 0);
         const newPosition = maxPosition + 1000;
         
-        if (lead.stage !== stageId) {
+        if (lead.etapa !== stageId) {
           updateMutation.mutate({ id: draggedId, stage: stageId, position: newPosition });
         }
       }
@@ -2963,8 +2967,8 @@ export default function PipelinePage() {
     
     const data: Partial<InsertLead> = {
       titulo: formData.get("titulo") as string,
-      pipelineType: selectedPipeline,
-      stage: stages[0].id,
+      tipoPipeline: selectedPipeline,
+      etapa: stages[0].id,
       valor: formData.get("valor") as string || "0",
       probabilidade: parseInt(formData.get("probabilidade") as string) || 0,
       descricao: formData.get("descricao") as string || "",
@@ -2973,11 +2977,11 @@ export default function PipelinePage() {
     // Only set entity ID if a valid ID was selected (using controlled state)
     if (selectedEntityId && selectedEntityId.trim()) {
       if (selectedPipeline === "advogados") {
-        data.lawyerId = parseInt(selectedEntityId);
+        data.advogadoId = parseInt(selectedEntityId);
       } else if (selectedPipeline === "escritorios") {
-        data.lawFirmId = selectedEntityId;
+        data.escritorioId = selectedEntityId;
       } else if (selectedPipeline === "reclamantes") {
-        data.claimantId = selectedEntityId;
+        data.reclamanteId = selectedEntityId;
       }
     }
 
@@ -3555,7 +3559,7 @@ export default function PipelinePage() {
             <PipelineColumn
               key={stage.id}
               stage={stage}
-              leads={filteredLeads.filter((l) => l.stage === stage.id)}
+              leads={filteredLeads.filter((l) => l.etapa === stage.id)}
               todosAdvogadosInfos={todosAdvogadosInfos}
               escritorios={escritorios}
               reclamantes={reclamantes}
@@ -3597,9 +3601,9 @@ export default function PipelinePage() {
         const selectedLead = leads.find(l => l.id === selectedLeadId);
         if (!selectedLead) return null;
         
-        const pipelineType = selectedLead.pipelineType as PipelineType;
+        const pipelineType = selectedLead.tipoPipeline as PipelineType;
         const stages = PIPELINE_STAGES[pipelineType];
-        const currentStageIndex = stages.findIndex(s => s.id === selectedLead.stage);
+        const currentStageIndex = stages.findIndex(s => s.id === selectedLead.etapa);
         const nextStage = currentStageIndex < stages.length - 1 ? stages[currentStageIndex + 1] : null;
         
         const handleAdvanceStage = () => {
