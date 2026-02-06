@@ -81,8 +81,6 @@ export const lawyers = pgTable("lawyers", {
   id: serial("id").primaryKey(),
   cpf: varchar("cpf", { length: 14 }),
   nome: text("nome").notNull(),
-  cnj: varchar("cnj", { length: 30 }),
-  valorCausa: numeric("valor_causa", { precision: 12, scale: 2 }),
   email: text("email"),
   telefone: text("telefone"),
   celular: text("celular"),
@@ -112,7 +110,6 @@ export const lawFirms = pgTable("law_firms", {
   estado: varchar("estado", { length: 2 }),
   cep: varchar("cep", { length: 10 }),
   observacoes: text("observacoes"),
-  cnjs: text("cnjs").array(), // Array of CNJ numbers
   ownerId: varchar("owner_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -123,7 +120,6 @@ export const claimants = pgTable("claimants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   nome: text("nome").notNull(),
   cpf: varchar("cpf", { length: 14 }),
-  cnj: varchar("cnj", { length: 30 }),
   email: text("email"),
   telefone: varchar("telefone", { length: 20 }),
   celular: varchar("celular", { length: 20 }),
@@ -131,7 +127,6 @@ export const claimants = pgTable("claimants", {
   cidade: text("cidade"),
   estado: varchar("estado", { length: 2 }),
   cep: varchar("cep", { length: 10 }),
-  valorCausa: numeric("valor_causa", { precision: 12, scale: 2 }),
   observacoes: text("observacoes"),
   enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
   ownerId: varchar("owner_id").notNull(),
@@ -143,9 +138,6 @@ export const claimants = pgTable("claimants", {
 export const lawsuits = pgTable("lawsuits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   cnj: varchar("cnj", { length: 30 }).unique(),
-  lawyerId: integer("lawyer_id").references(() => lawyers.id, { onDelete: "set null" }),
-  claimantId: varchar("claimant_id").references(() => claimants.id, { onDelete: "set null" }),
-  lawFirmId: varchar("law_firm_id").references(() => lawFirms.id, { onDelete: "set null" }),
   
   // Dados do processo
   tribunal: varchar("tribunal", { length: 100 }),
@@ -209,16 +201,6 @@ export const lawsuitClaimants = pgTable("lawsuit_claimants", {
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   unique("lawsuit_claimant_unique").on(table.lawsuitId, table.claimantId),
-]);
-
-// Tabela N:N entre lawsuits e law_firms (um processo pode ter múltiplos escritórios)
-export const lawsuitLawFirms = pgTable("lawsuit_law_firms", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  lawsuitId: varchar("lawsuit_id").notNull().references(() => lawsuits.id, { onDelete: "cascade" }),
-  lawFirmId: varchar("law_firm_id").notNull().references(() => lawFirms.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [
-  unique("lawsuit_law_firm_unique").on(table.lawsuitId, table.lawFirmId),
 ]);
 
 // Leads (Cases no pipeline) - Tabela simplificada, dados detalhados em tabelas auxiliares 1:1
@@ -393,6 +375,11 @@ export const proposalItems = pgTable("proposal_items", {
 // Relations
 export const lawyersRelations = relations(lawyers, ({ many }) => ({
   lawFirmLawyers: many(lawFirmLawyers),
+  lawsuitLawyers: many(lawsuitLawyers),
+}));
+
+export const claimantsRelations = relations(claimants, ({ many }) => ({
+  lawsuitClaimants: many(lawsuitClaimants),
 }));
 
 export const lawFirmsRelations = relations(lawFirms, ({ many }) => ({
@@ -410,20 +397,9 @@ export const lawFirmLawyersRelations = relations(lawFirmLawyers, ({ one }) => ({
   }),
 }));
 
-export const lawsuitsRelations = relations(lawsuits, ({ one, many }) => ({
-  lawyer: one(lawyers, {
-    fields: [lawsuits.lawyerId],
-    references: [lawyers.id],
-  }),
-  claimant: one(claimants, {
-    fields: [lawsuits.claimantId],
-    references: [claimants.id],
-  }),
-  lawFirm: one(lawFirms, {
-    fields: [lawsuits.lawFirmId],
-    references: [lawFirms.id],
-  }),
+export const lawsuitsRelations = relations(lawsuits, ({ many }) => ({
   lawsuitLawyers: many(lawsuitLawyers),
+  lawsuitClaimants: many(lawsuitClaimants),
 }));
 
 export const lawsuitLawyersRelations = relations(lawsuitLawyers, ({ one }) => ({
@@ -434,6 +410,17 @@ export const lawsuitLawyersRelations = relations(lawsuitLawyers, ({ one }) => ({
   lawyer: one(lawyers, {
     fields: [lawsuitLawyers.lawyerId],
     references: [lawyers.id],
+  }),
+}));
+
+export const lawsuitClaimantsRelations = relations(lawsuitClaimants, ({ one }) => ({
+  lawsuit: one(lawsuits, {
+    fields: [lawsuitClaimants.lawsuitId],
+    references: [lawsuits.id],
+  }),
+  claimant: one(claimants, {
+    fields: [lawsuitClaimants.claimantId],
+    references: [claimants.id],
   }),
 }));
 
@@ -550,7 +537,6 @@ export const insertLawsuitSchema = createInsertSchema(lawsuits).omit({ id: true,
 export const insertLawFirmLawyerSchema = createInsertSchema(lawFirmLawyers).omit({ id: true, createdAt: true });
 export const insertLawsuitLawyerSchema = createInsertSchema(lawsuitLawyers).omit({ id: true, createdAt: true });
 export const insertLawsuitClaimantSchema = createInsertSchema(lawsuitClaimants).omit({ id: true, createdAt: true });
-export const insertLawsuitLawFirmSchema = createInsertSchema(lawsuitLawFirms).omit({ id: true, createdAt: true });
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLeadFinancialsSchema = createInsertSchema(leadFinancials).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLeadCaseDetailsSchema = createInsertSchema(leadCaseDetails).omit({ id: true, createdAt: true, updatedAt: true });
@@ -577,8 +563,6 @@ export type LawsuitLawyer = typeof lawsuitLawyers.$inferSelect;
 export type InsertLawsuitLawyer = z.infer<typeof insertLawsuitLawyerSchema>;
 export type LawsuitClaimant = typeof lawsuitClaimants.$inferSelect;
 export type InsertLawsuitClaimant = z.infer<typeof insertLawsuitClaimantSchema>;
-export type LawsuitLawFirm = typeof lawsuitLawFirms.$inferSelect;
-export type InsertLawsuitLawFirm = z.infer<typeof insertLawsuitLawFirmSchema>;
 export type Lead = typeof leads.$inferSelect;
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type LeadFinancials = typeof leadFinancials.$inferSelect;

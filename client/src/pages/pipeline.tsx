@@ -314,9 +314,9 @@ function LeadDetailPanel({
   const [showNewAdvogado, setShowNewAdvogado] = useState(false);
   const [showNewEscritorio, setShowNewEscritorio] = useState(false);
   const [showNewReclamante, setShowNewReclamante] = useState(false);
-  const [newAdvogado, setNewAdvogado] = useState({ nome: "", cnj: "", cpf: "", telefone: "", email: "" });
+  const [newAdvogado, setNewAdvogado] = useState({ nome: "", cpf: "", telefone: "", email: "" });
   const [newEscritorio, setNewEscritorio] = useState({ nome: "", cnpj: "", telefone: "", email: "", numeroCaso: "" });
-  const [newReclamante, setNewReclamante] = useState({ nome: "", cpf: "", cnj: "", telefone: "", email: "" });
+  const [newReclamante, setNewReclamante] = useState({ nome: "", cpf: "", telefone: "", email: "" });
   
   const stages = PIPELINE_STAGES[pipelineType];
   const currentStageIndex = stages.findIndex(s => s.id === lead.stage);
@@ -480,7 +480,7 @@ function LeadDetailPanel({
       queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
       handleUpdateField("lawyerId", created.id);
       setShowNewAdvogado(false);
-      setNewAdvogado({ nome: "", cnj: "", cpf: "", telefone: "", email: "" });
+      setNewAdvogado({ nome: "", cpf: "", telefone: "", email: "" });
       toast({ title: "Advogado criado e vinculado" });
     },
     onError: () => {
@@ -514,7 +514,7 @@ function LeadDetailPanel({
       queryClient.invalidateQueries({ queryKey: ["/api/reclamantes"] });
       handleUpdateField("claimantId", created.id);
       setShowNewReclamante(false);
-      setNewReclamante({ nome: "", cpf: "", cnj: "", telefone: "", email: "" });
+      setNewReclamante({ nome: "", cpf: "", telefone: "", email: "" });
       toast({ title: "Reclamante criado e vinculado" });
     },
     onError: () => {
@@ -2012,12 +2012,6 @@ function LeadCard({
                     </div>
                   </div>
                 )}
-                {linkedLawsuits.length === 0 && linkedAdvogado.cnj && (
-                  <div className="flex items-center gap-1 min-w-0 text-xs text-muted-foreground">
-                    <FileText className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{linkedAdvogado.cnj}</span>
-                  </div>
-                )}
               </div>
             )}
 
@@ -2073,12 +2067,6 @@ function LeadCard({
                       </div>
                     </div>
                   )}
-                  {pipelineType === "reclamantes" && linkedLawsuits.length === 0 && linkedReclamante.cnj && (
-                    <div className="flex items-center gap-1 min-w-0 text-xs text-muted-foreground pl-4">
-                      <FileText className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{linkedReclamante.cnj}</span>
-                    </div>
-                  )}
                 </div>
               ) : null;
             })()}
@@ -2119,18 +2107,6 @@ function LeadCard({
               <Filter className="h-4 w-4 mr-2" />
               Filtrar por: {linkedAdvogado.nome}
             </ContextMenuItem>
-            {linkedAdvogado.cnj && (
-              <ContextMenuItem 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onFilter({ type: "cnj", value: linkedAdvogado.cnj!, label: `CNJ: ${linkedAdvogado.cnj}` });
-                }}
-                data-testid="context-menu-filter-cnj"
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Filtrar por CNJ: {linkedAdvogado.cnj}
-              </ContextMenuItem>
-            )}
             <ContextMenuSeparator />
           </>
         )}
@@ -2166,18 +2142,6 @@ function LeadCard({
                 <Filter className="h-4 w-4 mr-2" />
                 Filtrar por: {reclamante.nome}
               </ContextMenuItem>
-              {reclamante.cnj && (
-                <ContextMenuItem 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onFilter({ type: "cnj", value: reclamante.cnj!, label: `CNJ: ${reclamante.cnj}` });
-                  }}
-                  data-testid="context-menu-filter-reclamante-cnj"
-                >
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filtrar por CNJ: {reclamante.cnj}
-                </ContextMenuItem>
-              )}
               <ContextMenuSeparator />
             </>
           ) : null;
@@ -2497,12 +2461,10 @@ export default function PipelinePage() {
   // Inline entity creation states
   const [showInlineCreate, setShowInlineCreate] = useState(false);
   const [selectedEntityId, setSelectedEntityId] = useState<string>("");
-  const [newEntityData, setNewEntityData] = useState({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
+  const [newEntityData, setNewEntityData] = useState({ nome: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
   
-  // Escritório inline creation - CNJs and Advogados
-  const [inlineEscritorioCnjs, setInlineEscritorioCnjs] = useState<string[]>([]);
+  // Escritório inline creation - Advogados
   const [inlineEscritorioAdvogados, setInlineEscritorioAdvogados] = useState<number[]>([]);
-  const [inlineNewCnj, setInlineNewCnj] = useState("");
   const [inlineSelectedAdvogadoId, setInlineSelectedAdvogadoId] = useState<string>("");
   
   const urlParamsProcessed = useRef(false);
@@ -2733,7 +2695,7 @@ export default function PipelinePage() {
       setIsDialogOpen(false);
       setSelectedEntityId("");
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
+      setNewEntityData({ nome: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
       toast({
         title: "Sucesso",
         description: "Lead criado com sucesso",
@@ -2807,7 +2769,7 @@ export default function PipelinePage() {
   });
 
   const createInlineAdvogadoMutation = useMutation({
-    mutationFn: async (data: { nome: string; cnj: string; cpf: string; telefone: string; email: string }) => {
+    mutationFn: async (data: { nome: string; cpf: string; telefone: string; email: string }) => {
       const response = await apiRequest("POST", "/api/todos-advogados-infos", data);
       return response.json();
     },
@@ -2815,7 +2777,7 @@ export default function PipelinePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
       setSelectedEntityId(created.id.toString());
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
+      setNewEntityData({ nome: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
       toast({ title: "Advogado criado" });
     },
     onError: () => {
@@ -2824,7 +2786,7 @@ export default function PipelinePage() {
   });
 
   const createInlineEscritorioMutation = useMutation({
-    mutationFn: async (data: { nome: string; cnpj: string; telefone: string; email: string; endereco: string; cidade: string; estado: string; cnjs: string[]; advogadoIds: number[] }) => {
+    mutationFn: async (data: { nome: string; cnpj: string; telefone: string; email: string; endereco: string; cidade: string; estado: string; advogadoIds: number[] }) => {
       const response = await apiRequest("POST", "/api/escritorios", {
         nome: data.nome,
         cnpj: data.cnpj,
@@ -2833,7 +2795,6 @@ export default function PipelinePage() {
         endereco: data.endereco,
         cidade: data.cidade,
         estado: data.estado,
-        cnjs: data.cnjs,
       });
       const created = await response.json();
       // Add lawyers to the law firm
@@ -2848,10 +2809,8 @@ export default function PipelinePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/escritorios"] });
       setSelectedEntityId(created.id);
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
-      setInlineEscritorioCnjs([]);
+      setNewEntityData({ nome: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
       setInlineEscritorioAdvogados([]);
-      setInlineNewCnj("");
       setInlineSelectedAdvogadoId("");
       toast({ title: "Escritório criado" });
     },
@@ -2861,7 +2820,7 @@ export default function PipelinePage() {
   });
 
   const createInlineReclamanteMutation = useMutation({
-    mutationFn: async (data: { nome: string; cpf: string; cnj: string; telefone: string; email: string }) => {
+    mutationFn: async (data: { nome: string; cpf: string; telefone: string; email: string }) => {
       const response = await apiRequest("POST", "/api/reclamantes", data);
       return response.json();
     },
@@ -2869,7 +2828,7 @@ export default function PipelinePage() {
       queryClient.invalidateQueries({ queryKey: ["/api/reclamantes"] });
       setSelectedEntityId(created.id);
       setShowInlineCreate(false);
-      setNewEntityData({ nome: "", cnj: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
+      setNewEntityData({ nome: "", cnpj: "", cpf: "", telefone: "", email: "", numeroCaso: "", endereco: "", cidade: "", estado: "" });
       toast({ title: "Reclamante criado" });
     },
     onError: () => {
@@ -2881,7 +2840,6 @@ export default function PipelinePage() {
     if (selectedPipeline === "advogados") {
       createInlineAdvogadoMutation.mutate({
         nome: newEntityData.nome,
-        cnj: newEntityData.cnj,
         cpf: newEntityData.cpf,
         telefone: newEntityData.telefone,
         email: newEntityData.email,
@@ -2895,14 +2853,12 @@ export default function PipelinePage() {
         endereco: newEntityData.endereco,
         cidade: newEntityData.cidade,
         estado: newEntityData.estado,
-        cnjs: inlineEscritorioCnjs,
         advogadoIds: inlineEscritorioAdvogados,
       });
     } else if (selectedPipeline === "reclamantes") {
       createInlineReclamanteMutation.mutate({
         nome: newEntityData.nome,
         cpf: newEntityData.cpf,
-        cnj: newEntityData.cnj,
         telefone: newEntityData.telefone,
         email: newEntityData.email,
       });
@@ -3205,54 +3161,6 @@ export default function PipelinePage() {
                               />
                             </div>
                             
-                            {/* CNJs Section */}
-                            <div className="space-y-2">
-                              <Label className="text-sm flex items-center gap-1">
-                                <FileText className="h-3 w-3" />
-                                Números de Processo (CNJs)
-                              </Label>
-                              <div className="flex gap-2">
-                                <Input 
-                                  value={inlineNewCnj}
-                                  onChange={(e) => setInlineNewCnj(e.target.value)}
-                                  placeholder="0000000-00.0000.0.00.0000"
-                                  data-testid="input-inline-cnj-new"
-                                />
-                                <Button 
-                                  type="button" 
-                                  variant="outline" 
-                                  size="icon"
-                                  onClick={() => {
-                                    if (inlineNewCnj.trim() && !inlineEscritorioCnjs.includes(inlineNewCnj.trim())) {
-                                      setInlineEscritorioCnjs([...inlineEscritorioCnjs, inlineNewCnj.trim()]);
-                                      setInlineNewCnj("");
-                                    }
-                                  }} 
-                                  data-testid="button-inline-add-cnj"
-                                >
-                                  <Plus className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              {inlineEscritorioCnjs.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {inlineEscritorioCnjs.map((cnj, idx) => (
-                                    <Badge key={idx} variant="secondary" className="flex items-center gap-1 text-xs py-0.5">
-                                      <FileText className="h-3 w-3" />
-                                      {cnj}
-                                      <button 
-                                        type="button" 
-                                        onClick={() => setInlineEscritorioCnjs(inlineEscritorioCnjs.filter(c => c !== cnj))}
-                                        className="ml-1 hover:text-destructive"
-                                        data-testid={`button-inline-remove-cnj-${idx}`}
-                                      >
-                                        <X className="h-3 w-3" />
-                                      </button>
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            
                             {/* Advogados Section */}
                             <div className="space-y-2">
                               <Label className="text-sm flex items-center gap-1">
@@ -3320,12 +3228,6 @@ export default function PipelinePage() {
                               value={newEntityData.cpf}
                               onChange={(e) => setNewEntityData({ ...newEntityData, cpf: e.target.value })}
                               data-testid="input-inline-cpf"
-                            />
-                            <Input
-                              placeholder="CNJ do Processo"
-                              value={newEntityData.cnj}
-                              onChange={(e) => setNewEntityData({ ...newEntityData, cnj: e.target.value })}
-                              data-testid="input-inline-cnj"
                             />
                           </>
                         )}
@@ -3478,7 +3380,7 @@ export default function PipelinePage() {
                   <SelectContent>
                     {todosAdvogadosInfos.map((advogado) => (
                       <SelectItem key={advogado.id} value={String(advogado.id)} data-testid={`select-item-filter-advogado-${advogado.id}`}>
-                        {advogado.nome} {advogado.cnj ? `(${advogado.cnj})` : ''}
+                        {advogado.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -3507,7 +3409,7 @@ export default function PipelinePage() {
                   <SelectContent>
                     {reclamantes.map((reclamante) => (
                       <SelectItem key={reclamante.id} value={reclamante.id} data-testid={`select-item-filter-reclamante-${reclamante.id}`}>
-                        {reclamante.nome} {reclamante.cnj ? `(${reclamante.cnj})` : ''}
+                        {reclamante.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
