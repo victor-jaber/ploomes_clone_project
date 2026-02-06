@@ -37,8 +37,7 @@ const PIPELINE_LABELS: Record<string, { label: string; icon: any }> = {
   advogados: { label: "Advogados", icon: Briefcase },
   escritorios: { label: "Escritórios", icon: Building2 },
   reclamantes: { label: "Reclamantes", icon: User },
-  triagem: { label: "Triagem", icon: Target },
-  fechamento: { label: "Fechamento", icon: Target },
+  triagem: { label: "Gestão de Casos", icon: Target },
 };
 
 function formatCurrency(value: number) {

@@ -646,13 +646,10 @@ export const PIPELINE_STAGES = {
     { id: "triagem", label: "Triagem", color: "bg-yellow-500" },
     { id: "acompanhar", label: "Acompanhar", color: "bg-purple-500" },
     { id: "discutir", label: "Discutir", color: "bg-orange-500" },
-    { id: "qualificar", label: "Qualificar", color: "bg-green-500" },
-  ],
-  fechamento: [
-    { id: "analise_financeira", label: "Análise Financeira", color: "bg-blue-500" },
-    { id: "negociacao_valores", label: "Negociação de Valores", color: "bg-purple-500" },
-    { id: "contrato", label: "Contrato", color: "bg-yellow-500" },
-    { id: "assinatura", label: "Assinatura", color: "bg-orange-500" },
+    { id: "analise_financeira", label: "Análise Financeira", color: "bg-cyan-500" },
+    { id: "negociacao_valores", label: "Negociação de Valores", color: "bg-indigo-500" },
+    { id: "contrato", label: "Contrato", color: "bg-amber-500" },
+    { id: "assinatura", label: "Assinatura", color: "bg-teal-500" },
     { id: "fechado", label: "Fechado", color: "bg-green-500" },
   ],
 } as const;
