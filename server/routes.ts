@@ -1276,6 +1276,7 @@ export async function registerRoutes(
         return;
       }
       const interaction = await storage.createInteraction(parsed.data);
+      wsManager.broadcastInteractionCreated(interaction);
       res.status(201).json(interaction);
     } catch (error) {
       logger.error("creating interaction", error as Error);
