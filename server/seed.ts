@@ -11,6 +11,9 @@ import {
   escritorioAdvogados,
   processoAdvogados,
   processoReclamantes,
+  advogadoContatos,
+  escritorioContatos,
+  reclamanteContatos,
 } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 
@@ -56,12 +59,20 @@ export async function seedData() {
   ]).returning();
 
   const advs = await db.insert(advogados).values([
-    { nome: "Dr. Carlos Eduardo Mendes", cpf: "123.456.789-00", observacoes: "Especialista em direito trabalhista, 15 anos de experiência", enderecoId: endAdv[0].id, contatoId: contAdv[0].id, proprietarioId: ownerId },
-    { nome: "Dra. Ana Paula Costa", cpf: "234.567.890-11", observacoes: "Foco em reclamações trabalhistas de grande porte", enderecoId: endAdv[1].id, contatoId: contAdv[1].id, proprietarioId: ownerId },
-    { nome: "Dr. Roberto Augusto Silva", cpf: "345.678.901-22", observacoes: "Atua em casos de indenização e danos morais", enderecoId: endAdv[2].id, contatoId: contAdv[2].id, proprietarioId: ownerId },
-    { nome: "Dra. Fernanda Lima Oliveira", cpf: "456.789.012-33", observacoes: "Especialista em direito previdenciário e FGTS", enderecoId: endAdv[3].id, contatoId: contAdv[3].id, proprietarioId: ownerId },
-    { nome: "Dr. Paulo Ricardo Santos", cpf: "567.890.123-44", observacoes: "Advocacia trabalhista com foco em verbas rescisórias", enderecoId: endAdv[4].id, contatoId: contAdv[4].id, proprietarioId: ownerId },
+    { nome: "Dr. Carlos Eduardo Mendes", cpf: "123.456.789-00", observacoes: "Especialista em direito trabalhista, 15 anos de experiência", enderecoId: endAdv[0].id, proprietarioId: ownerId },
+    { nome: "Dra. Ana Paula Costa", cpf: "234.567.890-11", observacoes: "Foco em reclamações trabalhistas de grande porte", enderecoId: endAdv[1].id, proprietarioId: ownerId },
+    { nome: "Dr. Roberto Augusto Silva", cpf: "345.678.901-22", observacoes: "Atua em casos de indenização e danos morais", enderecoId: endAdv[2].id, proprietarioId: ownerId },
+    { nome: "Dra. Fernanda Lima Oliveira", cpf: "456.789.012-33", observacoes: "Especialista em direito previdenciário e FGTS", enderecoId: endAdv[3].id, proprietarioId: ownerId },
+    { nome: "Dr. Paulo Ricardo Santos", cpf: "567.890.123-44", observacoes: "Advocacia trabalhista com foco em verbas rescisórias", enderecoId: endAdv[4].id, proprietarioId: ownerId },
   ]).returning();
+
+  await db.insert(advogadoContatos).values([
+    { advogadoId: advs[0].id, contatoId: contAdv[0].id },
+    { advogadoId: advs[1].id, contatoId: contAdv[1].id },
+    { advogadoId: advs[2].id, contatoId: contAdv[2].id },
+    { advogadoId: advs[3].id, contatoId: contAdv[3].id },
+    { advogadoId: advs[4].id, contatoId: contAdv[4].id },
+  ]);
 
   const endEsc = await db.insert(enderecos).values([
     { cep: "01311-200", estado: "SP", municipio: "São Paulo", cidade: "São Paulo", bairro: "Bela Vista", logradouro: "Rua Augusta", numero: "2345", complemento: "18º andar" },
@@ -76,10 +87,16 @@ export async function seedData() {
   ]).returning();
 
   const escs = await db.insert(escritorios).values([
-    { nome: "Mendes & Costa Advogados Associados", cnpj: "12.345.678/0001-90", observacoes: "Escritório de médio porte, foco em trabalhista", enderecoId: endEsc[0].id, contatoId: contEsc[0].id, proprietarioId: ownerId },
-    { nome: "Silva & Lima Advocacia", cnpj: "23.456.789/0001-01", observacoes: "Escritório boutique, casos de alta complexidade", enderecoId: endEsc[1].id, contatoId: contEsc[1].id, proprietarioId: ownerId },
-    { nome: "Santos & Associados Jurídico", cnpj: "34.567.890/0001-12", observacoes: "Grande escritório, atuação nacional", enderecoId: endEsc[2].id, contatoId: contEsc[2].id, proprietarioId: ownerId },
+    { nome: "Mendes & Costa Advogados Associados", cnpj: "12.345.678/0001-90", observacoes: "Escritório de médio porte, foco em trabalhista", enderecoId: endEsc[0].id, proprietarioId: ownerId },
+    { nome: "Silva & Lima Advocacia", cnpj: "23.456.789/0001-01", observacoes: "Escritório boutique, casos de alta complexidade", enderecoId: endEsc[1].id, proprietarioId: ownerId },
+    { nome: "Santos & Associados Jurídico", cnpj: "34.567.890/0001-12", observacoes: "Grande escritório, atuação nacional", enderecoId: endEsc[2].id, proprietarioId: ownerId },
   ]).returning();
+
+  await db.insert(escritorioContatos).values([
+    { escritorioId: escs[0].id, contatoId: contEsc[0].id },
+    { escritorioId: escs[1].id, contatoId: contEsc[1].id },
+    { escritorioId: escs[2].id, contatoId: contEsc[2].id },
+  ]);
 
   await db.insert(escritorioAdvogados).values([
     { escritorioId: escs[0].id, advogadoId: advs[0].id },
@@ -107,12 +124,20 @@ export async function seedData() {
   ]).returning();
 
   const recs = await db.insert(reclamantes).values([
-    { nome: "Maria de Fátima Oliveira", cpf: "111.222.333-44", observacoes: "Ex-funcionária da Construtora ABC, demitida sem justa causa", enderecoId: endRec[0].id, contatoId: contRec[0].id, proprietarioId: ownerId },
-    { nome: "José Carlos Ferreira", cpf: "222.333.444-55", observacoes: "Trabalhador rural, acidente de trabalho", enderecoId: endRec[1].id, contatoId: contRec[1].id, proprietarioId: ownerId },
-    { nome: "Lúcia Helena Pereira", cpf: "333.444.555-66", observacoes: "Funcionária pública, desvio de função por 8 anos", enderecoId: endRec[2].id, contatoId: contRec[2].id, proprietarioId: ownerId },
-    { nome: "Antônio Carlos Souza", cpf: "444.555.666-77", observacoes: "Motorista de caminhão, horas extras não pagas", enderecoId: endRec[3].id, contatoId: contRec[3].id, proprietarioId: ownerId },
-    { nome: "Patrícia Regina Almeida", cpf: "555.666.777-88", observacoes: "Bancária, assédio moral e acúmulo de função", enderecoId: endRec[4].id, contatoId: contRec[4].id, proprietarioId: ownerId },
+    { nome: "Maria de Fátima Oliveira", cpf: "111.222.333-44", observacoes: "Ex-funcionária da Construtora ABC, demitida sem justa causa", enderecoId: endRec[0].id, proprietarioId: ownerId },
+    { nome: "José Carlos Ferreira", cpf: "222.333.444-55", observacoes: "Trabalhador rural, acidente de trabalho", enderecoId: endRec[1].id, proprietarioId: ownerId },
+    { nome: "Lúcia Helena Pereira", cpf: "333.444.555-66", observacoes: "Funcionária pública, desvio de função por 8 anos", enderecoId: endRec[2].id, proprietarioId: ownerId },
+    { nome: "Antônio Carlos Souza", cpf: "444.555.666-77", observacoes: "Motorista de caminhão, horas extras não pagas", enderecoId: endRec[3].id, proprietarioId: ownerId },
+    { nome: "Patrícia Regina Almeida", cpf: "555.666.777-88", observacoes: "Bancária, assédio moral e acúmulo de função", enderecoId: endRec[4].id, proprietarioId: ownerId },
   ]).returning();
+
+  await db.insert(reclamanteContatos).values([
+    { reclamanteId: recs[0].id, contatoId: contRec[0].id },
+    { reclamanteId: recs[1].id, contatoId: contRec[1].id },
+    { reclamanteId: recs[2].id, contatoId: contRec[2].id },
+    { reclamanteId: recs[3].id, contatoId: contRec[3].id },
+    { reclamanteId: recs[4].id, contatoId: contRec[4].id },
+  ]);
 
   const procs = await db.insert(processos).values([
     { cnj: "0001234-56.2024.5.02.0001", tribunal: "TRT-2", vara: "1ª Vara do Trabalho de São Paulo", classe: "Reclamação Trabalhista", assunto: "Verbas Rescisórias", status: "Em andamento", valorCausa: "185000.00", autor: "Maria de Fátima Oliveira", reu: "Construtora ABC Ltda", proprietarioId: ownerId },

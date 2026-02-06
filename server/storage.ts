@@ -19,6 +19,9 @@ import {
   usuarios,
   enderecos,
   contatos,
+  advogadoContatos,
+  escritorioContatos,
+  reclamanteContatos,
   type Advogado,
   type InsertAdvogado,
   type Escritorio,
@@ -186,23 +189,47 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   // Lawyers
+  private async attachLawyerContacts(lawyerRows: any[]): Promise<any[]> {
+    if (lawyerRows.length === 0) return [];
+    const ids = lawyerRows.map(r => r.id);
+    const contactRows = await db.select({
+      advogadoId: advogadoContatos.advogadoId,
+      contato: contatos,
+    })
+    .from(advogadoContatos)
+    .innerJoin(contatos, eq(advogadoContatos.contatoId, contatos.id))
+    .where(inArray(advogadoContatos.advogadoId, ids));
+
+    const contactMap = new Map<number, any[]>();
+    for (const cr of contactRows) {
+      if (!contactMap.has(cr.advogadoId)) contactMap.set(cr.advogadoId, []);
+      contactMap.get(cr.advogadoId)!.push(cr.contato);
+    }
+    return lawyerRows.map(r => {
+      const contatosList = contactMap.get(r.id) || [];
+      const first = contatosList[0];
+      return {
+        ...r,
+        contatos: contatosList,
+        email: first?.email || null,
+        telefone: first?.telefone || null,
+        celular: first?.celular || null,
+      };
+    });
+  }
+
   async getLawyers(ownerId: string): Promise<any[]> {
     const rows = await db.select({
       advogado: advogados,
-      contato: contatos,
       endereco: enderecos,
     })
     .from(advogados)
-    .leftJoin(contatos, eq(advogados.contatoId, contatos.id))
     .leftJoin(enderecos, eq(advogados.enderecoId, enderecos.id))
     .where(eq(advogados.proprietarioId, ownerId))
     .orderBy(desc(advogados.criadoEm));
 
-    return rows.map(r => ({
+    const mapped = rows.map(r => ({
       ...r.advogado,
-      email: r.contato?.email || null,
-      telefone: r.contato?.telefone || null,
-      celular: r.contato?.celular || null,
       estado: r.endereco?.estado || null,
       municipio: r.endereco?.municipio || null,
       cidade: r.endereco?.cidade || null,
@@ -212,47 +239,39 @@ export class DatabaseStorage implements IStorage {
       complemento: r.endereco?.complemento || null,
       cep: r.endereco?.cep || null,
     }));
+    return this.attachLawyerContacts(mapped);
   }
 
   async getAllLawyers(): Promise<any[]> {
     const rows = await db.select({
       advogado: advogados,
-      contato: contatos,
       endereco: enderecos,
     })
     .from(advogados)
-    .leftJoin(contatos, eq(advogados.contatoId, contatos.id))
     .leftJoin(enderecos, eq(advogados.enderecoId, enderecos.id))
     .orderBy(desc(advogados.criadoEm));
 
-    return rows.map(r => ({
+    const mapped = rows.map(r => ({
       ...r.advogado,
-      email: r.contato?.email || null,
-      telefone: r.contato?.telefone || null,
-      celular: r.contato?.celular || null,
       estado: r.endereco?.estado || null,
       municipio: r.endereco?.municipio || null,
       cidade: r.endereco?.cidade || null,
     }));
+    return this.attachLawyerContacts(mapped);
   }
 
   async getLawyer(id: number, ownerId: string): Promise<any | undefined> {
     const [row] = await db.select({
       advogado: advogados,
-      contato: contatos,
       endereco: enderecos,
     })
     .from(advogados)
-    .leftJoin(contatos, eq(advogados.contatoId, contatos.id))
     .leftJoin(enderecos, eq(advogados.enderecoId, enderecos.id))
     .where(and(eq(advogados.id, id), eq(advogados.proprietarioId, ownerId)));
 
     if (!row) return undefined;
-    return {
+    const mapped = {
       ...row.advogado,
-      email: row.contato?.email || null,
-      telefone: row.contato?.telefone || null,
-      celular: row.contato?.celular || null,
       estado: row.endereco?.estado || null,
       municipio: row.endereco?.municipio || null,
       cidade: row.endereco?.cidade || null,
@@ -262,6 +281,8 @@ export class DatabaseStorage implements IStorage {
       complemento: row.endereco?.complemento || null,
       cep: row.endereco?.cep || null,
     };
+    const [result] = await this.attachLawyerContacts([mapped]);
+    return result;
   }
 
   async createLawyer(lawyer: InsertAdvogado): Promise<Advogado> {
@@ -284,23 +305,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Law Firms
+  private async attachFirmContacts(firmRows: any[]): Promise<any[]> {
+    if (firmRows.length === 0) return [];
+    const ids = firmRows.map(r => r.id);
+    const contactRows = await db.select({
+      escritorioId: escritorioContatos.escritorioId,
+      contato: contatos,
+    })
+    .from(escritorioContatos)
+    .innerJoin(contatos, eq(escritorioContatos.contatoId, contatos.id))
+    .where(inArray(escritorioContatos.escritorioId, ids));
+
+    const contactMap = new Map<string, any[]>();
+    for (const cr of contactRows) {
+      if (!contactMap.has(cr.escritorioId)) contactMap.set(cr.escritorioId, []);
+      contactMap.get(cr.escritorioId)!.push(cr.contato);
+    }
+    return firmRows.map(r => {
+      const contatosList = contactMap.get(r.id) || [];
+      const first = contatosList[0];
+      return {
+        ...r,
+        contatos: contatosList,
+        email: first?.email || null,
+        telefone: first?.telefone || null,
+        celular: first?.celular || null,
+      };
+    });
+  }
+
   async getLawFirms(ownerId: string): Promise<any[]> {
     const rows = await db.select({
       escritorio: escritorios,
-      contato: contatos,
       endereco: enderecos,
     })
     .from(escritorios)
-    .leftJoin(contatos, eq(escritorios.contatoId, contatos.id))
     .leftJoin(enderecos, eq(escritorios.enderecoId, enderecos.id))
     .where(eq(escritorios.proprietarioId, ownerId))
     .orderBy(desc(escritorios.criadoEm));
 
-    return rows.map(r => ({
+    const mapped = rows.map(r => ({
       ...r.escritorio,
-      email: r.contato?.email || null,
-      telefone: r.contato?.telefone || null,
-      celular: r.contato?.celular || null,
       estado: r.endereco?.estado || null,
       municipio: r.endereco?.municipio || null,
       cidade: r.endereco?.cidade || null,
@@ -310,47 +355,39 @@ export class DatabaseStorage implements IStorage {
       complemento: r.endereco?.complemento || null,
       cep: r.endereco?.cep || null,
     }));
+    return this.attachFirmContacts(mapped);
   }
 
   async getAllLawFirms(): Promise<any[]> {
     const rows = await db.select({
       escritorio: escritorios,
-      contato: contatos,
       endereco: enderecos,
     })
     .from(escritorios)
-    .leftJoin(contatos, eq(escritorios.contatoId, contatos.id))
     .leftJoin(enderecos, eq(escritorios.enderecoId, enderecos.id))
     .orderBy(desc(escritorios.criadoEm));
 
-    return rows.map(r => ({
+    const mapped = rows.map(r => ({
       ...r.escritorio,
-      email: r.contato?.email || null,
-      telefone: r.contato?.telefone || null,
-      celular: r.contato?.celular || null,
       estado: r.endereco?.estado || null,
       municipio: r.endereco?.municipio || null,
       cidade: r.endereco?.cidade || null,
     }));
+    return this.attachFirmContacts(mapped);
   }
 
   async getLawFirm(id: string, ownerId: string): Promise<any | undefined> {
     const [row] = await db.select({
       escritorio: escritorios,
-      contato: contatos,
       endereco: enderecos,
     })
     .from(escritorios)
-    .leftJoin(contatos, eq(escritorios.contatoId, contatos.id))
     .leftJoin(enderecos, eq(escritorios.enderecoId, enderecos.id))
     .where(and(eq(escritorios.id, id), eq(escritorios.proprietarioId, ownerId)));
 
     if (!row) return undefined;
-    return {
+    const mapped = {
       ...row.escritorio,
-      email: row.contato?.email || null,
-      telefone: row.contato?.telefone || null,
-      celular: row.contato?.celular || null,
       estado: row.endereco?.estado || null,
       municipio: row.endereco?.municipio || null,
       cidade: row.endereco?.cidade || null,
@@ -360,6 +397,8 @@ export class DatabaseStorage implements IStorage {
       complemento: row.endereco?.complemento || null,
       cep: row.endereco?.cep || null,
     };
+    const [result] = await this.attachFirmContacts([mapped]);
+    return result;
   }
 
   async createLawFirm(lawFirm: InsertEscritorio): Promise<Escritorio> {
@@ -382,23 +421,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Claimants
+  private async attachClaimantContacts(claimantRows: any[]): Promise<any[]> {
+    if (claimantRows.length === 0) return [];
+    const ids = claimantRows.map(r => r.id);
+    const contactRows = await db.select({
+      reclamanteId: reclamanteContatos.reclamanteId,
+      contato: contatos,
+    })
+    .from(reclamanteContatos)
+    .innerJoin(contatos, eq(reclamanteContatos.contatoId, contatos.id))
+    .where(inArray(reclamanteContatos.reclamanteId, ids));
+
+    const contactMap = new Map<string, any[]>();
+    for (const cr of contactRows) {
+      if (!contactMap.has(cr.reclamanteId)) contactMap.set(cr.reclamanteId, []);
+      contactMap.get(cr.reclamanteId)!.push(cr.contato);
+    }
+    return claimantRows.map(r => {
+      const contatosList = contactMap.get(r.id) || [];
+      const first = contatosList[0];
+      return {
+        ...r,
+        contatos: contatosList,
+        email: first?.email || null,
+        telefone: first?.telefone || null,
+        celular: first?.celular || null,
+      };
+    });
+  }
+
   async getClaimants(ownerId: string): Promise<any[]> {
     const rows = await db.select({
       reclamante: reclamantes,
-      contato: contatos,
       endereco: enderecos,
     })
     .from(reclamantes)
-    .leftJoin(contatos, eq(reclamantes.contatoId, contatos.id))
     .leftJoin(enderecos, eq(reclamantes.enderecoId, enderecos.id))
     .where(eq(reclamantes.proprietarioId, ownerId))
     .orderBy(desc(reclamantes.criadoEm));
 
-    return rows.map(r => ({
+    const mapped = rows.map(r => ({
       ...r.reclamante,
-      email: r.contato?.email || null,
-      telefone: r.contato?.telefone || null,
-      celular: r.contato?.celular || null,
       estado: r.endereco?.estado || null,
       municipio: r.endereco?.municipio || null,
       cidade: r.endereco?.cidade || null,
@@ -408,47 +471,39 @@ export class DatabaseStorage implements IStorage {
       complemento: r.endereco?.complemento || null,
       cep: r.endereco?.cep || null,
     }));
+    return this.attachClaimantContacts(mapped);
   }
 
   async getAllClaimants(): Promise<any[]> {
     const rows = await db.select({
       reclamante: reclamantes,
-      contato: contatos,
       endereco: enderecos,
     })
     .from(reclamantes)
-    .leftJoin(contatos, eq(reclamantes.contatoId, contatos.id))
     .leftJoin(enderecos, eq(reclamantes.enderecoId, enderecos.id))
     .orderBy(desc(reclamantes.criadoEm));
 
-    return rows.map(r => ({
+    const mapped = rows.map(r => ({
       ...r.reclamante,
-      email: r.contato?.email || null,
-      telefone: r.contato?.telefone || null,
-      celular: r.contato?.celular || null,
       estado: r.endereco?.estado || null,
       municipio: r.endereco?.municipio || null,
       cidade: r.endereco?.cidade || null,
     }));
+    return this.attachClaimantContacts(mapped);
   }
 
   async getClaimant(id: string, ownerId: string): Promise<any | undefined> {
     const [row] = await db.select({
       reclamante: reclamantes,
-      contato: contatos,
       endereco: enderecos,
     })
     .from(reclamantes)
-    .leftJoin(contatos, eq(reclamantes.contatoId, contatos.id))
     .leftJoin(enderecos, eq(reclamantes.enderecoId, enderecos.id))
     .where(and(eq(reclamantes.id, id), eq(reclamantes.proprietarioId, ownerId)));
 
     if (!row) return undefined;
-    return {
+    const mapped = {
       ...row.reclamante,
-      email: row.contato?.email || null,
-      telefone: row.contato?.telefone || null,
-      celular: row.contato?.celular || null,
       estado: row.endereco?.estado || null,
       municipio: row.endereco?.municipio || null,
       cidade: row.endereco?.cidade || null,
@@ -458,6 +513,8 @@ export class DatabaseStorage implements IStorage {
       complemento: row.endereco?.complemento || null,
       cep: row.endereco?.cep || null,
     };
+    const [result] = await this.attachClaimantContacts([mapped]);
+    return result;
   }
 
   async createClaimant(claimant: InsertReclamante): Promise<Reclamante> {

@@ -19,7 +19,12 @@ import {
   deleteUserTokens,
   type CalendarEvent 
 } from "./outlook";
+import { db } from "./db";
 import {
+  contatos,
+  advogadoContatos,
+  escritorioContatos,
+  reclamanteContatos,
   insertAdvogadoSchema,
   insertEscritorioSchema,
   insertReclamanteSchema,
@@ -190,6 +195,93 @@ const getParam = (param: string | string[] | undefined): string => {
   return param || '';
 };
 
+import { eq, and } from "drizzle-orm";
+
+async function extractAndCreateContact(body: any): Promise<string | null> {
+  const { email, telefone, celular } = body;
+  if (!email && !telefone && !celular) return null;
+  const [newContact] = await db.insert(contatos).values({
+    email: email || null,
+    telefone: telefone || null,
+    celular: celular || null,
+  }).returning();
+  return newContact.id;
+}
+
+async function updateOrCreateContactForLawyer(lawyerId: number, body: any): Promise<void> {
+  const { email, telefone, celular } = body;
+  if (email === undefined && telefone === undefined && celular === undefined) return;
+  
+  const existing = await db.select({ contatoId: advogadoContatos.contatoId })
+    .from(advogadoContatos)
+    .where(eq(advogadoContatos.advogadoId, lawyerId))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    const updates: any = {};
+    if (email !== undefined) updates.email = email || null;
+    if (telefone !== undefined) updates.telefone = telefone || null;
+    if (celular !== undefined) updates.celular = celular || null;
+    await db.update(contatos).set(updates).where(eq(contatos.id, existing[0].contatoId));
+  } else {
+    const contactId = await extractAndCreateContact(body);
+    if (contactId) {
+      await db.insert(advogadoContatos).values({ advogadoId: lawyerId, contatoId: contactId });
+    }
+  }
+}
+
+async function updateOrCreateContactForFirm(firmId: string, body: any): Promise<void> {
+  const { email, telefone, celular } = body;
+  if (email === undefined && telefone === undefined && celular === undefined) return;
+  
+  const existing = await db.select({ contatoId: escritorioContatos.contatoId })
+    .from(escritorioContatos)
+    .where(eq(escritorioContatos.escritorioId, firmId))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    const updates: any = {};
+    if (email !== undefined) updates.email = email || null;
+    if (telefone !== undefined) updates.telefone = telefone || null;
+    if (celular !== undefined) updates.celular = celular || null;
+    await db.update(contatos).set(updates).where(eq(contatos.id, existing[0].contatoId));
+  } else {
+    const contactId = await extractAndCreateContact(body);
+    if (contactId) {
+      await db.insert(escritorioContatos).values({ escritorioId: firmId, contatoId: contactId });
+    }
+  }
+}
+
+async function updateOrCreateContactForClaimant(claimantId: string, body: any): Promise<void> {
+  const { email, telefone, celular } = body;
+  if (email === undefined && telefone === undefined && celular === undefined) return;
+  
+  const existing = await db.select({ contatoId: reclamanteContatos.contatoId })
+    .from(reclamanteContatos)
+    .where(eq(reclamanteContatos.reclamanteId, claimantId))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    const updates: any = {};
+    if (email !== undefined) updates.email = email || null;
+    if (telefone !== undefined) updates.telefone = telefone || null;
+    if (celular !== undefined) updates.celular = celular || null;
+    await db.update(contatos).set(updates).where(eq(contatos.id, existing[0].contatoId));
+  } else {
+    const contactId = await extractAndCreateContact(body);
+    if (contactId) {
+      await db.insert(reclamanteContatos).values({ reclamanteId: claimantId, contatoId: contactId });
+    }
+  }
+}
+
+function stripContactFields(body: any): any {
+  const { email, telefone, celular, ...rest } = body;
+  return rest;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -228,12 +320,17 @@ export async function registerRoutes(
   app.post("/api/lawyers", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertAdvogadoSchema.safeParse({ ...req.body, proprietarioId: userId, enviadoParaPipeline: true });
+      const strippedBody = stripContactFields(req.body);
+      const parsed = insertAdvogadoSchema.safeParse({ ...strippedBody, proprietarioId: userId, enviadoParaPipeline: true });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
       const lawyer = await storage.createLawyer(parsed.data);
+      const contactId = await extractAndCreateContact(req.body);
+      if (contactId) {
+        await db.insert(advogadoContatos).values({ advogadoId: lawyer.id, contatoId: contactId });
+      }
       await aggregationCache.invalidate('lawyers-with-lawsuits');
       
       const lead = await storage.createLead({
@@ -257,7 +354,8 @@ export async function registerRoutes(
     try {
       const userId = (req as AuthRequest).user!.id;
       const id = parseInt(getParam(req.params.id), 10);
-      const partial = insertAdvogadoSchema.partial().safeParse(req.body);
+      const strippedBody = stripContactFields(req.body);
+      const partial = insertAdvogadoSchema.partial().safeParse(strippedBody);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
@@ -267,6 +365,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Lawyer not found" });
         return;
       }
+      await updateOrCreateContactForLawyer(id, req.body);
       await aggregationCache.invalidate('lawyers-with-lawsuits');
       res.json(lawyer);
     } catch (error) {
@@ -323,12 +422,17 @@ export async function registerRoutes(
   app.post("/api/todos-advogados-infos", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertAdvogadoSchema.safeParse({ ...req.body, proprietarioId: userId, enviadoParaPipeline: true });
+      const strippedBody = stripContactFields(req.body);
+      const parsed = insertAdvogadoSchema.safeParse({ ...strippedBody, proprietarioId: userId, enviadoParaPipeline: true });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
       const lawyer = await storage.createLawyer(parsed.data);
+      const contactId = await extractAndCreateContact(req.body);
+      if (contactId) {
+        await db.insert(advogadoContatos).values({ advogadoId: lawyer.id, contatoId: contactId });
+      }
       await aggregationCache.invalidate('lawyers-with-lawsuits');
       
       const lead = await storage.createLead({
@@ -352,7 +456,8 @@ export async function registerRoutes(
     try {
       const userId = (req as AuthRequest).user!.id;
       const id = parseInt(getParam(req.params.id), 10);
-      const partial = insertAdvogadoSchema.partial().safeParse(req.body);
+      const strippedBody = stripContactFields(req.body);
+      const partial = insertAdvogadoSchema.partial().safeParse(strippedBody);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
@@ -362,6 +467,7 @@ export async function registerRoutes(
         res.status(404).json({ message: "Lawyer not found" });
         return;
       }
+      await updateOrCreateContactForLawyer(id, req.body);
       await aggregationCache.invalidate('lawyers-with-lawsuits');
       res.json(lawyer);
     } catch (error) {
@@ -450,12 +556,17 @@ export async function registerRoutes(
   app.post("/api/law-firms", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertEscritorioSchema.safeParse({ ...req.body, proprietarioId: userId });
+      const strippedBody = stripContactFields(req.body);
+      const parsed = insertEscritorioSchema.safeParse({ ...strippedBody, proprietarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
       const lawFirm = await storage.createLawFirm(parsed.data);
+      const contactId = await extractAndCreateContact(req.body);
+      if (contactId) {
+        await db.insert(escritorioContatos).values({ escritorioId: lawFirm.id, contatoId: contactId });
+      }
       await aggregationCache.invalidate('law-firms-with-lawsuits');
       res.status(201).json(lawFirm);
     } catch (error) {
@@ -467,16 +578,19 @@ export async function registerRoutes(
   app.patch("/api/law-firms/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertEscritorioSchema.partial().safeParse(req.body);
+      const strippedBody = stripContactFields(req.body);
+      const partial = insertEscritorioSchema.partial().safeParse(strippedBody);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const lawFirm = await storage.updateLawFirm(getParam(req.params.id), userId, partial.data);
+      const firmId = getParam(req.params.id);
+      const lawFirm = await storage.updateLawFirm(firmId, userId, partial.data);
       if (!lawFirm) {
         res.status(404).json({ message: "Law firm not found" });
         return;
       }
+      await updateOrCreateContactForFirm(firmId, req.body);
       await aggregationCache.invalidate('law-firms-with-lawsuits');
       res.json(lawFirm);
     } catch (error) {
@@ -592,12 +706,17 @@ export async function registerRoutes(
   app.post("/api/escritorios", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertEscritorioSchema.safeParse({ ...req.body, proprietarioId: userId });
+      const strippedBody = stripContactFields(req.body);
+      const parsed = insertEscritorioSchema.safeParse({ ...strippedBody, proprietarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
       const lawFirm = await storage.createLawFirm(parsed.data);
+      const contactId = await extractAndCreateContact(req.body);
+      if (contactId) {
+        await db.insert(escritorioContatos).values({ escritorioId: lawFirm.id, contatoId: contactId });
+      }
       await aggregationCache.invalidate('law-firms-with-lawsuits');
       res.status(201).json(lawFirm);
     } catch (error) {
@@ -609,16 +728,19 @@ export async function registerRoutes(
   app.patch("/api/escritorios/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertEscritorioSchema.partial().safeParse(req.body);
+      const strippedBody = stripContactFields(req.body);
+      const partial = insertEscritorioSchema.partial().safeParse(strippedBody);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const lawFirm = await storage.updateLawFirm(getParam(req.params.id), userId, partial.data);
+      const firmId = getParam(req.params.id);
+      const lawFirm = await storage.updateLawFirm(firmId, userId, partial.data);
       if (!lawFirm) {
         res.status(404).json({ message: "Law firm not found" });
         return;
       }
+      await updateOrCreateContactForFirm(firmId, req.body);
       await aggregationCache.invalidate('law-firms-with-lawsuits');
       res.json(lawFirm);
     } catch (error) {
@@ -673,12 +795,17 @@ export async function registerRoutes(
   app.post("/api/claimants", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertReclamanteSchema.safeParse({ ...req.body, proprietarioId: userId });
+      const strippedBody = stripContactFields(req.body);
+      const parsed = insertReclamanteSchema.safeParse({ ...strippedBody, proprietarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
       const claimant = await storage.createClaimant(parsed.data);
+      const contactId = await extractAndCreateContact(req.body);
+      if (contactId) {
+        await db.insert(reclamanteContatos).values({ reclamanteId: claimant.id, contatoId: contactId });
+      }
       await aggregationCache.invalidate('claimants-with-lawsuits');
       res.status(201).json(claimant);
     } catch (error) {
@@ -690,16 +817,19 @@ export async function registerRoutes(
   app.patch("/api/claimants/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertReclamanteSchema.partial().safeParse(req.body);
+      const strippedBody = stripContactFields(req.body);
+      const partial = insertReclamanteSchema.partial().safeParse(strippedBody);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const claimant = await storage.updateClaimant(getParam(req.params.id), userId, partial.data);
+      const claimantId = getParam(req.params.id);
+      const claimant = await storage.updateClaimant(claimantId, userId, partial.data);
       if (!claimant) {
         res.status(404).json({ message: "Claimant not found" });
         return;
       }
+      await updateOrCreateContactForClaimant(claimantId, req.body);
       await aggregationCache.invalidate('claimants-with-lawsuits');
       res.json(claimant);
     } catch (error) {
@@ -754,12 +884,17 @@ export async function registerRoutes(
   app.post("/api/reclamantes", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertReclamanteSchema.safeParse({ ...req.body, proprietarioId: userId });
+      const strippedBody = stripContactFields(req.body);
+      const parsed = insertReclamanteSchema.safeParse({ ...strippedBody, proprietarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
       }
       const claimant = await storage.createClaimant(parsed.data);
+      const contactId = await extractAndCreateContact(req.body);
+      if (contactId) {
+        await db.insert(reclamanteContatos).values({ reclamanteId: claimant.id, contatoId: contactId });
+      }
       await aggregationCache.invalidate('claimants-with-lawsuits');
       res.status(201).json(claimant);
     } catch (error) {
@@ -771,16 +906,19 @@ export async function registerRoutes(
   app.patch("/api/reclamantes/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const partial = insertReclamanteSchema.partial().safeParse(req.body);
+      const strippedBody = stripContactFields(req.body);
+      const partial = insertReclamanteSchema.partial().safeParse(strippedBody);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const claimant = await storage.updateClaimant(getParam(req.params.id), userId, partial.data);
+      const claimantId = getParam(req.params.id);
+      const claimant = await storage.updateClaimant(claimantId, userId, partial.data);
       if (!claimant) {
         res.status(404).json({ message: "Claimant not found" });
         return;
       }
+      await updateOrCreateContactForClaimant(claimantId, req.body);
       await aggregationCache.invalidate('claimants-with-lawsuits');
       res.json(claimant);
     } catch (error) {
