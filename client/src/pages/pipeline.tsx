@@ -1264,6 +1264,7 @@ function LeadDetailPanel({
               </div>
             )}
 
+            {pipelineType === "triagem" && (
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                 Checklist - Partes
@@ -1295,7 +1296,9 @@ function LeadDetailPanel({
                 </div>
               </Card>
             </div>
+            )}
 
+            {pipelineType === "triagem" && (
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                 Checklist - Valores
@@ -1412,6 +1415,7 @@ function LeadDetailPanel({
                 </div>
               </Card>
             </div>
+            )}
 
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
