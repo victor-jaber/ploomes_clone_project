@@ -596,12 +596,6 @@ function LeadDetailPanel({
                       className="text-muted-foreground"
                     />
                   </div>
-                  {lead.createdAt && (
-                    <div className="flex justify-between items-center pt-2 border-t">
-                      <span className="text-muted-foreground">Criado em</span>
-                      <span>{new Date(lead.createdAt).toLocaleDateString("pt-BR")}</span>
-                    </div>
-                  )}
                 </div>
               </Card>
             </div>
