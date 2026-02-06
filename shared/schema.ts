@@ -113,7 +113,6 @@ export const advogados = pgTable("advogados", {
   observacoes: text("observacoes"),
   enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
   enderecoId: varchar("endereco_id").references(() => enderecos.id, { onDelete: "set null" }),
-  contatoId: varchar("contato_id").references(() => contatos.id, { onDelete: "set null" }),
   proprietarioId: varchar("proprietario_id").notNull(),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
@@ -125,7 +124,6 @@ export const escritorios = pgTable("escritorios", {
   cnpj: varchar("cnpj", { length: 18 }),
   observacoes: text("observacoes"),
   enderecoId: varchar("endereco_id").references(() => enderecos.id, { onDelete: "set null" }),
-  contatoId: varchar("contato_id").references(() => contatos.id, { onDelete: "set null" }),
   proprietarioId: varchar("proprietario_id").notNull(),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
@@ -138,11 +136,37 @@ export const reclamantes = pgTable("reclamantes", {
   observacoes: text("observacoes"),
   enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
   enderecoId: varchar("endereco_id").references(() => enderecos.id, { onDelete: "set null" }),
-  contatoId: varchar("contato_id").references(() => contatos.id, { onDelete: "set null" }),
   proprietarioId: varchar("proprietario_id").notNull(),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
+
+export const advogadoContatos = pgTable("advogado_contatos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  advogadoId: integer("advogado_id").notNull().references(() => advogados.id, { onDelete: "cascade" }),
+  contatoId: varchar("contato_id").notNull().references(() => contatos.id, { onDelete: "cascade" }),
+  criadoEm: timestamp("criado_em").defaultNow(),
+}, (table) => [
+  unique("advogado_contato_unique").on(table.advogadoId, table.contatoId),
+]);
+
+export const escritorioContatos = pgTable("escritorio_contatos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  escritorioId: varchar("escritorio_id").notNull().references(() => escritorios.id, { onDelete: "cascade" }),
+  contatoId: varchar("contato_id").notNull().references(() => contatos.id, { onDelete: "cascade" }),
+  criadoEm: timestamp("criado_em").defaultNow(),
+}, (table) => [
+  unique("escritorio_contato_unique").on(table.escritorioId, table.contatoId),
+]);
+
+export const reclamanteContatos = pgTable("reclamante_contatos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reclamanteId: varchar("reclamante_id").notNull().references(() => reclamantes.id, { onDelete: "cascade" }),
+  contatoId: varchar("contato_id").notNull().references(() => contatos.id, { onDelete: "cascade" }),
+  criadoEm: timestamp("criado_em").defaultNow(),
+}, (table) => [
+  unique("reclamante_contato_unique").on(table.reclamanteId, table.contatoId),
+]);
 
 export const processos = pgTable("processos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -342,21 +366,36 @@ export const contatosRelations = relations(contatos, ({ many }) => ({}));
 
 export const advogadosRelations = relations(advogados, ({ one, many }) => ({
   endereco: one(enderecos, { fields: [advogados.enderecoId], references: [enderecos.id] }),
-  contato: one(contatos, { fields: [advogados.contatoId], references: [contatos.id] }),
+  advogadoContatos: many(advogadoContatos),
   escritorioAdvogados: many(escritorioAdvogados),
   processoAdvogados: many(processoAdvogados),
 }));
 
 export const reclamantesRelations = relations(reclamantes, ({ one, many }) => ({
   endereco: one(enderecos, { fields: [reclamantes.enderecoId], references: [enderecos.id] }),
-  contato: one(contatos, { fields: [reclamantes.contatoId], references: [contatos.id] }),
+  reclamanteContatos: many(reclamanteContatos),
   processoReclamantes: many(processoReclamantes),
 }));
 
 export const escritoriosRelations = relations(escritorios, ({ one, many }) => ({
   endereco: one(enderecos, { fields: [escritorios.enderecoId], references: [enderecos.id] }),
-  contato: one(contatos, { fields: [escritorios.contatoId], references: [contatos.id] }),
+  escritorioContatos: many(escritorioContatos),
   escritorioAdvogados: many(escritorioAdvogados),
+}));
+
+export const advogadoContatosRelations = relations(advogadoContatos, ({ one }) => ({
+  advogado: one(advogados, { fields: [advogadoContatos.advogadoId], references: [advogados.id] }),
+  contato: one(contatos, { fields: [advogadoContatos.contatoId], references: [contatos.id] }),
+}));
+
+export const escritorioContatosRelations = relations(escritorioContatos, ({ one }) => ({
+  escritorio: one(escritorios, { fields: [escritorioContatos.escritorioId], references: [escritorios.id] }),
+  contato: one(contatos, { fields: [escritorioContatos.contatoId], references: [contatos.id] }),
+}));
+
+export const reclamanteContatosRelations = relations(reclamanteContatos, ({ one }) => ({
+  reclamante: one(reclamantes, { fields: [reclamanteContatos.reclamanteId], references: [reclamantes.id] }),
+  contato: one(contatos, { fields: [reclamanteContatos.contatoId], references: [contatos.id] }),
 }));
 
 export const escritorioAdvogadosRelations = relations(escritorioAdvogados, ({ one }) => ({
@@ -437,6 +476,9 @@ export const insertProcessoSchema = createInsertSchema(processos).omit({ id: tru
 export const insertEscritorioAdvogadoSchema = createInsertSchema(escritorioAdvogados).omit({ id: true, criadoEm: true });
 export const insertProcessoAdvogadoSchema = createInsertSchema(processoAdvogados).omit({ id: true, criadoEm: true });
 export const insertProcessoReclamanteSchema = createInsertSchema(processoReclamantes).omit({ id: true, criadoEm: true });
+export const insertAdvogadoContatoSchema = createInsertSchema(advogadoContatos).omit({ id: true, criadoEm: true });
+export const insertEscritorioContatoSchema = createInsertSchema(escritorioContatos).omit({ id: true, criadoEm: true });
+export const insertReclamanteContatoSchema = createInsertSchema(reclamanteContatos).omit({ id: true, criadoEm: true });
 export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, criadoEm: true, atualizadoEm: true });
 export const insertLeadFinanceiroSchema = createInsertSchema(leadFinanceiros).omit({ id: true, criadoEm: true, atualizadoEm: true });
 export const insertLeadDetalhesCasoSchema = createInsertSchema(leadDetalhesCaso).omit({ id: true, criadoEm: true, atualizadoEm: true });
@@ -466,6 +508,12 @@ export type ProcessoAdvogado = typeof processoAdvogados.$inferSelect;
 export type InsertProcessoAdvogado = z.infer<typeof insertProcessoAdvogadoSchema>;
 export type ProcessoReclamante = typeof processoReclamantes.$inferSelect;
 export type InsertProcessoReclamante = z.infer<typeof insertProcessoReclamanteSchema>;
+export type AdvogadoContato = typeof advogadoContatos.$inferSelect;
+export type InsertAdvogadoContato = z.infer<typeof insertAdvogadoContatoSchema>;
+export type EscritorioContato = typeof escritorioContatos.$inferSelect;
+export type InsertEscritorioContato = z.infer<typeof insertEscritorioContatoSchema>;
+export type ReclamanteContato = typeof reclamanteContatos.$inferSelect;
+export type InsertReclamanteContato = z.infer<typeof insertReclamanteContatoSchema>;
 export type Lead = typeof leads.$inferSelect;
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type LeadFinanceiro = typeof leadFinanceiros.$inferSelect;
