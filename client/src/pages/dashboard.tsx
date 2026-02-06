@@ -47,7 +47,6 @@ const PIPELINE_COLORS = {
   escritorios: "#3b82f6", 
   reclamantes: "#10b981",
   triagem: "#f97316",
-  fechamento: "#ef4444",
 };
 
 const STAGE_COLORS = ["#8b5cf6", "#a78bfa", "#c4b5fd", "#ddd6fe", "#10b981"];
@@ -158,13 +157,6 @@ const PIPELINE_STAGES: Record<string, { id: string; label: string }[]> = {
     { id: "acompanhar", label: "Acompanhar" },
     { id: "qualificar", label: "Qualificar" },
   ],
-  fechamento: [
-    { id: "analise_financeira", label: "Análise Financeira" },
-    { id: "negociacao_valores", label: "Negociação" },
-    { id: "contrato", label: "Contrato" },
-    { id: "assinatura", label: "Assinatura" },
-    { id: "fechado", label: "Fechado" },
-  ],
 };
 
 export default function DashboardPage() {
@@ -198,7 +190,6 @@ export default function DashboardPage() {
     escritorios: leads.filter(l => l.pipelineType === "escritorios"),
     reclamantes: leads.filter(l => l.pipelineType === "reclamantes"),
     triagem: leads.filter(l => l.pipelineType === "triagem"),
-    fechamento: leads.filter(l => l.pipelineType === "fechamento"),
   };
 
   const qualifiedLeads = leads.filter(l => 
@@ -211,8 +202,7 @@ export default function DashboardPage() {
     { name: "Advogados", value: leadsByPipeline.advogados.length, color: PIPELINE_COLORS.advogados },
     { name: "Escritórios", value: leadsByPipeline.escritorios.length, color: PIPELINE_COLORS.escritorios },
     { name: "Reclamantes", value: leadsByPipeline.reclamantes.length, color: PIPELINE_COLORS.reclamantes },
-    { name: "Triagem", value: leadsByPipeline.triagem.length, color: PIPELINE_COLORS.triagem },
-    { name: "Fechamento", value: leadsByPipeline.fechamento.length, color: PIPELINE_COLORS.fechamento },
+    { name: "Gestão de Casos", value: leadsByPipeline.triagem.length, color: PIPELINE_COLORS.triagem },
   ].filter(p => p.value > 0);
 
   const getStageData = (pipelineType: string) => {
@@ -256,8 +246,7 @@ export default function DashboardPage() {
     advogados: "Advogados",
     escritorios: "Escritórios",
     reclamantes: "Reclamantes",
-    triagem: "Triagem",
-    fechamento: "Fechamento",
+    triagem: "Gestão de Casos",
   };
 
   const getEntityName = (lead: Lead) => {
@@ -407,19 +396,11 @@ export default function DashboardPage() {
           isLoading={isLoading}
         />
         <StatCard
-          title="Em Triagem"
+          title="Gestão de Casos"
           value={leadsByPipeline.triagem.length}
           subtitle="Casos em análise"
           icon={Target}
           iconColor="bg-gradient-to-br from-orange-500 to-amber-500"
-          isLoading={isLoading}
-        />
-        <StatCard
-          title="Em Fechamento"
-          value={leadsByPipeline.fechamento.length}
-          subtitle="Prontos para fechar"
-          icon={TrendingUp}
-          iconColor="bg-gradient-to-br from-red-500 to-rose-500"
           isLoading={isLoading}
         />
         <StatCard

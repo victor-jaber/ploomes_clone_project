@@ -87,9 +87,10 @@ const PIPELINE_LABELS: Record<PipelineType, { label: string; icon: JSX.Element; 
   advogados: { label: "Advogados", icon: <Scale className="h-4 w-4" />, description: "Pipeline de advogados" },
   escritorios: { label: "Escritórios", icon: <Building2 className="h-4 w-4" />, description: "Pipeline de escritórios" },
   reclamantes: { label: "Reclamantes", icon: <Users className="h-4 w-4" />, description: "Pipeline de reclamantes" },
-  triagem: { label: "Triagem", icon: <FileSearch className="h-4 w-4" />, description: "Pipeline de triagem" },
-  fechamento: { label: "Fechamento", icon: <Handshake className="h-4 w-4" />, description: "Pipeline de fechamento" },
+  triagem: { label: "Gestão de Casos", icon: <FileSearch className="h-4 w-4" />, description: "Pipeline de gestão de casos" },
 };
+
+const VISIBLE_PIPELINES: PipelineType[] = ["advogados", "escritorios", "reclamantes", "triagem"];
 
 type PipelineFilter = {
   type: "advogado" | "reclamante" | "cnj" | "escritorio";
@@ -610,8 +611,8 @@ function LeadDetailPanel({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(PIPELINE_LABELS).map(([key, { label }]) => (
-                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                        {VISIBLE_PIPELINES.map((key) => (
+                          <SelectItem key={key} value={key}>{PIPELINE_LABELS[key].label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -673,6 +674,41 @@ function LeadDetailPanel({
                       >
                         <Scale className="h-4 w-4" />
                         Ver Advogados ({cnjs.length} CNJs em comum)
+                        <ArrowRight className="h-4 w-4 ml-auto" />
+                      </Button>
+                    );
+                  })()}
+                </Card>
+              </div>
+            ) : pipelineType === "triagem" ? (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Advogados Relacionados
+                </h3>
+                <Card className="p-4">
+                  {(() => {
+                    const cnj = caseDetails?.cnj || lead.titulo;
+                    const cnjs = cnj ? [cnj] : [];
+                    
+                    if (cnjs.length === 0) {
+                      return <p className="text-sm text-muted-foreground">Nenhum CNJ vinculado para buscar advogados</p>;
+                    }
+                    
+                    return (
+                      <Button 
+                        variant="outline" 
+                        className="w-full gap-2 justify-start"
+                        onClick={() => {
+                          onNavigatePipeline("advogados", cnjs.map(cnj => ({
+                            type: "cnj" as const,
+                            value: cnj,
+                            label: `CNJ: ${cnj}`
+                          })));
+                        }}
+                        data-testid="button-nav-advogados-from-triagem"
+                      >
+                        <Scale className="h-4 w-4" />
+                        Ver Advogados (CNJ: {cnjs[0]?.substring(0, 15)}...)
                         <ArrowRight className="h-4 w-4 ml-auto" />
                       </Button>
                     );
@@ -849,17 +885,23 @@ function LeadDetailPanel({
                   )}
                 </Card>
               </div>
-            ) : pipelineType === "reclamantes" ? (
+            ) : pipelineType === "reclamantes" || pipelineType === "triagem" ? (
               <div>
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   Escritórios Relacionados
                 </h3>
                 <Card className="p-4">
                   {(() => {
-                    const claimantLawsuits = lead.claimantId 
-                      ? claimantsWithLawsuits.find(c => c.id === lead.claimantId)?.lawsuits || []
-                      : [];
-                    const cnjs = claimantLawsuits.map(l => l.cnj).filter(Boolean) as string[];
+                    let cnjs: string[] = [];
+                    if (pipelineType === "reclamantes") {
+                      const claimantLawsuits = lead.claimantId 
+                        ? claimantsWithLawsuits.find(c => c.id === lead.claimantId)?.lawsuits || []
+                        : [];
+                      cnjs = claimantLawsuits.map(l => l.cnj).filter(Boolean) as string[];
+                    } else {
+                      const cnj = caseDetails?.cnj || lead.titulo;
+                      cnjs = cnj ? [cnj] : [];
+                    }
                     
                     if (cnjs.length === 0) {
                       return <p className="text-sm text-muted-foreground">Nenhum CNJ vinculado para buscar escritórios</p>;
@@ -1029,17 +1071,23 @@ function LeadDetailPanel({
                   })()}
                 </Card>
               </div>
-            ) : pipelineType === "escritorios" ? (
+            ) : pipelineType === "escritorios" || pipelineType === "triagem" ? (
               <div>
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   Reclamantes Relacionados
                 </h3>
                 <Card className="p-4">
                   {(() => {
-                    const firmLawsuits = lead.lawFirmId 
-                      ? lawFirmsWithLawsuits.find(f => f.id === lead.lawFirmId)?.lawsuits || []
-                      : [];
-                    const cnjs = firmLawsuits.map(l => l.cnj).filter(Boolean) as string[];
+                    let cnjs: string[] = [];
+                    if (pipelineType === "escritorios") {
+                      const firmLawsuits = lead.lawFirmId 
+                        ? lawFirmsWithLawsuits.find(f => f.id === lead.lawFirmId)?.lawsuits || []
+                        : [];
+                      cnjs = firmLawsuits.map(l => l.cnj).filter(Boolean) as string[];
+                    } else {
+                      const cnj = caseDetails?.cnj || lead.titulo;
+                      cnjs = cnj ? [cnj] : [];
+                    }
                     
                     if (cnjs.length === 0) {
                       return <p className="text-sm text-muted-foreground">Nenhum CNJ vinculado para buscar reclamantes</p>;
@@ -1805,7 +1853,6 @@ function LeadCard({
                     {pipelineType === "escritorios" && <Building2 className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
                     {pipelineType === "reclamantes" && <User className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
                     {pipelineType === "triagem" && <FileSearch className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
-                    {pipelineType === "fechamento" && <Handshake className="h-3 w-3 text-purple-600 dark:text-purple-400" />}
                   </div>
                   <span className="truncate font-medium">{entityName}</span>
                 </div>
@@ -2411,7 +2458,7 @@ export default function PipelinePage() {
     
     urlParamsProcessed.current = true;
     
-    if (type && Object.keys(PIPELINE_LABELS).includes(type)) {
+    if (type && VISIBLE_PIPELINES.includes(type as PipelineType)) {
       setSelectedPipeline(type as PipelineType);
     }
     
@@ -3238,14 +3285,17 @@ export default function PipelinePage() {
             <SelectValue placeholder="Selecione o pipeline" />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(PIPELINE_LABELS).map(([key, { label, icon }]) => (
-              <SelectItem key={key} value={key} data-testid={`option-pipeline-${key}`}>
-                <div className="flex items-center gap-2">
-                  {icon}
-                  <span>{label}</span>
-                </div>
-              </SelectItem>
-            ))}
+            {VISIBLE_PIPELINES.map((key) => {
+              const { label, icon } = PIPELINE_LABELS[key];
+              return (
+                <SelectItem key={key} value={key} data-testid={`option-pipeline-${key}`}>
+                  <div className="flex items-center gap-2">
+                    {icon}
+                    <span>{label}</span>
+                  </div>
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
 
