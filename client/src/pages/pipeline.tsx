@@ -592,6 +592,68 @@ function LeadDetailPanel({
                       className="text-muted-foreground"
                     />
                   </div>
+                  {advogado && (
+                    <>
+                      <Separator className="my-1" />
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Advogado</p>
+                      <div className="space-y-1">
+                        <Label className="text-muted-foreground text-xs">Nome</Label>
+                        <p className="text-sm">{advogado.nome}</p>
+                      </div>
+                      {advogado.cpf && (
+                        <div className="space-y-1">
+                          <Label className="text-muted-foreground text-xs">CPF</Label>
+                          <p className="text-sm">{advogado.cpf}</p>
+                        </div>
+                      )}
+                      {advogado.telefone && (
+                        <div className="space-y-1">
+                          <Label className="text-muted-foreground text-xs">Telefone</Label>
+                          <div className="flex items-center gap-2 text-sm">
+                            <span>{advogado.telefone}</span>
+                            <WhatsAppLink phone={advogado.telefone} />
+                          </div>
+                        </div>
+                      )}
+                      {advogado.email && (
+                        <div className="space-y-1">
+                          <Label className="text-muted-foreground text-xs">Email</Label>
+                          <p className="text-sm truncate">{advogado.email}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {reclamante && (
+                    <>
+                      <Separator className="my-1" />
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Reclamante</p>
+                      <div className="space-y-1">
+                        <Label className="text-muted-foreground text-xs">Nome</Label>
+                        <p className="text-sm">{reclamante.nome}</p>
+                      </div>
+                      {reclamante.cpf && (
+                        <div className="space-y-1">
+                          <Label className="text-muted-foreground text-xs">CPF</Label>
+                          <p className="text-sm">{reclamante.cpf}</p>
+                        </div>
+                      )}
+                      {reclamante.telefone && (
+                        <div className="space-y-1">
+                          <Label className="text-muted-foreground text-xs">Telefone</Label>
+                          <div className="flex items-center gap-2 text-sm">
+                            <span>{reclamante.telefone}</span>
+                            <WhatsAppLink phone={reclamante.telefone} />
+                          </div>
+                        </div>
+                      )}
+                      {reclamante.email && (
+                        <div className="space-y-1">
+                          <Label className="text-muted-foreground text-xs">Email</Label>
+                          <p className="text-sm truncate">{reclamante.email}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </Card>
             </div>
@@ -718,124 +780,7 @@ function LeadDetailPanel({
                   })()}
                 </Card>
               </div>
-            ) : (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Advogado
-                  </h3>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-6 text-xs"
-                    onClick={() => setShowNewAdvogado(!showNewAdvogado)}
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Novo
-                  </Button>
-                </div>
-                <Card className="p-4 space-y-3">
-                  {showNewAdvogado ? (
-                    <div className="space-y-3">
-                      <Input
-                        placeholder="Nome *"
-                        value={newAdvogado.nome}
-                        onChange={(e) => setNewAdvogado({...newAdvogado, nome: e.target.value})}
-                      />
-                      <Input
-                        placeholder="CPF"
-                        value={newAdvogado.cpf}
-                        onChange={(e) => setNewAdvogado({...newAdvogado, cpf: e.target.value})}
-                      />
-                      <Input
-                        placeholder="Telefone"
-                        value={newAdvogado.telefone}
-                        onChange={(e) => setNewAdvogado({...newAdvogado, telefone: e.target.value})}
-                      />
-                      <Input
-                        placeholder="Email"
-                        value={newAdvogado.email}
-                        onChange={(e) => setNewAdvogado({...newAdvogado, email: e.target.value})}
-                      />
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          onClick={() => createAdvogadoMutation.mutate(newAdvogado)}
-                          disabled={!newAdvogado.nome || createAdvogadoMutation.isPending}
-                        >
-                          {createAdvogadoMutation.isPending ? "Salvando..." : "Salvar"}
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => setShowNewAdvogado(false)}
-                        >
-                          Cancelar
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <Select 
-                        value={lead.lawyerId?.toString() || "none"} 
-                        onValueChange={(v) => handleUpdateField("lawyerId", v === "none" ? null : parseInt(v))}
-                      >
-                        <SelectTrigger data-testid="select-advogado">
-                          <SelectValue placeholder="Selecione um advogado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhum</SelectItem>
-                          {todosAdvogadosInfos.map((a) => (
-                            <SelectItem key={a.id} value={a.id.toString()}>{a.nome}{a.cpf ? ` (${a.cpf})` : ""}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {advogado && (
-                        <div className="space-y-2 pt-2 border-t">
-                          {advogado.cpf && (
-                            <div className="text-xs text-muted-foreground">CPF: {advogado.cpf}</div>
-                          )}
-                          {advogado.telefone && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span className="text-muted-foreground">{advogado.telefone}</span>
-                              <WhatsAppLink phone={advogado.telefone} />
-                            </div>
-                          )}
-                          {advogado.email && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span className="text-muted-foreground truncate">{advogado.email}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {pipelineType === "escritorios" && lead.lawFirmId && (
-                        <div className="pt-2 border-t">
-                          <Button 
-                            variant="outline" 
-                            className="w-full gap-2 justify-start"
-                            onClick={() => {
-                              onNavigatePipeline("advogados", [{
-                                type: "escritorio" as const,
-                                id: lead.lawFirmId!,
-                                value: lead.lawFirmId!,
-                                label: `Escritório: ${escritorio?.nome || ""}`,
-                              }]);
-                            }}
-                            data-testid="button-nav-advogados-from-escritorio"
-                          >
-                            <Scale className="h-4 w-4" />
-                            Ver no Pipeline de Advogados
-                            <ArrowRight className="h-4 w-4 ml-auto" />
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </Card>
-              </div>
-            )}
+            ) : null}
 
             {pipelineType === "advogados" ? (
               <div>
@@ -1109,105 +1054,7 @@ function LeadDetailPanel({
                   })()}
                 </Card>
               </div>
-            ) : (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Reclamante
-                  </h3>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-6 text-xs"
-                    onClick={() => setShowNewReclamante(!showNewReclamante)}
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Novo
-                  </Button>
-                </div>
-                <Card className="p-4 space-y-3">
-                  {showNewReclamante ? (
-                    <div className="space-y-3">
-                      <Input
-                        placeholder="Nome *"
-                        value={newReclamante.nome}
-                        onChange={(e) => setNewReclamante({...newReclamante, nome: e.target.value})}
-                      />
-                      <Input
-                        placeholder="CPF"
-                        value={newReclamante.cpf}
-                        onChange={(e) => setNewReclamante({...newReclamante, cpf: e.target.value})}
-                      />
-                      <Input
-                        placeholder="Telefone"
-                        value={newReclamante.telefone}
-                        onChange={(e) => setNewReclamante({...newReclamante, telefone: e.target.value})}
-                      />
-                      <Input
-                        placeholder="Email"
-                        value={newReclamante.email}
-                        onChange={(e) => setNewReclamante({...newReclamante, email: e.target.value})}
-                      />
-                      <Input
-                        placeholder="CNJ do Processo"
-                        value={newReclamante.cnj}
-                        onChange={(e) => setNewReclamante({...newReclamante, cnj: e.target.value})}
-                      />
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          onClick={() => createReclamanteMutation.mutate(newReclamante)}
-                          disabled={!newReclamante.nome || createReclamanteMutation.isPending}
-                        >
-                          {createReclamanteMutation.isPending ? "Salvando..." : "Salvar"}
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => setShowNewReclamante(false)}
-                        >
-                          Cancelar
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <Select 
-                        value={lead.claimantId || "none"} 
-                        onValueChange={(v) => handleUpdateField("claimantId", v === "none" ? null : v)}
-                      >
-                        <SelectTrigger data-testid="select-reclamante">
-                          <SelectValue placeholder="Selecione um reclamante" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhum</SelectItem>
-                          {reclamantes.map((r) => (
-                            <SelectItem key={r.id} value={r.id}>{r.nome}{r.cnj ? ` (${r.cnj})` : ""}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {reclamante && (
-                        <div className="space-y-2 pt-2 border-t">
-                          {reclamante.cpf && (
-                            <div className="text-xs text-muted-foreground">CPF: {reclamante.cpf}</div>
-                          )}
-                          {reclamante.cnj && (
-                            <div className="text-xs text-muted-foreground">CNJ: {reclamante.cnj}</div>
-                          )}
-                          {reclamante.telefone && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span className="text-muted-foreground">{reclamante.telefone}</span>
-                              <WhatsAppLink phone={reclamante.telefone} />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </Card>
-              </div>
-            )}
+            ) : null}
 
             {(() => {
               const linkedLawsuits = (() => {
