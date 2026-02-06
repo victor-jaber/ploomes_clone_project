@@ -821,14 +821,6 @@ function LeadDetailPanel({
               <Card className="p-4">
                 <div className="space-y-3 text-sm">
                   <div className="space-y-1">
-                    <Label className="text-muted-foreground text-xs">CNJ</Label>
-                    <InlineEditField
-                      value={caseDetails?.cnj || ""}
-                      onSave={(val) => handleUpdateField("cnj", val)}
-                      placeholder="Adicionar..."
-                    />
-                  </div>
-                  <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Tribunal</Label>
                     <InlineEditField
                       value={caseDetails?.tribunal || ""}
