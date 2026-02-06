@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -237,6 +238,7 @@ function LeadDetailPanel({
   lawyersWithLawsuits,
   claimantsWithLawsuits,
   lawFirmsWithLawsuits,
+  onNavigatePipeline,
 }: {
   lead: Lead;
   todosAdvogadosInfos: TodosAdvogadosInfos[];
@@ -250,6 +252,7 @@ function LeadDetailPanel({
   lawyersWithLawsuits: LawyerWithLawsuits[];
   claimantsWithLawsuits: ClaimantWithLawsuits[];
   lawFirmsWithLawsuits: LawFirmWithLawsuits[];
+  onNavigatePipeline: (type: PipelineType, filters: PipelineFilter[]) => void;
 }) {
   const { toast } = useToast();
   const [commentText, setCommentText] = useState("");
@@ -639,311 +642,529 @@ function LeadDetailPanel({
               </Card>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Advogado
+            {pipelineType === "reclamantes" ? (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Advogados Relacionados
                 </h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 text-xs"
-                  onClick={() => setShowNewAdvogado(!showNewAdvogado)}
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Novo
-                </Button>
-              </div>
-              <Card className="p-4 space-y-3">
-                {showNewAdvogado ? (
-                  <div className="space-y-3">
-                    <Input
-                      placeholder="Nome *"
-                      value={newAdvogado.nome}
-                      onChange={(e) => setNewAdvogado({...newAdvogado, nome: e.target.value})}
-                    />
-                    <Input
-                      placeholder="CPF"
-                      value={newAdvogado.cpf}
-                      onChange={(e) => setNewAdvogado({...newAdvogado, cpf: e.target.value})}
-                    />
-                    <Input
-                      placeholder="CNJ"
-                      value={newAdvogado.cnj}
-                      onChange={(e) => setNewAdvogado({...newAdvogado, cnj: e.target.value})}
-                    />
-                    <Input
-                      placeholder="Telefone"
-                      value={newAdvogado.telefone}
-                      onChange={(e) => setNewAdvogado({...newAdvogado, telefone: e.target.value})}
-                    />
-                    <Input
-                      placeholder="Email"
-                      value={newAdvogado.email}
-                      onChange={(e) => setNewAdvogado({...newAdvogado, email: e.target.value})}
-                    />
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        onClick={() => createAdvogadoMutation.mutate(newAdvogado)}
-                        disabled={!newAdvogado.nome || createAdvogadoMutation.isPending}
-                      >
-                        {createAdvogadoMutation.isPending ? "Salvando..." : "Salvar"}
-                      </Button>
+                <Card className="p-4">
+                  {(() => {
+                    const claimantLawsuits = lead.claimantId 
+                      ? claimantsWithLawsuits.find(c => c.id === lead.claimantId)?.lawsuits || []
+                      : [];
+                    const cnjs = claimantLawsuits.map(l => l.cnj).filter(Boolean) as string[];
+                    
+                    if (cnjs.length === 0) {
+                      return <p className="text-sm text-muted-foreground">Nenhum CNJ vinculado para buscar advogados</p>;
+                    }
+                    
+                    return (
                       <Button 
                         variant="outline" 
-                        size="sm" 
-                        onClick={() => setShowNewAdvogado(false)}
+                        className="w-full gap-2 justify-start"
+                        onClick={() => {
+                          onNavigatePipeline("advogados", cnjs.map(cnj => ({
+                            type: "cnj" as const,
+                            value: cnj,
+                            label: `CNJ: ${cnj}`
+                          })));
+                        }}
+                        data-testid="button-nav-advogados"
                       >
-                        Cancelar
+                        <Scale className="h-4 w-4" />
+                        Ver Advogados ({cnjs.length} CNJs em comum)
+                        <ArrowRight className="h-4 w-4 ml-auto" />
                       </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <Select 
-                      value={lead.lawyerId?.toString() || "none"} 
-                      onValueChange={(v) => handleUpdateField("lawyerId", v === "none" ? null : parseInt(v))}
-                    >
-                      <SelectTrigger data-testid="select-advogado">
-                        <SelectValue placeholder="Selecione um advogado" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {todosAdvogadosInfos.map((a) => (
-                          <SelectItem key={a.id} value={a.id.toString()}>{a.nome}{a.cnj ? ` (${a.cnj})` : ""}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {advogado && (
-                      <div className="space-y-2 pt-2 border-t">
-                        {advogado.cnj && (
-                          <div className="text-xs text-muted-foreground">CNJ: {advogado.cnj}</div>
-                        )}
-                        {advogado.cpf && (
-                          <div className="text-xs text-muted-foreground">CPF: {advogado.cpf}</div>
-                        )}
-                        {advogado.telefone && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="text-muted-foreground">{advogado.telefone}</span>
-                            <WhatsAppLink phone={advogado.telefone} />
-                          </div>
-                        )}
-                        {advogado.email && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="text-muted-foreground truncate">{advogado.email}</span>
-                          </div>
-                        )}
+                    );
+                  })()}
+                </Card>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Advogado
+                  </h3>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-xs"
+                    onClick={() => setShowNewAdvogado(!showNewAdvogado)}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Novo
+                  </Button>
+                </div>
+                <Card className="p-4 space-y-3">
+                  {showNewAdvogado ? (
+                    <div className="space-y-3">
+                      <Input
+                        placeholder="Nome *"
+                        value={newAdvogado.nome}
+                        onChange={(e) => setNewAdvogado({...newAdvogado, nome: e.target.value})}
+                      />
+                      <Input
+                        placeholder="CPF"
+                        value={newAdvogado.cpf}
+                        onChange={(e) => setNewAdvogado({...newAdvogado, cpf: e.target.value})}
+                      />
+                      <Input
+                        placeholder="CNJ"
+                        value={newAdvogado.cnj}
+                        onChange={(e) => setNewAdvogado({...newAdvogado, cnj: e.target.value})}
+                      />
+                      <Input
+                        placeholder="Telefone"
+                        value={newAdvogado.telefone}
+                        onChange={(e) => setNewAdvogado({...newAdvogado, telefone: e.target.value})}
+                      />
+                      <Input
+                        placeholder="Email"
+                        value={newAdvogado.email}
+                        onChange={(e) => setNewAdvogado({...newAdvogado, email: e.target.value})}
+                      />
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          onClick={() => createAdvogadoMutation.mutate(newAdvogado)}
+                          disabled={!newAdvogado.nome || createAdvogadoMutation.isPending}
+                        >
+                          {createAdvogadoMutation.isPending ? "Salvando..." : "Salvar"}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setShowNewAdvogado(false)}
+                        >
+                          Cancelar
+                        </Button>
                       </div>
-                    )}
-                  </>
-                )}
-              </Card>
-            </div>
+                    </div>
+                  ) : (
+                    <>
+                      <Select 
+                        value={lead.lawyerId?.toString() || "none"} 
+                        onValueChange={(v) => handleUpdateField("lawyerId", v === "none" ? null : parseInt(v))}
+                      >
+                        <SelectTrigger data-testid="select-advogado">
+                          <SelectValue placeholder="Selecione um advogado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {todosAdvogadosInfos.map((a) => (
+                            <SelectItem key={a.id} value={a.id.toString()}>{a.nome}{a.cnj ? ` (${a.cnj})` : ""}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {advogado && (
+                        <div className="space-y-2 pt-2 border-t">
+                          {advogado.cnj && (
+                            <div className="text-xs text-muted-foreground">CNJ: {advogado.cnj}</div>
+                          )}
+                          {advogado.cpf && (
+                            <div className="text-xs text-muted-foreground">CPF: {advogado.cpf}</div>
+                          )}
+                          {advogado.telefone && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="text-muted-foreground">{advogado.telefone}</span>
+                              <WhatsAppLink phone={advogado.telefone} />
+                            </div>
+                          )}
+                          {advogado.email && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="text-muted-foreground truncate">{advogado.email}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {pipelineType === "escritorios" && lead.lawFirmId && (
+                        <div className="pt-2 border-t">
+                          <Button 
+                            variant="outline" 
+                            className="w-full gap-2 justify-start"
+                            onClick={() => {
+                              onNavigatePipeline("advogados", [{
+                                type: "escritorio" as const,
+                                id: lead.lawFirmId!,
+                                value: lead.lawFirmId!,
+                                label: `Escritório: ${escritorio?.nome || ""}`,
+                              }]);
+                            }}
+                            data-testid="button-nav-advogados-from-escritorio"
+                          >
+                            <Scale className="h-4 w-4" />
+                            Ver no Pipeline de Advogados
+                            <ArrowRight className="h-4 w-4 ml-auto" />
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </Card>
+              </div>
+            )}
 
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Escritório
+            {pipelineType === "advogados" ? (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Escritórios Relacionados
                 </h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 text-xs"
-                  onClick={() => setShowNewEscritorio(!showNewEscritorio)}
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Novo
-                </Button>
+                <Card className="p-4">
+                  {lead.lawyerId ? (
+                    <Button 
+                      variant="outline" 
+                      className="w-full gap-2 justify-start"
+                      onClick={() => {
+                        onNavigatePipeline("escritorios", [{
+                          type: "advogado" as const,
+                          id: lead.lawyerId!,
+                          value: String(lead.lawyerId),
+                          label: `Advogado: ${advogado?.nome || ""}`,
+                        }]);
+                      }}
+                      data-testid="button-nav-escritorios"
+                    >
+                      <Building2 className="h-4 w-4" />
+                      Ver Escritórios
+                      <ArrowRight className="h-4 w-4 ml-auto" />
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Vincule um advogado para ver escritórios relacionados</p>
+                  )}
+                  {escritorio && (
+                    <div className="space-y-2 pt-3 border-t mt-3">
+                      {escritorio.cnpj && (
+                        <div className="text-xs text-muted-foreground">CNPJ: {escritorio.cnpj}</div>
+                      )}
+                      {escritorio.telefone && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">{escritorio.telefone}</span>
+                          <WhatsAppLink phone={escritorio.telefone} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
               </div>
-              <Card className="p-4 space-y-3">
-                {showNewEscritorio ? (
-                  <div className="space-y-3">
-                    <Input
-                      placeholder="Nome *"
-                      value={newEscritorio.nome}
-                      onChange={(e) => setNewEscritorio({...newEscritorio, nome: e.target.value})}
-                    />
-                    <Input
-                      placeholder="CNPJ"
-                      value={newEscritorio.cnpj}
-                      onChange={(e) => setNewEscritorio({...newEscritorio, cnpj: e.target.value})}
-                    />
-                    <Input
-                      placeholder="Telefone"
-                      value={newEscritorio.telefone}
-                      onChange={(e) => setNewEscritorio({...newEscritorio, telefone: e.target.value})}
-                    />
-                    <Input
-                      placeholder="Email"
-                      value={newEscritorio.email}
-                      onChange={(e) => setNewEscritorio({...newEscritorio, email: e.target.value})}
-                    />
-                    <Input
-                      placeholder="Número do Caso"
-                      value={newEscritorio.numeroCaso}
-                      onChange={(e) => setNewEscritorio({...newEscritorio, numeroCaso: e.target.value})}
-                    />
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        onClick={() => createEscritorioMutation.mutate(newEscritorio)}
-                        disabled={!newEscritorio.nome || createEscritorioMutation.isPending}
-                      >
-                        {createEscritorioMutation.isPending ? "Salvando..." : "Salvar"}
-                      </Button>
+            ) : pipelineType === "reclamantes" ? (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Escritórios Relacionados
+                </h3>
+                <Card className="p-4">
+                  {(() => {
+                    const claimantLawsuits = lead.claimantId 
+                      ? claimantsWithLawsuits.find(c => c.id === lead.claimantId)?.lawsuits || []
+                      : [];
+                    const cnjs = claimantLawsuits.map(l => l.cnj).filter(Boolean) as string[];
+                    
+                    if (cnjs.length === 0) {
+                      return <p className="text-sm text-muted-foreground">Nenhum CNJ vinculado para buscar escritórios</p>;
+                    }
+                    
+                    return (
                       <Button 
                         variant="outline" 
-                        size="sm" 
-                        onClick={() => setShowNewEscritorio(false)}
+                        className="w-full gap-2 justify-start"
+                        onClick={() => {
+                          onNavigatePipeline("escritorios", cnjs.map(cnj => ({
+                            type: "cnj" as const,
+                            value: cnj,
+                            label: `CNJ: ${cnj}`
+                          })));
+                        }}
+                        data-testid="button-nav-escritorios-from-reclamante"
                       >
-                        Cancelar
+                        <Building2 className="h-4 w-4" />
+                        Ver Escritórios ({cnjs.length} CNJs em comum)
+                        <ArrowRight className="h-4 w-4 ml-auto" />
                       </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <Select 
-                      value={lead.lawFirmId || "none"} 
-                      onValueChange={(v) => handleUpdateField("lawFirmId", v === "none" ? null : v)}
-                    >
-                      <SelectTrigger data-testid="select-escritorio">
-                        <SelectValue placeholder="Selecione um escritório" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {escritorios.map((e) => (
-                          <SelectItem key={e.id} value={e.id}>{e.nome}{(e as any).numeroCaso ? ` (${(e as any).numeroCaso})` : ""}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {escritorio && (
-                      <div className="space-y-2 pt-2 border-t">
-                        {escritorio.cnpj && (
-                          <div className="text-xs text-muted-foreground">CNPJ: {escritorio.cnpj}</div>
-                        )}
-                        {(escritorio as any).numeroCaso && (
-                          <div className="text-xs text-muted-foreground">Caso: {(escritorio as any).numeroCaso}</div>
-                        )}
-                        {escritorio.telefone && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="text-muted-foreground">{escritorio.telefone}</span>
-                            <WhatsAppLink phone={escritorio.telefone} />
-                          </div>
-                        )}
-                        {escritorio.email && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="text-muted-foreground truncate">{escritorio.email}</span>
-                          </div>
-                        )}
+                    );
+                  })()}
+                </Card>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Escritório
+                  </h3>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-xs"
+                    onClick={() => setShowNewEscritorio(!showNewEscritorio)}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Novo
+                  </Button>
+                </div>
+                <Card className="p-4 space-y-3">
+                  {showNewEscritorio ? (
+                    <div className="space-y-3">
+                      <Input
+                        placeholder="Nome *"
+                        value={newEscritorio.nome}
+                        onChange={(e) => setNewEscritorio({...newEscritorio, nome: e.target.value})}
+                      />
+                      <Input
+                        placeholder="CNPJ"
+                        value={newEscritorio.cnpj}
+                        onChange={(e) => setNewEscritorio({...newEscritorio, cnpj: e.target.value})}
+                      />
+                      <Input
+                        placeholder="Telefone"
+                        value={newEscritorio.telefone}
+                        onChange={(e) => setNewEscritorio({...newEscritorio, telefone: e.target.value})}
+                      />
+                      <Input
+                        placeholder="Email"
+                        value={newEscritorio.email}
+                        onChange={(e) => setNewEscritorio({...newEscritorio, email: e.target.value})}
+                      />
+                      <Input
+                        placeholder="Número do Caso"
+                        value={newEscritorio.numeroCaso}
+                        onChange={(e) => setNewEscritorio({...newEscritorio, numeroCaso: e.target.value})}
+                      />
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          onClick={() => createEscritorioMutation.mutate(newEscritorio)}
+                          disabled={!newEscritorio.nome || createEscritorioMutation.isPending}
+                        >
+                          {createEscritorioMutation.isPending ? "Salvando..." : "Salvar"}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setShowNewEscritorio(false)}
+                        >
+                          Cancelar
+                        </Button>
                       </div>
-                    )}
-                  </>
-                )}
-              </Card>
-            </div>
+                    </div>
+                  ) : (
+                    <>
+                      <Select 
+                        value={lead.lawFirmId || "none"} 
+                        onValueChange={(v) => handleUpdateField("lawFirmId", v === "none" ? null : v)}
+                      >
+                        <SelectTrigger data-testid="select-escritorio">
+                          <SelectValue placeholder="Selecione um escritório" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {escritorios.map((e) => (
+                            <SelectItem key={e.id} value={e.id}>{e.nome}{(e as any).numeroCaso ? ` (${(e as any).numeroCaso})` : ""}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {escritorio && (
+                        <div className="space-y-2 pt-2 border-t">
+                          {escritorio.cnpj && (
+                            <div className="text-xs text-muted-foreground">CNPJ: {escritorio.cnpj}</div>
+                          )}
+                          {(escritorio as any).numeroCaso && (
+                            <div className="text-xs text-muted-foreground">Caso: {(escritorio as any).numeroCaso}</div>
+                          )}
+                          {escritorio.telefone && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="text-muted-foreground">{escritorio.telefone}</span>
+                              <WhatsAppLink phone={escritorio.telefone} />
+                            </div>
+                          )}
+                          {escritorio.email && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="text-muted-foreground truncate">{escritorio.email}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </Card>
+              </div>
+            )}
 
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Reclamante
+            {pipelineType === "advogados" ? (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Reclamantes Relacionados
                 </h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 text-xs"
-                  onClick={() => setShowNewReclamante(!showNewReclamante)}
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Novo
-                </Button>
-              </div>
-              <Card className="p-4 space-y-3">
-                {showNewReclamante ? (
-                  <div className="space-y-3">
-                    <Input
-                      placeholder="Nome *"
-                      value={newReclamante.nome}
-                      onChange={(e) => setNewReclamante({...newReclamante, nome: e.target.value})}
-                    />
-                    <Input
-                      placeholder="CPF"
-                      value={newReclamante.cpf}
-                      onChange={(e) => setNewReclamante({...newReclamante, cpf: e.target.value})}
-                    />
-                    <Input
-                      placeholder="Telefone"
-                      value={newReclamante.telefone}
-                      onChange={(e) => setNewReclamante({...newReclamante, telefone: e.target.value})}
-                    />
-                    <Input
-                      placeholder="Email"
-                      value={newReclamante.email}
-                      onChange={(e) => setNewReclamante({...newReclamante, email: e.target.value})}
-                    />
-                    <Input
-                      placeholder="CNJ do Processo"
-                      value={newReclamante.cnj}
-                      onChange={(e) => setNewReclamante({...newReclamante, cnj: e.target.value})}
-                    />
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        onClick={() => createReclamanteMutation.mutate(newReclamante)}
-                        disabled={!newReclamante.nome || createReclamanteMutation.isPending}
-                      >
-                        {createReclamanteMutation.isPending ? "Salvando..." : "Salvar"}
-                      </Button>
+                <Card className="p-4">
+                  {(() => {
+                    const lawyerLawsuits = lead.lawyerId 
+                      ? lawyersWithLawsuits.find(a => a.id === lead.lawyerId)?.lawsuits || []
+                      : [];
+                    const cnjs = lawyerLawsuits.map(l => l.cnj).filter(Boolean) as string[];
+                    
+                    if (cnjs.length === 0) {
+                      return <p className="text-sm text-muted-foreground">Nenhum CNJ vinculado para buscar reclamantes</p>;
+                    }
+                    
+                    return (
                       <Button 
                         variant="outline" 
-                        size="sm" 
-                        onClick={() => setShowNewReclamante(false)}
+                        className="w-full gap-2 justify-start"
+                        onClick={() => {
+                          onNavigatePipeline("reclamantes", cnjs.map(cnj => ({
+                            type: "cnj" as const,
+                            value: cnj,
+                            label: `CNJ: ${cnj}`
+                          })));
+                        }}
+                        data-testid="button-nav-reclamantes"
                       >
-                        Cancelar
+                        <Users className="h-4 w-4" />
+                        Ver Reclamantes ({cnjs.length} CNJs)
+                        <ArrowRight className="h-4 w-4 ml-auto" />
                       </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <Select 
-                      value={lead.claimantId || "none"} 
-                      onValueChange={(v) => handleUpdateField("claimantId", v === "none" ? null : v)}
-                    >
-                      <SelectTrigger data-testid="select-reclamante">
-                        <SelectValue placeholder="Selecione um reclamante" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {reclamantes.map((r) => (
-                          <SelectItem key={r.id} value={r.id}>{r.nome}{r.cnj ? ` (${r.cnj})` : ""}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {reclamante && (
-                      <div className="space-y-2 pt-2 border-t">
-                        {reclamante.cpf && (
-                          <div className="text-xs text-muted-foreground">CPF: {reclamante.cpf}</div>
-                        )}
-                        {reclamante.cnj && (
-                          <div className="text-xs text-muted-foreground">CNJ: {reclamante.cnj}</div>
-                        )}
-                        {reclamante.telefone && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="text-muted-foreground">{reclamante.telefone}</span>
-                            <WhatsAppLink phone={reclamante.telefone} />
-                          </div>
-                        )}
+                    );
+                  })()}
+                </Card>
+              </div>
+            ) : pipelineType === "escritorios" ? (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Reclamantes Relacionados
+                </h3>
+                <Card className="p-4">
+                  {(() => {
+                    const firmLawsuits = lead.lawFirmId 
+                      ? lawFirmsWithLawsuits.find(f => f.id === lead.lawFirmId)?.lawsuits || []
+                      : [];
+                    const cnjs = firmLawsuits.map(l => l.cnj).filter(Boolean) as string[];
+                    
+                    if (cnjs.length === 0) {
+                      return <p className="text-sm text-muted-foreground">Nenhum CNJ vinculado para buscar reclamantes</p>;
+                    }
+                    
+                    return (
+                      <Button 
+                        variant="outline" 
+                        className="w-full gap-2 justify-start"
+                        onClick={() => {
+                          onNavigatePipeline("reclamantes", cnjs.map(cnj => ({
+                            type: "cnj" as const,
+                            value: cnj,
+                            label: `CNJ: ${cnj}`
+                          })));
+                        }}
+                        data-testid="button-nav-reclamantes-from-escritorio"
+                      >
+                        <Users className="h-4 w-4" />
+                        Ver Reclamantes ({cnjs.length} CNJs)
+                        <ArrowRight className="h-4 w-4 ml-auto" />
+                      </Button>
+                    );
+                  })()}
+                </Card>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Reclamante
+                  </h3>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-xs"
+                    onClick={() => setShowNewReclamante(!showNewReclamante)}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Novo
+                  </Button>
+                </div>
+                <Card className="p-4 space-y-3">
+                  {showNewReclamante ? (
+                    <div className="space-y-3">
+                      <Input
+                        placeholder="Nome *"
+                        value={newReclamante.nome}
+                        onChange={(e) => setNewReclamante({...newReclamante, nome: e.target.value})}
+                      />
+                      <Input
+                        placeholder="CPF"
+                        value={newReclamante.cpf}
+                        onChange={(e) => setNewReclamante({...newReclamante, cpf: e.target.value})}
+                      />
+                      <Input
+                        placeholder="Telefone"
+                        value={newReclamante.telefone}
+                        onChange={(e) => setNewReclamante({...newReclamante, telefone: e.target.value})}
+                      />
+                      <Input
+                        placeholder="Email"
+                        value={newReclamante.email}
+                        onChange={(e) => setNewReclamante({...newReclamante, email: e.target.value})}
+                      />
+                      <Input
+                        placeholder="CNJ do Processo"
+                        value={newReclamante.cnj}
+                        onChange={(e) => setNewReclamante({...newReclamante, cnj: e.target.value})}
+                      />
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          onClick={() => createReclamanteMutation.mutate(newReclamante)}
+                          disabled={!newReclamante.nome || createReclamanteMutation.isPending}
+                        >
+                          {createReclamanteMutation.isPending ? "Salvando..." : "Salvar"}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setShowNewReclamante(false)}
+                        >
+                          Cancelar
+                        </Button>
                       </div>
-                    )}
-                  </>
-                )}
-              </Card>
-            </div>
+                    </div>
+                  ) : (
+                    <>
+                      <Select 
+                        value={lead.claimantId || "none"} 
+                        onValueChange={(v) => handleUpdateField("claimantId", v === "none" ? null : v)}
+                      >
+                        <SelectTrigger data-testid="select-reclamante">
+                          <SelectValue placeholder="Selecione um reclamante" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {reclamantes.map((r) => (
+                            <SelectItem key={r.id} value={r.id}>{r.nome}{r.cnj ? ` (${r.cnj})` : ""}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {reclamante && (
+                        <div className="space-y-2 pt-2 border-t">
+                          {reclamante.cpf && (
+                            <div className="text-xs text-muted-foreground">CPF: {reclamante.cpf}</div>
+                          )}
+                          {reclamante.cnj && (
+                            <div className="text-xs text-muted-foreground">CNJ: {reclamante.cnj}</div>
+                          )}
+                          {reclamante.telefone && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="text-muted-foreground">{reclamante.telefone}</span>
+                              <WhatsAppLink phone={reclamante.telefone} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </Card>
+              </div>
+            )}
 
             {(() => {
               const linkedLawsuits = (() => {
@@ -2093,6 +2314,7 @@ export default function PipelinePage() {
   const [inlineNewCnj, setInlineNewCnj] = useState("");
   const [inlineSelectedAdvogadoId, setInlineSelectedAdvogadoId] = useState<string>("");
   
+  const urlParamsProcessed = useRef(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDraggingScroll, setIsDraggingScroll] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -2170,6 +2392,51 @@ export default function PipelinePage() {
   });
 
   const isLoading = leadsLoading || advogadosLoading || escritoriosLoading || reclamantesLoading || lawyersLawsuitsLoading || claimantsLawsuitsLoading || lawFirmsLawsuitsLoading;
+
+  useEffect(() => {
+    if (urlParamsProcessed.current) return;
+    if (isLoading) return;
+    
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get("type");
+    const cnjs = params.get("cnj");
+    const escritorioId = params.get("escritorioId");
+    const advogadoId = params.get("advogadoId");
+    
+    if (!type && !cnjs && !escritorioId && !advogadoId) return;
+    
+    urlParamsProcessed.current = true;
+    
+    if (type && Object.keys(PIPELINE_LABELS).includes(type)) {
+      setSelectedPipeline(type as PipelineType);
+    }
+    
+    const newFilters: PipelineFilter[] = [];
+    
+    if (cnjs) {
+      cnjs.split(",").forEach(cnj => {
+        newFilters.push({ type: "cnj", value: cnj.trim(), label: `CNJ: ${cnj.trim()}` });
+      });
+    }
+    
+    if (escritorioId) {
+      const esc = escritorios.find(e => e.id === escritorioId);
+      if (esc) {
+        newFilters.push({ type: "escritorio", id: escritorioId, value: escritorioId, label: `Escritório: ${esc.nome}` });
+      }
+    }
+    
+    if (advogadoId) {
+      const adv = todosAdvogadosInfos.find(a => String(a.id) === advogadoId);
+      if (adv) {
+        newFilters.push({ type: "advogado", id: adv.id, value: String(adv.id), label: `Advogado: ${adv.nome}` });
+      }
+    }
+    
+    if (newFilters.length > 0) {
+      setActiveFilters(newFilters);
+    }
+  }, [isLoading, escritorios, todosAdvogadosInfos]);
 
   // Estado para controlar limite de cards por coluna (key = stage.id, value = limite atual)
   const [columnLimits, setColumnLimits] = useState<Record<string, number>>({});
@@ -3261,6 +3528,11 @@ export default function PipelinePage() {
                 lawyersWithLawsuits={lawyersWithLawsuits}
                 claimantsWithLawsuits={claimantsWithLawsuits}
                 lawFirmsWithLawsuits={lawFirmsWithLawsuits}
+                onNavigatePipeline={(type, filters) => {
+                  setSelectedLeadId(null);
+                  setSelectedPipeline(type);
+                  setActiveFilters(filters);
+                }}
               />
             </SheetContent>
           </Sheet>
