@@ -748,11 +748,6 @@ function LeadDetailPanel({
                         onChange={(e) => setNewAdvogado({...newAdvogado, cpf: e.target.value})}
                       />
                       <Input
-                        placeholder="CNJ"
-                        value={newAdvogado.cnj}
-                        onChange={(e) => setNewAdvogado({...newAdvogado, cnj: e.target.value})}
-                      />
-                      <Input
                         placeholder="Telefone"
                         value={newAdvogado.telefone}
                         onChange={(e) => setNewAdvogado({...newAdvogado, telefone: e.target.value})}
@@ -791,15 +786,12 @@ function LeadDetailPanel({
                         <SelectContent>
                           <SelectItem value="none">Nenhum</SelectItem>
                           {todosAdvogadosInfos.map((a) => (
-                            <SelectItem key={a.id} value={a.id.toString()}>{a.nome}{a.cnj ? ` (${a.cnj})` : ""}</SelectItem>
+                            <SelectItem key={a.id} value={a.id.toString()}>{a.nome}{a.cpf ? ` (${a.cpf})` : ""}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                       {advogado && (
                         <div className="space-y-2 pt-2 border-t">
-                          {advogado.cnj && (
-                            <div className="text-xs text-muted-foreground">CNJ: {advogado.cnj}</div>
-                          )}
                           {advogado.cpf && (
                             <div className="text-xs text-muted-foreground">CPF: {advogado.cpf}</div>
                           )}
