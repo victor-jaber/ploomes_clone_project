@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,34 @@ export default function ClientsPage() {
   const { data: todosAdvogadosInfos = [], isLoading: todosAdvogadosInfosLoading } = useQuery<TodosAdvogadosInfos[]>({
     queryKey: ["/api/todos-advogados-infos"],
   });
+
+  type GroupedAdvogado = TodosAdvogadosInfos & { cnjs: string[]; allIds: number[] };
+
+  const groupedAdvogados = useMemo(() => {
+    const grouped = new Map<string, GroupedAdvogado>();
+    for (const adv of todosAdvogadosInfos) {
+      const key = `${adv.nome}||${adv.cpf || ''}`;
+      const existing = grouped.get(key);
+      if (existing) {
+        if (adv.cnj && !existing.cnjs.includes(adv.cnj)) {
+          existing.cnjs.push(adv.cnj);
+        }
+        existing.allIds.push(adv.id);
+        if (!existing.valorCausa && adv.valorCausa) existing.valorCausa = adv.valorCausa;
+        if (!existing.email && adv.email) existing.email = adv.email;
+        if (!existing.telefone && adv.telefone) existing.telefone = adv.telefone;
+        if (!existing.municipio && adv.municipio) existing.municipio = adv.municipio;
+        if (!existing.estado && adv.estado) existing.estado = adv.estado;
+      } else {
+        grouped.set(key, {
+          ...adv,
+          cnjs: adv.cnj ? [adv.cnj] : [],
+          allIds: [adv.id],
+        });
+      }
+    }
+    return Array.from(grouped.values());
+  }, [todosAdvogadosInfos]);
 
   const { data: escritorios = [], isLoading: escritoriosLoading } = useQuery<Escritorio[]>({
     queryKey: ["/api/escritorios"],
@@ -226,10 +254,10 @@ export default function ClientsPage() {
     const term = searchTerm.toLowerCase();
     switch (activeTab) {
       case "todosAdvogadosInfos":
-        return todosAdvogadosInfos.filter(a => 
+        return groupedAdvogados.filter(a => 
           a.nome?.toLowerCase().includes(term) || 
           a.cpf?.toLowerCase().includes(term) ||
-          a.cnj?.toLowerCase().includes(term) ||
+          a.cnjs?.some(cnj => cnj.toLowerCase().includes(term)) ||
           a.email?.toLowerCase().includes(term) ||
           a.municipio?.toLowerCase().includes(term)
         );
@@ -655,14 +683,14 @@ export default function ClientsPage() {
   };
 
   const renderTodosAdvogadosInfosTable = () => {
-    const data = filteredData as TodosAdvogadosInfos[];
+    const data = filteredData as GroupedAdvogado[];
     return (
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Nome</TableHead>
             <TableHead>CPF</TableHead>
-            <TableHead>CNJ</TableHead>
+            <TableHead>CNJs</TableHead>
             <TableHead>Valor da Causa</TableHead>
             <TableHead>Contato</TableHead>
             <TableHead>Endereço</TableHead>
@@ -686,7 +714,13 @@ export default function ClientsPage() {
                 {adv.cpf && <Badge variant="outline">{adv.cpf}</Badge>}
               </TableCell>
               <TableCell>
-                {adv.cnj && <Badge variant="secondary">{adv.cnj}</Badge>}
+                <div className="flex flex-wrap gap-1 max-w-[300px]">
+                  {adv.cnjs.length > 0 ? adv.cnjs.map((cnj, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs">{cnj}</Badge>
+                  )) : (
+                    <span className="text-xs text-muted-foreground">Sem CNJ</span>
+                  )}
+                </div>
               </TableCell>
               <TableCell>
                 {adv.valorCausa && (
@@ -911,7 +945,7 @@ export default function ClientsPage() {
     if (!viewingEntity) return null;
     
     if (activeTab === "todosAdvogadosInfos") {
-      const adv = viewingEntity as TodosAdvogadosInfos;
+      const adv = viewingEntity as GroupedAdvogado;
       return (
         <div className="space-y-4">
           <div className="flex items-center gap-4">
@@ -926,7 +960,16 @@ export default function ClientsPage() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {adv.cnj && <div><p className="text-sm text-muted-foreground">CNJ</p><p className="font-medium">{adv.cnj}</p></div>}
+            {adv.cnjs && adv.cnjs.length > 0 && (
+              <div className="col-span-2">
+                <p className="text-sm text-muted-foreground mb-1">CNJs ({adv.cnjs.length})</p>
+                <div className="flex flex-wrap gap-1">
+                  {adv.cnjs.map((cnj, idx) => (
+                    <Badge key={idx} variant="secondary" className="text-xs">{cnj}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             {adv.valorCausa && <div><p className="text-sm text-muted-foreground">Valor da Causa</p><p className="font-semibold text-green-600 dark:text-green-400">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(adv.valorCausa))}</p></div>}
             {adv.email && <div><p className="text-sm text-muted-foreground">E-mail</p><p className="font-medium">{adv.email}</p></div>}
             {adv.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium flex items-center gap-2">{adv.telefone} <WhatsAppLink phone={adv.telefone} /></p></div>}
@@ -1026,7 +1069,7 @@ export default function ClientsPage() {
           <TabsTrigger value="todosAdvogadosInfos" className="gap-2" data-testid="tab-advogados">
             <Scale className="h-4 w-4" />
             <span className="hidden sm:inline">Advogados Infos</span>
-            <Badge variant="secondary" className="ml-1">{todosAdvogadosInfos.length}</Badge>
+            <Badge variant="secondary" className="ml-1">{groupedAdvogados.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="escritorios" className="gap-2" data-testid="tab-escritorios">
             <Building2 className="h-4 w-4" />
