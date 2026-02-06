@@ -6,7 +6,6 @@ import {
   lawsuits,
   lawsuitLawyers,
   lawsuitClaimants,
-  lawsuitLawFirms,
   leads,
   leadFinancials,
   leadCaseDetails,
@@ -29,7 +28,6 @@ import {
   type Lawsuit,
   type LawsuitLawyer,
   type LawsuitClaimant,
-  type LawsuitLawFirm,
   type Lead,
   type InsertLead,
   type LeadFinancials,
@@ -52,7 +50,7 @@ import {
   type InsertProduct,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 
 // Backward compatibility aliases
 type TodosAdvogadosInfos = Lawyer;
@@ -97,10 +95,8 @@ export interface IStorage {
   getLawsuitsByLawFirm(lawFirmId: string): Promise<Lawsuit[]>;
   addLawyerToLawsuit(lawsuitId: string, lawyerId: number): Promise<LawsuitLawyer>;
   addClaimantToLawsuit(lawsuitId: string, claimantId: string): Promise<LawsuitClaimant>;
-  addLawFirmToLawsuit(lawsuitId: string, lawFirmId: string): Promise<LawsuitLawFirm>;
   removeLawyerFromLawsuit(lawsuitId: string, lawyerId: number): Promise<boolean>;
   removeClaimantFromLawsuit(lawsuitId: string, claimantId: string): Promise<boolean>;
-  removeLawFirmFromLawsuit(lawsuitId: string, lawFirmId: string): Promise<boolean>;
 
   // Aggregated data for pipeline (dados públicos - sem filtro por ownerId)
   getLawyersWithLawsuits(): Promise<(Lawyer & { lawsuits: Lawsuit[] })[]>;
@@ -339,11 +335,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLawsuitsByLawFirm(lawFirmId: string): Promise<Lawsuit[]> {
+    const firmLawyers = await db.select()
+      .from(lawFirmLawyers)
+      .where(eq(lawFirmLawyers.lawFirmId, lawFirmId));
+    if (firmLawyers.length === 0) return [];
+    const lawyerIds = firmLawyers.map(fl => fl.lawyerId);
     const links = await db.select()
-      .from(lawsuitLawFirms)
-      .innerJoin(lawsuits, eq(lawsuitLawFirms.lawsuitId, lawsuits.id))
-      .where(eq(lawsuitLawFirms.lawFirmId, lawFirmId));
-    return links.map(l => l.lawsuits);
+      .from(lawsuitLawyers)
+      .innerJoin(lawsuits, eq(lawsuitLawyers.lawsuitId, lawsuits.id))
+      .where(inArray(lawsuitLawyers.lawyerId, lawyerIds));
+    const seen = new Set<string>();
+    const result: Lawsuit[] = [];
+    for (const l of links) {
+      if (!seen.has(l.lawsuits.id)) {
+        seen.add(l.lawsuits.id);
+        result.push(l.lawsuits);
+      }
+    }
+    return result;
   }
 
   async addLawyerToLawsuit(lawsuitId: string, lawyerId: number): Promise<LawsuitLawyer> {
@@ -362,14 +371,6 @@ export class DatabaseStorage implements IStorage {
     return link;
   }
 
-  async addLawFirmToLawsuit(lawsuitId: string, lawFirmId: string): Promise<LawsuitLawFirm> {
-    const [link] = await db.insert(lawsuitLawFirms)
-      .values({ lawsuitId, lawFirmId })
-      .onConflictDoNothing()
-      .returning();
-    return link;
-  }
-
   async removeLawyerFromLawsuit(lawsuitId: string, lawyerId: number): Promise<boolean> {
     const result = await db.delete(lawsuitLawyers)
       .where(and(eq(lawsuitLawyers.lawsuitId, lawsuitId), eq(lawsuitLawyers.lawyerId, lawyerId)))
@@ -380,13 +381,6 @@ export class DatabaseStorage implements IStorage {
   async removeClaimantFromLawsuit(lawsuitId: string, claimantId: string): Promise<boolean> {
     const result = await db.delete(lawsuitClaimants)
       .where(and(eq(lawsuitClaimants.lawsuitId, lawsuitId), eq(lawsuitClaimants.claimantId, claimantId)))
-      .returning();
-    return result.length > 0;
-  }
-
-  async removeLawFirmFromLawsuit(lawsuitId: string, lawFirmId: string): Promise<boolean> {
-    const result = await db.delete(lawsuitLawFirms)
-      .where(and(eq(lawsuitLawFirms.lawsuitId, lawsuitId), eq(lawsuitLawFirms.lawFirmId, lawFirmId)))
       .returning();
     return result.length > 0;
   }
@@ -462,13 +456,34 @@ export class DatabaseStorage implements IStorage {
     
     // Buscar todos os vínculos de uma vez
     const lawFirmIds = allLawFirms.map(l => l.id);
-    const allLinks = await db.select({
-      lawFirmId: lawsuitLawFirms.lawFirmId,
-      lawsuit: lawsuits,
-    })
-    .from(lawsuitLawFirms)
-    .innerJoin(lawsuits, eq(lawsuitLawFirms.lawsuitId, lawsuits.id))
-    .where(inArray(lawsuitLawFirms.lawFirmId, lawFirmIds));
+    const firmLawyerLinks = await db.select()
+    .from(lawFirmLawyers)
+    .where(inArray(lawFirmLawyers.lawFirmId, lawFirmIds));
+    
+    const lawyerToFirms = new Map<number, string[]>();
+    for (const fl of firmLawyerLinks) {
+      if (!lawyerToFirms.has(fl.lawyerId)) lawyerToFirms.set(fl.lawyerId, []);
+      lawyerToFirms.get(fl.lawyerId)!.push(fl.lawFirmId);
+    }
+    
+    const uniqueLawyerIds = Array.from(lawyerToFirms.keys());
+    let allLinks: { lawFirmId: string; lawsuit: Lawsuit }[] = [];
+    if (uniqueLawyerIds.length > 0) {
+      const lawyerLawsuitLinks = await db.select({
+        lawyerId: lawsuitLawyers.lawyerId,
+        lawsuit: lawsuits,
+      })
+      .from(lawsuitLawyers)
+      .innerJoin(lawsuits, eq(lawsuitLawyers.lawsuitId, lawsuits.id))
+      .where(inArray(lawsuitLawyers.lawyerId, uniqueLawyerIds));
+      
+      for (const ll of lawyerLawsuitLinks) {
+        const firmIds = lawyerToFirms.get(ll.lawyerId) || [];
+        for (const firmId of firmIds) {
+          allLinks.push({ lawFirmId: firmId, lawsuit: ll.lawsuit });
+        }
+      }
+    }
     
     // Agrupar por lawFirm
     const lawsuitsByLawFirm = new Map<string, Lawsuit[]>();
@@ -811,7 +826,7 @@ export class DatabaseStorage implements IStorage {
         pipelineType: "advogados",
         stage: "novo_lead",
         position: 0,
-        valor: lawyer.valorCausa || null,
+        valor: null,
         probabilidade: 0,
         vendedorId: userId,
         ownerId: userId,
@@ -840,7 +855,7 @@ export class DatabaseStorage implements IStorage {
         pipelineType: "reclamantes",
         stage: "novo_lead",
         position: 0,
-        valor: claimant.valorCausa || null,
+        valor: null,
         probabilidade: 0,
         vendedorId: userId,
         ownerId: userId,
@@ -871,9 +886,9 @@ export class DatabaseStorage implements IStorage {
         probabilidade: lawsuit.probabilidadeSucesso ? Math.round(Number(lawsuit.probabilidadeSucesso)) : 0,
         vendedorId: userId,
         ownerId: userId,
-        lawyerId: lawsuit.lawyerId,
-        lawFirmId: lawsuit.lawFirmId,
-        claimantId: lawsuit.claimantId,
+        lawyerId: null,
+        lawFirmId: null,
+        claimantId: null,
       });
       newLeads.push(lead);
 

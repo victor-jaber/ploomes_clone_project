@@ -45,7 +45,6 @@ import {
   Eye,
   MapPin,
   X,
-  FileText,
   UserPlus,
   Copy,
   Check,
@@ -136,9 +135,6 @@ export default function ClientsPage() {
   const [editingEntity, setEditingEntity] = useState<TodosAdvogadosInfos | Escritorio | Reclamante | null>(null);
   const [viewingEntity, setViewingEntity] = useState<TodosAdvogadosInfos | Escritorio | Reclamante | null>(null);
   
-  // State for escritório CNJs and advogados
-  const [escritorioCnjs, setEscritorioCnjs] = useState<string[]>([]);
-  const [newCnj, setNewCnj] = useState("");
   const [escritorioAdvogados, setEscritorioAdvogados] = useState<number[]>([]);
   const [selectedAdvogadoId, setSelectedAdvogadoId] = useState<string>("");
 
@@ -146,7 +142,7 @@ export default function ClientsPage() {
     queryKey: ["/api/todos-advogados-infos"],
   });
 
-  type GroupedAdvogado = TodosAdvogadosInfos & { cnjs: string[]; allIds: number[] };
+  type GroupedAdvogado = TodosAdvogadosInfos & { allIds: number[] };
 
   const groupedAdvogados = useMemo(() => {
     const grouped = new Map<string, GroupedAdvogado>();
@@ -154,11 +150,7 @@ export default function ClientsPage() {
       const key = `${adv.nome}||${adv.cpf || ''}`;
       const existing = grouped.get(key);
       if (existing) {
-        if (adv.cnj && !existing.cnjs.includes(adv.cnj)) {
-          existing.cnjs.push(adv.cnj);
-        }
         existing.allIds.push(adv.id);
-        if (!existing.valorCausa && adv.valorCausa) existing.valorCausa = adv.valorCausa;
         if (!existing.email && adv.email) existing.email = adv.email;
         if (!existing.telefone && adv.telefone) existing.telefone = adv.telefone;
         if (!existing.municipio && adv.municipio) existing.municipio = adv.municipio;
@@ -166,7 +158,6 @@ export default function ClientsPage() {
       } else {
         grouped.set(key, {
           ...adv,
-          cnjs: adv.cnj ? [adv.cnj] : [],
           allIds: [adv.id],
         });
       }
@@ -231,7 +222,6 @@ export default function ClientsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/escritorios"] });
       setIsDialogOpen(false);
       setEditingEntity(null);
-      setEscritorioCnjs([]);
       setEscritorioAdvogados([]);
       toast({ title: "Sucesso", description: "Escritório criado com sucesso" });
     },
@@ -241,7 +231,6 @@ export default function ClientsPage() {
   const updateEscritorioMutation = useMutation({
     mutationFn: async ({ id, data, advogadoIds }: { id: string; data: Partial<InsertEscritorio>; advogadoIds?: number[] }) => {
       const result = await apiRequest("PATCH", `/api/escritorios/${id}`, data);
-      // Sync lawyers - for simplicity, we'll handle this by updating the cnjs array
       // The advogados are handled via the law_firm_lawyers table separately
       return result;
     },
@@ -249,7 +238,6 @@ export default function ClientsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/escritorios"] });
       setIsDialogOpen(false);
       setEditingEntity(null);
-      setEscritorioCnjs([]);
       setEscritorioAdvogados([]);
       toast({ title: "Sucesso", description: "Escritório atualizado com sucesso" });
     },
@@ -304,7 +292,6 @@ export default function ClientsPage() {
         return groupedAdvogados.filter(a => 
           a.nome?.toLowerCase().includes(term) || 
           a.cpf?.toLowerCase().includes(term) ||
-          a.cnjs?.some(cnj => cnj.toLowerCase().includes(term)) ||
           a.email?.toLowerCase().includes(term) ||
           a.municipio?.toLowerCase().includes(term)
         );
@@ -318,8 +305,7 @@ export default function ClientsPage() {
         return reclamantes.filter(r => 
           r.nome?.toLowerCase().includes(term) || 
           r.cpf?.toLowerCase().includes(term) ||
-          r.email?.toLowerCase().includes(term) ||
-          r.cnj?.toLowerCase().includes(term)
+          r.email?.toLowerCase().includes(term)
         );
       default:
         return [];
@@ -332,8 +318,6 @@ export default function ClientsPage() {
     const data: InsertTodosAdvogadosInfos = {
       nome: formData.get("nome") as string,
       cpf: formData.get("cpf") as string || null,
-      cnj: formData.get("cnj") as string || null,
-      valorCausa: formData.get("valorCausa") as string || null,
       email: formData.get("email") as string || null,
       telefone: formData.get("telefone") as string || null,
       celular: formData.get("celular") as string || null,
@@ -366,7 +350,6 @@ export default function ClientsPage() {
       cidade: formData.get("cidade") as string || null,
       estado: formData.get("estado") as string || null,
       observacoes: formData.get("observacoes") as string || null,
-      cnjs: escritorioCnjs.length > 0 ? escritorioCnjs : null,
       ownerId: "",
     };
     if (editingEntity) {
@@ -374,17 +357,6 @@ export default function ClientsPage() {
     } else {
       createEscritorioMutation.mutate({ ...data, advogadoIds: escritorioAdvogados } as InsertEscritorio & { advogadoIds: number[] });
     }
-  };
-  
-  const handleAddCnj = () => {
-    if (newCnj.trim() && !escritorioCnjs.includes(newCnj.trim())) {
-      setEscritorioCnjs([...escritorioCnjs, newCnj.trim()]);
-      setNewCnj("");
-    }
-  };
-  
-  const handleRemoveCnj = (cnj: string) => {
-    setEscritorioCnjs(escritorioCnjs.filter(c => c !== cnj));
   };
   
   const handleAddAdvogado = () => {
@@ -406,8 +378,6 @@ export default function ClientsPage() {
       cpf: formData.get("cpf") as string || null,
       email: formData.get("email") as string || null,
       telefone: formData.get("telefone") as string || null,
-      cnj: formData.get("cnj") as string || null,
-      valorCausa: formData.get("valorCausa") as string || null,
       observacoes: formData.get("observacoes") as string || null,
       ownerId: "",
     };
@@ -434,10 +404,7 @@ export default function ClientsPage() {
 
   const openNewDialog = () => {
     setEditingEntity(null);
-    // Reset escritório-specific states
-    setEscritorioCnjs([]);
     setEscritorioAdvogados([]);
-    setNewCnj("");
     setSelectedAdvogadoId("");
     setIsDialogOpen(true);
   };
@@ -446,9 +413,6 @@ export default function ClientsPage() {
     setEditingEntity(entity);
     // Initialize escritório-specific states
     if (activeTab === "escritorios") {
-      const esc = entity as Escritorio;
-      setEscritorioCnjs(esc.cnjs || []);
-      // TODO: Load existing advogados from law_firm_lawyers
       setEscritorioAdvogados([]);
     }
     setIsDialogOpen(true);
@@ -476,16 +440,6 @@ export default function ClientsPage() {
           <div className="space-y-2">
             <Label htmlFor="cpf">CPF</Label>
             <Input id="cpf" name="cpf" defaultValue={adv?.cpf || ""} placeholder="000.000.000-00" data-testid="input-advogado-cpf" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="cnj">CNJ</Label>
-            <Input id="cnj" name="cnj" defaultValue={adv?.cnj || ""} data-testid="input-advogado-cnj" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="valorCausa">Valor da Causa</Label>
-            <Input id="valorCausa" name="valorCausa" type="number" step="0.01" defaultValue={adv?.valorCausa || ""} data-testid="input-advogado-valor" />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -590,43 +544,6 @@ export default function ClientsPage() {
           </div>
         </div>
         
-        {/* CNJs Section */}
-        <div className="space-y-2">
-          <Label className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Números de Processo (CNJs)
-          </Label>
-          <div className="flex gap-2">
-            <Input 
-              value={newCnj}
-              onChange={(e) => setNewCnj(e.target.value)}
-              placeholder="0000000-00.0000.0.00.0000"
-              data-testid="input-escritorio-cnj-new"
-            />
-            <Button type="button" variant="outline" onClick={handleAddCnj} data-testid="button-add-cnj">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-          {escritorioCnjs.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {escritorioCnjs.map((cnj, idx) => (
-                <Badge key={idx} variant="secondary" className="flex items-center gap-1 py-1">
-                  <FileText className="h-3 w-3" />
-                  {cnj}
-                  <button 
-                    type="button" 
-                    onClick={() => handleRemoveCnj(cnj)}
-                    className="ml-1 hover:text-destructive"
-                    data-testid={`button-remove-cnj-${idx}`}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-        
         {/* Advogados Section */}
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
@@ -708,16 +625,6 @@ export default function ClientsPage() {
             <Input id="telefone" name="telefone" defaultValue={rec?.telefone || ""} data-testid="input-reclamante-telefone" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="cnj">Número do Processo</Label>
-            <Input id="cnj" name="cnj" defaultValue={rec?.cnj || ""} data-testid="input-reclamante-processo" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="valorCausa">Valor da Causa</Label>
-            <Input id="valorCausa" name="valorCausa" type="number" step="0.01" defaultValue={rec?.valorCausa || ""} data-testid="input-reclamante-valor" />
-          </div>
-        </div>
         <div className="space-y-2">
           <Label htmlFor="observacoes">Observações</Label>
           <Textarea id="observacoes" name="observacoes" defaultValue={rec?.observacoes || ""} data-testid="input-reclamante-obs" />
@@ -737,8 +644,6 @@ export default function ClientsPage() {
           <TableRow>
             <TableHead>Nome</TableHead>
             <TableHead>CPF</TableHead>
-            <TableHead>CNJs</TableHead>
-            <TableHead>Valor da Causa</TableHead>
             <TableHead>Contato</TableHead>
             <TableHead>Endereço</TableHead>
             <TableHead className="w-[50px]"></TableHead>
@@ -759,22 +664,6 @@ export default function ClientsPage() {
               </TableCell>
               <TableCell>
                 {adv.cpf && <Badge variant="outline">{adv.cpf}</Badge>}
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-wrap gap-1 max-w-[300px]">
-                  {adv.cnjs.length > 0 ? adv.cnjs.map((cnj, idx) => (
-                    <Badge key={idx} variant="secondary" className="text-xs">{cnj}</Badge>
-                  )) : (
-                    <span className="text-xs text-muted-foreground">Sem CNJ</span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                {adv.valorCausa && (
-                  <span className="font-semibold text-green-600 dark:text-green-400">
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(adv.valorCausa))}
-                  </span>
-                )}
               </TableCell>
               <TableCell>
                 <div className="space-y-1 text-sm">
@@ -922,8 +811,6 @@ export default function ClientsPage() {
             <TableHead>Reclamante</TableHead>
             <TableHead>CPF</TableHead>
             <TableHead>Contato</TableHead>
-            <TableHead>Nº Processo</TableHead>
-            <TableHead>Valor da Causa</TableHead>
             <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -957,20 +844,6 @@ export default function ClientsPage() {
                     </div>
                   )}
                 </div>
-              </TableCell>
-              <TableCell>
-                {rec.cnj && (
-                  <div className="flex items-center gap-1 text-sm">
-                    <span className="text-muted-foreground">{rec.cnj}</span>
-                  </div>
-                )}
-              </TableCell>
-              <TableCell>
-                {rec.valorCausa && (
-                  <span className="font-semibold text-green-600 dark:text-green-400">
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(rec.valorCausa))}
-                  </span>
-                )}
               </TableCell>
               <TableCell>
                 <DropdownMenu>
@@ -1018,17 +891,6 @@ export default function ClientsPage() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {adv.cnjs && adv.cnjs.length > 0 && (
-              <div className="col-span-2">
-                <p className="text-sm text-muted-foreground mb-1">CNJs ({adv.cnjs.length})</p>
-                <div className="flex flex-wrap gap-1">
-                  {adv.cnjs.map((cnj, idx) => (
-                    <Badge key={idx} variant="secondary" className="text-xs">{cnj}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-            {adv.valorCausa && <div><p className="text-sm text-muted-foreground">Valor da Causa</p><p className="font-semibold text-green-600 dark:text-green-400">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(adv.valorCausa))}</p></div>}
             {adv.email && <div><p className="text-sm text-muted-foreground">E-mail</p><p className="font-medium">{adv.email}</p></div>}
             {adv.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium flex items-center gap-2">{adv.telefone} <WhatsAppLink phone={adv.telefone} /> <CopyPhoneButton phone={adv.telefone} /></p></div>}
             {adv.celular && <div><p className="text-sm text-muted-foreground">Celular</p><p className="font-medium flex items-center gap-2">{adv.celular} <WhatsAppLink phone={adv.celular} /> <CopyPhoneButton phone={adv.celular} /></p></div>}
@@ -1095,8 +957,6 @@ export default function ClientsPage() {
           <div className="grid grid-cols-2 gap-4">
             {rec.email && <div><p className="text-sm text-muted-foreground">E-mail</p><p className="font-medium">{rec.email}</p></div>}
             {rec.telefone && <div><p className="text-sm text-muted-foreground">Telefone</p><p className="font-medium flex items-center gap-2">{rec.telefone} <WhatsAppLink phone={rec.telefone} /></p></div>}
-            {rec.cnj && <div><p className="text-sm text-muted-foreground">Nº Processo</p><p className="font-medium">{rec.cnj}</p></div>}
-            {rec.valorCausa && <div><p className="text-sm text-muted-foreground">Valor da Causa</p><p className="font-semibold text-green-600 dark:text-green-400">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(rec.valorCausa))}</p></div>}
           </div>
           {rec.observacoes && <div><p className="text-sm text-muted-foreground">Observações</p><p className="text-sm">{rec.observacoes}</p></div>}
         </div>

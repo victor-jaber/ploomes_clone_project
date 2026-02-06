@@ -242,7 +242,7 @@ export async function registerRoutes(
         titulo: lawyer.nome,
         pipelineType: 'advogados',
         stage: 'novo_lead',
-        valor: lawyer.valorCausa,
+        valor: null,
         ownerId: userId,
         vendedorId: userId,
       });
@@ -337,7 +337,7 @@ export async function registerRoutes(
         titulo: lawyer.nome,
         pipelineType: 'advogados',
         stage: 'novo_lead',
-        valor: lawyer.valorCausa,
+        valor: null,
         ownerId: userId,
         vendedorId: userId,
       });
@@ -927,34 +927,6 @@ export async function registerRoutes(
     } catch (error) {
       logger.error("unlinking claimant from lawsuit", error as Error);
       res.status(500).json({ message: "Failed to unlink claimant from lawsuit" });
-    }
-  });
-
-  // Link law firm to lawsuit
-  app.post("/api/lawsuits/:lawsuitId/law-firms/:lawFirmId", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const lawsuitId = req.params.lawsuitId as string;
-      const lawFirmId = req.params.lawFirmId as string;
-      const link = await storage.addLawFirmToLawsuit(lawsuitId, lawFirmId);
-      await aggregationCache.invalidate('law-firms-with-lawsuits');
-      res.status(201).json(link);
-    } catch (error) {
-      logger.error("linking law firm to lawsuit", error as Error);
-      res.status(500).json({ message: "Failed to link law firm to lawsuit" });
-    }
-  });
-
-  // Unlink law firm from lawsuit
-  app.delete("/api/lawsuits/:lawsuitId/law-firms/:lawFirmId", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const lawsuitId = req.params.lawsuitId as string;
-      const lawFirmId = req.params.lawFirmId as string;
-      const removed = await storage.removeLawFirmFromLawsuit(lawsuitId, lawFirmId);
-      await aggregationCache.invalidate('law-firms-with-lawsuits');
-      res.json({ removed });
-    } catch (error) {
-      logger.error("unlinking law firm from lawsuit", error as Error);
-      res.status(500).json({ message: "Failed to unlink law firm from lawsuit" });
     }
   });
 
