@@ -552,7 +552,7 @@ function LeadDetailPanel({
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-[400px] border-r bg-muted/10 overflow-y-auto">
+        <div className="w-[480px] border-r bg-muted/10 overflow-y-auto">
           <div className="p-4 space-y-6">
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
