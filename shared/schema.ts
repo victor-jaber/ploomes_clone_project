@@ -310,7 +310,10 @@ export const interactionTypeEnum = pgEnum("interaction_type", [
   "file",
   "status_change",
   "call_log",
-  "email_log"
+  "email_log",
+  "whatsapp",
+  "meeting",
+  "visit"
 ]);
 
 // Interactions (Comentários)
