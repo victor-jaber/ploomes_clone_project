@@ -238,9 +238,8 @@ export async function registerRoutes(
       const lawyer = await storage.createLawyer(parsed.data);
       await aggregationCache.invalidate('lawyers-with-lawsuits');
       
-      const titulo = `${lawyer.nome} - ${lawyer.cpf || 'Sem CPF'}`;
       const lead = await storage.createLead({
-        titulo,
+        titulo: lawyer.nome,
         pipelineType: 'advogados',
         stage: 'novo_lead',
         valor: lawyer.valorCausa,
@@ -334,9 +333,8 @@ export async function registerRoutes(
       const lawyer = await storage.createLawyer(parsed.data);
       await aggregationCache.invalidate('lawyers-with-lawsuits');
       
-      const titulo = `${lawyer.nome} - ${lawyer.cpf || 'Sem CPF'}`;
       const lead = await storage.createLead({
-        titulo,
+        titulo: lawyer.nome,
         pipelineType: 'advogados',
         stage: 'novo_lead',
         valor: lawyer.valorCausa,

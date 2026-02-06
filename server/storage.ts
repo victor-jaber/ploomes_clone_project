@@ -807,7 +807,7 @@ export class DatabaseStorage implements IStorage {
     const newLeads: Lead[] = [];
     for (const lawyer of notSynced) {
       const lead = await this.createLead({
-        titulo: `${lawyer.nome} - ${lawyer.cpf || 'Sem CPF'}`,
+        titulo: lawyer.nome,
         pipelineType: "advogados",
         stage: "novo_lead",
         position: 0,
@@ -836,7 +836,7 @@ export class DatabaseStorage implements IStorage {
     const newLeads: Lead[] = [];
     for (const claimant of notSynced) {
       const lead = await this.createLead({
-        titulo: `${claimant.nome} - ${claimant.cpf || 'Sem CPF'}`,
+        titulo: claimant.nome,
         pipelineType: "reclamantes",
         stage: "novo_lead",
         position: 0,
