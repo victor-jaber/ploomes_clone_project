@@ -40,7 +40,8 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import type { Lead, Advogado, Escritorio, Reclamante, Atividade } from "@shared/schema";
+import type { Lead, Advogado, Escritorio, Reclamante, Atividade, Proposta } from "@shared/schema";
+import { FileText } from "lucide-react";
 
 const PIPELINE_COLORS = {
   advogados: "#8b5cf6",
@@ -180,6 +181,10 @@ export default function DashboardPage() {
     queryKey: ["/api/activities"],
   });
 
+  const { data: proposals = [], isLoading: proposalsLoading } = useQuery<Proposta[]>({
+    queryKey: ["/api/proposals"],
+  });
+
   const isLoading = leadsLoading || lawyersLoading || lawFirmsLoading || claimantsLoading;
 
   const totalLeads = leads.length;
@@ -223,6 +228,9 @@ export default function DashboardPage() {
 
   const pendingActivities = activities.filter(a => a.status === "pendente").length;
   const completedActivities = activities.filter(a => a.status === "concluido").length;
+
+  const approvedProposals = proposals.filter(p => p.status === "aprovada").length;
+  const pendingProposals = proposals.filter(p => p.status === "enviada" || p.status === "rascunho").length;
 
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
@@ -412,6 +420,16 @@ export default function DashboardPage() {
           icon={Activity}
           iconColor="bg-gradient-to-br from-indigo-500 to-blue-500"
           isLoading={activitiesLoading}
+        />
+        <StatCard
+          title="Propostas"
+          value={proposals.length}
+          subtitle={`${approvedProposals} aprovadas`}
+          change={pendingProposals > 0 ? `${pendingProposals} em andamento` : undefined}
+          changeType="neutral"
+          icon={FileText}
+          iconColor="bg-gradient-to-br from-rose-500 to-pink-500"
+          isLoading={proposalsLoading}
         />
       </div>
 
