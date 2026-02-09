@@ -88,7 +88,7 @@ type ReclamanteComDetalhes = Reclamante & { email?: string | null; telefone?: st
 
 type LawyerWithLawsuits = AdvogadoComDetalhes & { lawsuits: Processo[] };
 type ClaimantWithLawsuits = ReclamanteComDetalhes & { lawsuits: Processo[] };
-type LawFirmWithLawsuits = EscritorioComDetalhes & { lawsuits: Processo[] };
+type LawFirmWithLawsuits = EscritorioComDetalhes & { lawsuits: Processo[]; lawyerIds: number[] };
 
 const PIPELINE_LABELS: Record<PipelineType, { label: string; icon: JSX.Element; description: string }> = {
   advogados: { label: "Advogados", icon: <Scale className="h-4 w-4" />, description: "Pipeline de advogados" },
@@ -2599,60 +2599,60 @@ export default function PipelinePage() {
   const [columnLimits, setColumnLimits] = useState<Record<string, number>>({});
   const CARDS_LIMIT = 20; // Limite inicial e incremento
 
-  // Check if there's a CNJ filter active - if so, show leads from ALL pipelines
-  const hasCnjFilter = activeFilters.some(f => f.type === "cnj");
+  const pipelineFilteredLeads = leads.filter(l => l.tipoPipeline === selectedPipeline);
   
-  // Apply pipeline type filter first (skip if CNJ filter is active)
-  const pipelineFilteredLeads = hasCnjFilter 
-    ? leads 
-    : leads.filter(l => l.tipoPipeline === selectedPipeline);
-  
-  // Apply active filters
   const filteredLeads = pipelineFilteredLeads.filter(lead => {
     if (activeFilters.length === 0) return true;
     
-    return activeFilters.every(filter => {
-      switch (filter.type) {
-        case "advogado":
-          return lead.advogadoId === filter.id;
-        
-        case "reclamante":
-          return lead.reclamanteId === filter.id;
-        
-        case "escritorio":
-          return lead.escritorioId === filter.id;
-        
-        case "cnj":
-          // Check CNJ on linked lawsuits via junction tables
-          const lawyerLawsuits = lead.advogadoId 
-            ? lawyersWithLawsuits.find(a => a.id === lead.advogadoId)?.lawsuits || []
-            : [];
-          const claimantLawsuits = lead.reclamanteId 
-            ? claimantsWithLawsuits.find(c => c.id === lead.reclamanteId)?.lawsuits || []
-            : [];
-          const lawFirmLawsuits = lead.escritorioId 
-            ? lawFirmsWithLawsuits.find(l => l.id === lead.escritorioId)?.lawsuits || []
-            : [];
-          const allLawsuits = [...lawyerLawsuits, ...claimantLawsuits, ...lawFirmLawsuits];
-          return allLawsuits.some(lawsuit => lawsuit.cnj === filter.value);
-        
-        default:
-          return true;
-      }
+    const filtersByType = new Map<string, PipelineFilter[]>();
+    for (const filter of activeFilters) {
+      if (!filtersByType.has(filter.type)) filtersByType.set(filter.type, []);
+      filtersByType.get(filter.type)!.push(filter);
+    }
+    
+    return Array.from(filtersByType.entries()).every(([type, filters]) => {
+      return filters.some(filter => {
+        switch (type) {
+          case "advogado": {
+            if (lead.advogadoId === filter.id) return true;
+            if (lead.escritorioId) {
+              const firm = lawFirmsWithLawsuits.find(f => f.id === lead.escritorioId);
+              if (firm?.lawyerIds?.includes(filter.id as number)) return true;
+            }
+            return false;
+          }
+          
+          case "reclamante":
+            return lead.reclamanteId === filter.id;
+          
+          case "escritorio":
+            return lead.escritorioId === filter.id;
+          
+          case "cnj": {
+            const entityLawsuits: { cnj: string | null }[] = [];
+            if (lead.advogadoId) {
+              const lawyer = lawyersWithLawsuits.find(a => a.id === lead.advogadoId);
+              if (lawyer?.lawsuits) entityLawsuits.push(...lawyer.lawsuits);
+            }
+            if (lead.reclamanteId) {
+              const claimant = claimantsWithLawsuits.find(c => c.id === lead.reclamanteId);
+              if (claimant?.lawsuits) entityLawsuits.push(...claimant.lawsuits);
+            }
+            if (lead.escritorioId) {
+              const firm = lawFirmsWithLawsuits.find(f => f.id === lead.escritorioId);
+              if (firm?.lawsuits) entityLawsuits.push(...firm.lawsuits);
+            }
+            return entityLawsuits.some(lawsuit => lawsuit.cnj === filter.value);
+          }
+          
+          default:
+            return true;
+        }
+      });
     });
   });
   
-  // Get unique pipeline types from filtered leads when CNJ filter is active
-  const uniquePipelineTypes = hasCnjFilter 
-    ? Array.from(new Set(filteredLeads.map(l => l.tipoPipeline))) as (keyof typeof PIPELINE_STAGES)[]
-    : [selectedPipeline];
-  
-  // Combine all stages from active pipelines (removing duplicates by id)
-  const stages: readonly { readonly id: string; readonly label: string; readonly color: string }[] = hasCnjFilter
-    ? uniquePipelineTypes.flatMap(pt => PIPELINE_STAGES[pt] as readonly { readonly id: string; readonly label: string; readonly color: string }[]).filter((stage, index, self) => 
-        self.findIndex(s => s.id === stage.id) === index
-      )
-    : PIPELINE_STAGES[selectedPipeline];
+  const stages: readonly { readonly id: string; readonly label: string; readonly color: string }[] = PIPELINE_STAGES[selectedPipeline];
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, stage, position }: { id: string; stage?: string; position?: number }) => {
