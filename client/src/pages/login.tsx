@@ -1,13 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-import { HermesLogo } from "@/components/hermes-logo";
+import { Loader2, Mail, Lock, ArrowRight } from "lucide-react";
 
 const loginFormSchema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -20,60 +19,80 @@ interface LoginPageProps {
   onLogin: (user: { id: string; name: string; email: string }, token: string) => void;
 }
 
-function LoginIllustration() {
+function FloatingOrbs() {
   return (
-    <svg viewBox="0 0 500 400" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="380" cy="320" rx="100" ry="30" fill="white" fillOpacity="0.1" />
-      
-      <g opacity="0.3">
-        <ellipse cx="100" cy="80" rx="60" ry="25" fill="white" />
-        <ellipse cx="80" cy="75" rx="40" ry="18" fill="white" />
-        <ellipse cx="130" cy="85" rx="35" ry="15" fill="white" />
-      </g>
-      <g opacity="0.25">
-        <ellipse cx="420" cy="120" rx="55" ry="22" fill="white" />
-        <ellipse cx="400" cy="115" rx="35" ry="15" fill="white" />
-        <ellipse cx="450" cy="125" rx="30" ry="12" fill="white" />
-      </g>
-      <g opacity="0.2">
-        <ellipse cx="80" cy="280" rx="50" ry="20" fill="white" />
-        <ellipse cx="60" cy="275" rx="30" ry="12" fill="white" />
-        <ellipse cx="110" cy="285" rx="25" ry="10" fill="white" />
-      </g>
-      
-      <rect x="180" y="80" width="140" height="240" rx="20" fill="white" fillOpacity="0.95" />
-      <rect x="190" y="100" width="120" height="200" rx="12" fill="url(#screenGradient)" />
-      
-      <circle cx="250" cy="200" r="45" fill="white" fillOpacity="0.2" stroke="white" strokeWidth="3" />
-      <circle cx="250" cy="200" r="30" fill="white" fillOpacity="0.1" />
-      <path d="M235 200 L245 210 L265 190" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-      
-      <circle cx="250" cy="200" r="55" fill="none" stroke="white" strokeWidth="2" strokeDasharray="8 6" opacity="0.5">
-        <animateTransform attributeName="transform" type="rotate" from="0 250 200" to="360 250 200" dur="20s" repeatCount="indefinite" />
-      </circle>
-      
-      <g transform="translate(380, 180)">
-        <rect x="-25" y="-25" width="50" height="50" rx="10" fill="white" fillOpacity="0.9" />
-        <circle cx="0" cy="-5" r="8" fill="none" stroke="#6366f1" strokeWidth="2.5" />
-        <rect x="-3" y="5" width="6" height="12" rx="2" fill="#6366f1" />
-      </g>
-      
-      <g transform="translate(120, 160)">
-        <circle cx="0" cy="0" r="25" fill="white" fillOpacity="0.9" />
-        <path d="M-8 0 L-2 6 L10 -6" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      </g>
-      
-      <circle cx="320" cy="100" r="8" fill="white" fillOpacity="0.6" />
-      <circle cx="150" cy="220" r="6" fill="white" fillOpacity="0.5" />
-      <circle cx="400" cy="260" r="10" fill="white" fillOpacity="0.4" />
-      <circle cx="100" cy="140" r="5" fill="white" fillOpacity="0.5" />
-      
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="login-orb login-orb-1" />
+      <div className="login-orb login-orb-2" />
+      <div className="login-orb login-orb-3" />
+      <div className="login-orb login-orb-4" />
+      <div className="login-orb login-orb-5" />
+
+      <svg className="absolute inset-0 w-full h-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+            <path d="M 60 0 L 0 0 0 60" fill="none" stroke="white" strokeWidth="0.5" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
+      </svg>
+
+      <div className="login-sparkle" style={{ top: '15%', left: '20%', animationDelay: '0s' }} />
+      <div className="login-sparkle" style={{ top: '35%', right: '15%', animationDelay: '1.5s' }} />
+      <div className="login-sparkle" style={{ bottom: '25%', left: '30%', animationDelay: '3s' }} />
+      <div className="login-sparkle" style={{ top: '60%', right: '25%', animationDelay: '0.8s' }} />
+      <div className="login-sparkle" style={{ top: '80%', left: '15%', animationDelay: '2.2s' }} />
+      <div className="login-sparkle" style={{ top: '10%', right: '35%', animationDelay: '4s' }} />
+    </div>
+  );
+}
+
+function HermesIcon() {
+  return (
+    <svg width="56" height="56" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="screenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#818cf8" />
-          <stop offset="100%" stopColor="#6366f1" />
+        <linearGradient id="loginLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="hsl(263 70% 60%)" />
+          <stop offset="100%" stopColor="hsl(300 70% 55%)" />
         </linearGradient>
       </defs>
+      <g transform="translate(50, 50)">
+        <path
+          d="M-8 -8 L-25 -20 Q-30 -22 -28 -17 L-18 -5 Q-15 -2 -12 -4 Z"
+          fill="url(#loginLogoGrad)" opacity="0.9"
+        />
+        <path
+          d="M-10 -3 L-32 -8 Q-38 -9 -35 -4 L-18 3 Q-14 5 -12 2 Z"
+          fill="url(#loginLogoGrad)" opacity="0.8"
+        />
+        <path
+          d="M-10 5 L-30 8 Q-36 10 -32 14 L-15 10 Q-11 9 -10 5 Z"
+          fill="url(#loginLogoGrad)" opacity="0.65"
+        />
+        <path
+          d="M8 -8 L25 -20 Q30 -22 28 -17 L18 -5 Q15 -2 12 -4 Z"
+          fill="url(#loginLogoGrad)" opacity="0.9"
+        />
+        <path
+          d="M10 -3 L32 -8 Q38 -9 35 -4 L18 3 Q14 5 12 2 Z"
+          fill="url(#loginLogoGrad)" opacity="0.8"
+        />
+        <path
+          d="M10 5 L30 8 Q36 10 32 14 L15 10 Q11 9 10 5 Z"
+          fill="url(#loginLogoGrad)" opacity="0.65"
+        />
+        <circle cx="0" cy="0" r="16" fill="url(#loginLogoGrad)" opacity="0.12" />
+        <text
+          x="0" y="7"
+          textAnchor="middle"
+          fontSize="24"
+          fontWeight="bold"
+          fontFamily="system-ui, sans-serif"
+          fill="url(#loginLogoGrad)"
+        >
+          H
+        </text>
+      </g>
     </svg>
   );
 }
@@ -81,6 +100,12 @@ function LoginIllustration() {
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -120,40 +145,57 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen flex">
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 lg:px-16 xl:px-24 py-12 bg-background">
-        <div className="w-full max-w-md mx-auto">
-          <div className="flex items-center gap-2 mb-12">
-            <HermesLogo size={48} className="text-primary" />
-            <span className="font-bold text-2xl" data-testid="text-brand-name">Hermes</span>
+    <div className="login-page-root">
+      <FloatingOrbs />
+
+      <div
+        className={`login-card-wrapper ${mounted ? 'login-card-visible' : 'login-card-hidden'}`}
+      >
+        <div className="login-card">
+          <div className="login-card-glow" />
+
+          <div className="flex flex-col items-center mb-8">
+            <div className="login-logo-ring mb-5">
+              <HermesIcon />
+            </div>
+            <h1 className="text-2xl font-bold text-white tracking-tight" data-testid="text-brand-name">
+              Hermes
+            </h1>
+            <span className="text-xs tracking-[0.3em] uppercase text-white/40 mt-1">
+              CRM
+            </span>
           </div>
 
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-3" data-testid="text-login-title">
-              Olá,<br />Bem-vindo de volta
-            </h1>
-            <p className="text-muted-foreground" data-testid="text-login-description">
-              Entre com suas credenciais para acessar o sistema
+          <div className="text-center mb-8">
+            <h2 className="text-lg font-semibold text-white/90 mb-1" data-testid="text-login-title">
+              Bem-vindo de volta
+            </h2>
+            <p className="text-sm text-white/40" data-testid="text-login-description">
+              Entre com suas credenciais para continuar
             </p>
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-5">
+            <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4">
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="sr-only">E-mail</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="seu@email.com"
-                        type="email"
-                        data-testid="input-login-email"
-                        {...field}
-                      />
+                      <div className="login-input-wrapper">
+                        <Mail className="login-input-icon" />
+                        <Input
+                          placeholder="seu@email.com"
+                          type="email"
+                          autoComplete="email"
+                          className="login-input"
+                          data-testid="input-login-email"
+                          {...field}
+                        />
+                      </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-red-400 text-xs pl-1" />
                   </FormItem>
                 )}
               />
@@ -162,55 +204,47 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 name="senha"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="sr-only">Senha</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Sua senha"
-                        type="password"
-                        data-testid="input-login-password"
-                        {...field}
-                      />
+                      <div className="login-input-wrapper">
+                        <Lock className="login-input-icon" />
+                        <Input
+                          placeholder="Sua senha"
+                          type="password"
+                          autoComplete="current-password"
+                          className="login-input"
+                          data-testid="input-login-password"
+                          {...field}
+                        />
+                      </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-red-400 text-xs pl-1" />
                   </FormItem>
                 )}
               />
 
-              <div className="pt-4">
-                <Button 
-                  type="submit" 
-                  className="px-8" 
+              <div className="pt-3">
+                <Button
+                  type="submit"
                   disabled={isLoading}
+                  className="login-submit-btn w-full"
                   data-testid="button-login"
                 >
                   {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Entrando...
-                    </>
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    "Entrar"
+                    <>
+                      <span>Entrar</span>
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </>
                   )}
                 </Button>
               </div>
             </form>
           </Form>
 
-          <p className="text-sm text-muted-foreground mt-12" data-testid="text-footer">
+          <p className="text-[11px] text-white/20 text-center mt-8" data-testid="text-footer">
             Sistema interno &middot; Hermes CRM
           </p>
-        </div>
-      </div>
-
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-500 via-purple-500 to-purple-600 items-center justify-center p-12 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute top-20 left-10 w-32 h-32 bg-white/20 rounded-full blur-xl" />
-          <div className="absolute bottom-32 right-20 w-40 h-40 bg-white/15 rounded-full blur-2xl" />
-          <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-white/10 rounded-full blur-xl" />
-        </div>
-        
-        <div className="relative w-full max-w-lg">
-          <LoginIllustration />
         </div>
       </div>
     </div>

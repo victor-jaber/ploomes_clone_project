@@ -491,4 +491,252 @@
   .scrollbar-track-transparent::-webkit-scrollbar-track {
     background: transparent;
   }
+
+  /* ========================================
+     LOGIN PAGE - Premium Immersive Design
+     ======================================== */
+
+  .login-page-root {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: #0a0a1a;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% 0%, hsl(263 70% 18% / 0.6), transparent),
+      radial-gradient(ellipse 60% 50% at 80% 100%, hsl(300 70% 12% / 0.4), transparent),
+      radial-gradient(ellipse 50% 40% at 10% 60%, hsl(240 70% 10% / 0.3), transparent);
+  }
+
+  /* Floating Orbs */
+  .login-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.35;
+    will-change: transform;
+  }
+
+  .login-orb-1 {
+    width: 400px;
+    height: 400px;
+    background: hsl(263 80% 45%);
+    top: -10%;
+    right: -5%;
+    animation: loginOrbFloat1 18s ease-in-out infinite;
+  }
+
+  .login-orb-2 {
+    width: 300px;
+    height: 300px;
+    background: hsl(300 70% 40%);
+    bottom: -5%;
+    left: -5%;
+    animation: loginOrbFloat2 22s ease-in-out infinite;
+  }
+
+  .login-orb-3 {
+    width: 200px;
+    height: 200px;
+    background: hsl(220 80% 50%);
+    top: 50%;
+    left: 60%;
+    animation: loginOrbFloat3 15s ease-in-out infinite;
+  }
+
+  .login-orb-4 {
+    width: 150px;
+    height: 150px;
+    background: hsl(280 70% 50%);
+    top: 20%;
+    left: 10%;
+    animation: loginOrbFloat2 20s ease-in-out infinite reverse;
+    opacity: 0.2;
+  }
+
+  .login-orb-5 {
+    width: 250px;
+    height: 250px;
+    background: hsl(330 60% 40%);
+    bottom: 20%;
+    right: 15%;
+    animation: loginOrbFloat1 25s ease-in-out infinite reverse;
+    opacity: 0.15;
+  }
+
+  @keyframes loginOrbFloat1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(-30px, 40px) scale(1.05); }
+    66% { transform: translate(20px, -20px) scale(0.95); }
+  }
+
+  @keyframes loginOrbFloat2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(40px, -30px) scale(1.08); }
+    66% { transform: translate(-25px, 25px) scale(0.92); }
+  }
+
+  @keyframes loginOrbFloat3 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-35px, -35px) scale(1.1); }
+  }
+
+  /* Sparkles */
+  .login-sparkle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: white;
+    border-radius: 50%;
+    animation: loginSparkle 5s ease-in-out infinite;
+  }
+
+  @keyframes loginSparkle {
+    0%, 100% { opacity: 0; transform: scale(0); }
+    50% { opacity: 0.6; transform: scale(1); }
+  }
+
+  /* Card Wrapper */
+  .login-card-wrapper {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 420px;
+    padding: 0 1.5rem;
+    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .login-card-hidden {
+    opacity: 0;
+    transform: translateY(30px) scale(0.96);
+  }
+
+  .login-card-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  /* Card */
+  .login-card {
+    position: relative;
+    padding: 2.5rem 2rem;
+    border-radius: 1.25rem;
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+      0 25px 60px -12px rgba(0, 0, 0, 0.5),
+      0 0 80px -20px hsl(263 70% 50% / 0.15);
+  }
+
+  .login-card-glow {
+    position: absolute;
+    top: -1px;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, hsl(263 70% 60%), hsl(300 70% 55%), transparent);
+    border-radius: 1px;
+    opacity: 0.7;
+  }
+
+  /* Logo Ring */
+  .login-logo-ring {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .login-logo-ring::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      hsl(263 70% 55%) 60deg,
+      hsl(300 70% 50%) 120deg,
+      transparent 180deg,
+      transparent 360deg
+    );
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 2px));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 2px));
+    animation: loginRingSpin 6s linear infinite;
+  }
+
+  @keyframes loginRingSpin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Input Wrapper */
+  .login-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .login-input-icon {
+    position: absolute;
+    left: 14px;
+    width: 16px;
+    height: 16px;
+    color: rgba(255, 255, 255, 0.25);
+    z-index: 1;
+    pointer-events: none;
+    transition: color 0.2s ease;
+  }
+
+  .login-input-wrapper:focus-within .login-input-icon {
+    color: hsl(263 70% 65%);
+  }
+
+  .login-input {
+    width: 100%;
+    padding-left: 42px !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 0.75rem !important;
+    color: white !important;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease !important;
+  }
+
+  .login-input::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+  }
+
+  .login-input:focus {
+    border-color: hsl(263 70% 55% / 0.5) !important;
+    box-shadow: 0 0 0 3px hsl(263 70% 50% / 0.1), 0 0 20px -5px hsl(263 70% 50% / 0.15) !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    outline: none !important;
+  }
+
+  /* Submit Button - gradient background on shadcn Button */
+  .login-submit-btn {
+    background: linear-gradient(135deg, hsl(263 70% 50%), hsl(280 65% 48%), hsl(300 60% 45%)) !important;
+    background-size: 200% 200% !important;
+    animation: loginBtnGradient 4s ease infinite;
+    box-shadow: 0 4px 20px -4px hsl(263 70% 50% / 0.4);
+    border: none !important;
+    color: white !important;
+    font-weight: 600;
+    border-radius: 0.75rem !important;
+  }
+
+  @keyframes loginBtnGradient {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
 }
