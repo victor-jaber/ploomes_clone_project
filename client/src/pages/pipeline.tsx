@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -2471,7 +2470,8 @@ export default function PipelinePage() {
   const [inlineEscritorioAdvogados, setInlineEscritorioAdvogados] = useState<number[]>([]);
   const [inlineSelectedAdvogadoId, setInlineSelectedAdvogadoId] = useState<string>("");
   
-  const urlParamsProcessed = useRef(false);
+  const urlParamsProcessed = useRef("");
+  const [navTrigger, setNavTrigger] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDraggingScroll, setIsDraggingScroll] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -2551,10 +2551,18 @@ export default function PipelinePage() {
   const isLoading = leadsLoading || advogadosLoading || escritoriosLoading || reclamantesLoading || lawyersLawsuitsLoading || claimantsLawsuitsLoading || lawFirmsLawsuitsLoading;
 
   useEffect(() => {
-    if (urlParamsProcessed.current) return;
+    const handler = () => setNavTrigger(n => n + 1);
+    window.addEventListener("herminio-navigate", handler);
+    return () => window.removeEventListener("herminio-navigate", handler);
+  }, []);
+
+  useEffect(() => {
     if (isLoading) return;
     
-    const params = new URLSearchParams(window.location.search);
+    const currentSearch = window.location.search;
+    if (urlParamsProcessed.current === currentSearch) return;
+    
+    const params = new URLSearchParams(currentSearch);
     const type = params.get("type");
     const cnjs = params.get("cnj");
     const escritorioId = params.get("escritorioId");
@@ -2562,7 +2570,7 @@ export default function PipelinePage() {
     
     if (!type && !cnjs && !escritorioId && !advogadoId) return;
     
-    urlParamsProcessed.current = true;
+    urlParamsProcessed.current = currentSearch;
     
     if (type && VISIBLE_PIPELINES.includes(type as PipelineType)) {
       setSelectedPipeline(type as PipelineType);
@@ -2593,7 +2601,7 @@ export default function PipelinePage() {
     if (newFilters.length > 0) {
       setActiveFilters(newFilters);
     }
-  }, [isLoading, escritorios, todosAdvogadosInfos]);
+  }, [isLoading, escritorios, todosAdvogadosInfos, navTrigger]);
 
   // Estado para controlar limite de cards por coluna (key = stage.id, value = limite atual)
   const [columnLimits, setColumnLimits] = useState<Record<string, number>>({});
