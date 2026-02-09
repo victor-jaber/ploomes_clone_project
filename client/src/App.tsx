@@ -11,6 +11,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getToken, getUser, setAuth, clearAuth, AuthUser } from "@/lib/auth";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { HerminioChat } from "@/components/herminio-chat";
 
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
@@ -139,7 +140,12 @@ function AppContent() {
     return <LoginPage onLogin={handleLogin} />;
   }
 
-  return <AuthenticatedLayout user={user} onLogout={handleLogout} />;
+  return (
+    <>
+      <AuthenticatedLayout user={user} onLogout={handleLogout} />
+      <HerminioChat />
+    </>
+  );
 }
 
 function App() {

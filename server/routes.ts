@@ -4,6 +4,7 @@ import { z } from "zod";
 import Redis from "ioredis";
 import { storage } from "./storage";
 import { isAuthenticated, registerAuthRoutes, AuthRequest } from "./auth";
+import { processAssistantMessage } from "./assistant";
 import { wsManager } from "./websocket";
 import logger from "./logger";
 import { 
@@ -1877,6 +1878,21 @@ export async function registerRoutes(
     } catch (error) {
       logger.error("deleting calendar event", error as Error);
       res.status(500).json({ message: "Falha ao excluir evento no calendário" });
+    }
+  });
+
+  app.post("/api/assistant/chat", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { message } = req.body;
+      if (!message || typeof message !== "string") {
+        res.status(400).json({ message: "Mensagem é obrigatória" });
+        return;
+      }
+      const response = await processAssistantMessage(message);
+      res.json(response);
+    } catch (error) {
+      logger.error("assistant chat", error as Error);
+      res.status(500).json({ message: "Erro ao processar mensagem do assistente" });
     }
   });
 
