@@ -2485,13 +2485,25 @@ export default function PipelinePage() {
     toast({ title: `Filtro aplicado: ${filter.label}` });
   }, [toast]);
 
-  const removeFilter = useCallback((filter: PipelineFilter) => {
-    setActiveFilters(prev => prev.filter(f => !(f.type === filter.type && f.value === filter.value)));
+  const cleanUrlParams = useCallback(() => {
+    if (window.location.search) {
+      window.history.replaceState({}, "", window.location.pathname);
+      urlParamsProcessed.current = "";
+    }
   }, []);
+
+  const removeFilter = useCallback((filter: PipelineFilter) => {
+    setActiveFilters(prev => {
+      const next = prev.filter(f => !(f.type === filter.type && f.value === filter.value));
+      if (next.length === 0) cleanUrlParams();
+      return next;
+    });
+  }, [cleanUrlParams]);
 
   const clearAllFilters = useCallback(() => {
     setActiveFilters([]);
-  }, []);
+    cleanUrlParams();
+  }, [cleanUrlParams]);
   
   const toggleColumnMinimize = useCallback((stageId: string) => {
     setMinimizedColumns(prev => {
