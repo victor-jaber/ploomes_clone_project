@@ -28,6 +28,7 @@ import {
   insertAdvogadoSchema,
   insertEscritorioSchema,
   insertReclamanteSchema,
+  insertProcessoSchema,
   insertLeadSchema,
   insertLeadFinanceiroSchema,
   insertLeadDetalhesCasoSchema,
@@ -321,7 +322,7 @@ export async function registerRoutes(
     try {
       const userId = (req as AuthRequest).user!.id;
       const strippedBody = stripContactFields(req.body);
-      const parsed = insertAdvogadoSchema.safeParse({ ...strippedBody, proprietarioId: userId, enviadoParaPipeline: true });
+      const parsed = insertAdvogadoSchema.safeParse({ ...strippedBody, proprietarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -423,7 +424,7 @@ export async function registerRoutes(
     try {
       const userId = (req as AuthRequest).user!.id;
       const strippedBody = stripContactFields(req.body);
-      const parsed = insertAdvogadoSchema.safeParse({ ...strippedBody, proprietarioId: userId, enviadoParaPipeline: true });
+      const parsed = insertAdvogadoSchema.safeParse({ ...strippedBody, proprietarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -493,36 +494,20 @@ export async function registerRoutes(
     }
   });
 
-  // Sync lawyers to leads
-  app.post("/api/sync-advogados-to-leads", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/lawsuits", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const result = await storage.syncLawyersToLeads(userId);
-      
-      for (const lead of result.leads) {
-        wsManager.broadcastLeadCreated(lead);
+      const parsed = insertProcessoSchema.safeParse({ ...req.body, proprietarioId: userId });
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
+        return;
       }
-      
-      res.json({ synced: result.synced, skipped: result.skipped });
+      const { processo, lead } = await storage.createLawsuitWithLead(parsed.data, userId);
+      wsManager.broadcastLeadCreated(lead);
+      res.status(201).json({ processo, lead });
     } catch (error) {
-      logger.error("syncing lawyers to leads", error as Error);
-      res.status(500).json({ message: "Failed to sync lawyers to leads" });
-    }
-  });
-
-  app.post("/api/sync-processos-to-leads", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const result = await storage.syncLawsuitsToLeads(userId);
-      
-      for (const lead of result.leads) {
-        wsManager.broadcastLeadCreated(lead);
-      }
-      
-      res.json({ synced: result.synced, skipped: result.skipped });
-    } catch (error) {
-      logger.error("syncing lawsuits to leads", error as Error);
-      res.status(500).json({ message: "Failed to sync lawsuits to leads" });
+      logger.error("creating lawsuit with lead", error as Error);
+      res.status(500).json({ message: "Failed to create lawsuit" });
     }
   });
 
@@ -940,23 +925,6 @@ export async function registerRoutes(
     } catch (error) {
       logger.error("deleting claimant", error as Error);
       res.status(500).json({ message: "Failed to delete claimant" });
-    }
-  });
-
-  // Sync claimants to leads
-  app.post("/api/sync-reclamantes-to-leads", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthRequest).user!.id;
-      const result = await storage.syncClaimantsToLeads(userId);
-      
-      for (const lead of result.leads) {
-        wsManager.broadcastLeadCreated(lead);
-      }
-      
-      res.json({ synced: result.synced, skipped: result.skipped });
-    } catch (error) {
-      logger.error("syncing claimants to leads", error as Error);
-      res.status(500).json({ message: "Failed to sync claimants to leads" });
     }
   });
 

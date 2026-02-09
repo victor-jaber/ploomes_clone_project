@@ -65,7 +65,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
   Plus, GripVertical, Building2, DollarSign, Trash2, Pencil,
   Phone, Mail, MessageSquare, ArrowRight, Clock, CheckCircle2,
-  Send, Paperclip, FileText, Kanban, User, Scale, Users, FileSearch, Handshake, MapPin, RefreshCw,
+  Send, Paperclip, FileText, Kanban, User, Scale, Users, FileSearch, Handshake, MapPin,
   Minimize2, Maximize2, Filter, X,
   Bold, Italic, Underline, Strikethrough, List, Calendar, CalendarPlus, CircleCheck, Circle,
   PhoneCall, Video, MapPinIcon, MessageCircle, Copy, Check
@@ -276,6 +276,10 @@ function getEntityName(lead: Lead, todosAdvogadosInfos: AdvogadoComDetalhes[], e
     return rec?.nome || "Reclamante";
   }
   return "—";
+}
+
+function isCasePipeline(type: string): boolean {
+  return type === "triagem" || type === "fechamento";
 }
 
 function LeadDetailPanel({
@@ -658,7 +662,7 @@ function LeadDetailPanel({
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right shrink-0">
-              {(pipelineType === "triagem" || pipelineType === "fechamento") && (
+              {isCasePipeline(pipelineType) && (
                 <div className="text-2xl font-bold text-primary">{formatCurrency(Number(lead.valor || 0))}</div>
               )}
               {currentStage && (
@@ -707,7 +711,7 @@ function LeadDetailPanel({
                     <Label className="text-muted-foreground text-xs">Título</Label>
                     <p className="font-medium">{lead.titulo}</p>
                   </div>
-                  {(pipelineType === "triagem" || pipelineType === "fechamento") && (
+                  {isCasePipeline(pipelineType) && (
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">Valor (R$)</Label>
                     <InlineEditField
@@ -2067,7 +2071,7 @@ function LeadCard({
               ) : null;
             })()}
             
-            {(pipelineType === "triagem" || pipelineType === "fechamento") && (
+            {isCasePipeline(pipelineType) && (
             <div className="flex items-center justify-between pt-2 border-t border-dashed">
               <div className="flex items-center gap-1.5">
                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
@@ -2301,7 +2305,7 @@ function PipelineColumn({
             <Minimize2 className="h-3 w-3" />
           </Button>
         </div>
-        {(pipelineType === "triagem" || pipelineType === "fechamento") && (
+        {isCasePipeline(pipelineType) && (
         <div className="text-white/80 text-xs mt-1">
           {formatCurrencyShort(totalValue)}
         </div>
@@ -2724,70 +2728,7 @@ export default function PipelinePage() {
     },
   });
 
-  const syncAdvogadosMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/sync-advogados-to-leads");
-      return response.json();
-    },
-    onSuccess: (data: { synced: number; skipped: number }) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/todos-advogados-infos"] });
-      toast({
-        title: "Sincronização concluída",
-        description: `${data.synced} advogados sincronizados para o pipeline`,
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro na sincronização",
-        description: "Não foi possível sincronizar os advogados",
-        variant: "destructive",
-      });
-    },
-  });
 
-  const syncReclamantesMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/sync-reclamantes-to-leads");
-      return response.json();
-    },
-    onSuccess: (data: { synced: number; skipped: number }) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/reclamantes"] });
-      toast({
-        title: "Sincronização concluída",
-        description: `${data.synced} reclamantes sincronizados para o pipeline`,
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro na sincronização",
-        description: "Não foi possível sincronizar os reclamantes",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const syncProcessosMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/sync-processos-to-leads");
-      return response.json();
-    },
-    onSuccess: (data: { synced: number; skipped: number }) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
-      toast({
-        title: "Sincronização concluída",
-        description: `${data.synced} processos sincronizados para o pipeline`,
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro na sincronização",
-        description: "Não foi possível sincronizar os processos",
-        variant: "destructive",
-      });
-    },
-  });
 
   const createInlineAdvogadoMutation = useMutation({
     mutationFn: async (data: { nome: string; cpf: string; telefone: string; email: string }) => {
@@ -3069,7 +3010,7 @@ export default function PipelinePage() {
         
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-6 mr-4">
-            {(selectedPipeline === "triagem" || selectedPipeline === "fechamento") && (
+            {isCasePipeline(selectedPipeline) && (
             <>
             <div className="text-right">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Total em Pipeline</p>
@@ -3085,42 +3026,6 @@ export default function PipelinePage() {
               <p className="text-lg font-bold text-foreground">{totalLeads}</p>
             </div>
           </div>
-          
-          {selectedPipeline === "advogados" && (
-            <Button
-              variant="outline"
-              onClick={() => syncAdvogadosMutation.mutate()}
-              disabled={syncAdvogadosMutation.isPending}
-              data-testid="button-sync-advogados"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${syncAdvogadosMutation.isPending ? "animate-spin" : ""}`} />
-              {syncAdvogadosMutation.isPending ? "Sincronizando..." : "Sincronizar Advogados"}
-            </Button>
-          )}
-
-          {selectedPipeline === "reclamantes" && (
-            <Button
-              variant="outline"
-              onClick={() => syncReclamantesMutation.mutate()}
-              disabled={syncReclamantesMutation.isPending}
-              data-testid="button-sync-reclamantes"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${syncReclamantesMutation.isPending ? "animate-spin" : ""}`} />
-              {syncReclamantesMutation.isPending ? "Sincronizando..." : "Sincronizar Reclamantes"}
-            </Button>
-          )}
-
-          {selectedPipeline === "triagem" && (
-            <Button
-              variant="outline"
-              onClick={() => syncProcessosMutation.mutate()}
-              disabled={syncProcessosMutation.isPending}
-              data-testid="button-sync-processos"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${syncProcessosMutation.isPending ? "animate-spin" : ""}`} />
-              {syncProcessosMutation.isPending ? "Sincronizando..." : "Sincronizar Processos"}
-            </Button>
-          )}
           
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -3311,7 +3216,7 @@ export default function PipelinePage() {
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
-                  {(selectedPipeline === "triagem" || selectedPipeline === "fechamento") && (
+                  {isCasePipeline(selectedPipeline) && (
                   <div className="space-y-2">
                     <Label htmlFor="valor">Valor (R$)</Label>
                     <Input

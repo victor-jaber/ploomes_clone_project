@@ -111,7 +111,6 @@ export const advogados = pgTable("advogados", {
   cpf: varchar("cpf", { length: 14 }),
   nome: text("nome").notNull(),
   observacoes: text("observacoes"),
-  enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
   enderecoId: varchar("endereco_id").references(() => enderecos.id, { onDelete: "set null" }),
   proprietarioId: varchar("proprietario_id").notNull(),
   criadoEm: timestamp("criado_em").defaultNow(),
@@ -134,7 +133,6 @@ export const reclamantes = pgTable("reclamantes", {
   nome: text("nome").notNull(),
   cpf: varchar("cpf", { length: 14 }),
   observacoes: text("observacoes"),
-  enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
   enderecoId: varchar("endereco_id").references(() => enderecos.id, { onDelete: "set null" }),
   proprietarioId: varchar("proprietario_id").notNull(),
   criadoEm: timestamp("criado_em").defaultNow(),
@@ -187,7 +185,6 @@ export const processos = pgTable("processos", {
   probabilidadeSucesso: numeric("probabilidade_sucesso", { precision: 5, scale: 2 }),
   valorEstimado: numeric("valor_estimado", { precision: 12, scale: 2 }),
   apiData: text("api_data"),
-  enviadoParaPipeline: boolean("enviado_para_pipeline").default(false),
   proprietarioId: varchar("proprietario_id").notNull(),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
@@ -234,6 +231,7 @@ export const leads = pgTable("leads", {
   advogadoId: integer("advogado_id").references(() => advogados.id, { onDelete: "set null" }),
   escritorioId: varchar("escritorio_id").references(() => escritorios.id, { onDelete: "set null" }),
   reclamanteId: varchar("reclamante_id").references(() => reclamantes.id, { onDelete: "set null" }),
+  processoId: varchar("processo_id").references(() => processos.id, { onDelete: "set null" }),
   vendedorId: varchar("vendedor_id"),
   proprietarioId: varchar("proprietario_id"),
   criadoEm: timestamp("criado_em").defaultNow(),
@@ -403,9 +401,10 @@ export const escritorioAdvogadosRelations = relations(escritorioAdvogados, ({ on
   advogado: one(advogados, { fields: [escritorioAdvogados.advogadoId], references: [advogados.id] }),
 }));
 
-export const processosRelations = relations(processos, ({ many }) => ({
+export const processosRelations = relations(processos, ({ one, many }) => ({
   processoAdvogados: many(processoAdvogados),
   processoReclamantes: many(processoReclamantes),
+  lead: one(leads, { fields: [processos.id], references: [leads.processoId] }),
 }));
 
 export const processoAdvogadosRelations = relations(processoAdvogados, ({ one }) => ({
@@ -423,6 +422,7 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
   advogado: one(advogados, { fields: [leads.advogadoId], references: [advogados.id] }),
   escritorio: one(escritorios, { fields: [leads.escritorioId], references: [escritorios.id] }),
   reclamante: one(reclamantes, { fields: [leads.reclamanteId], references: [reclamantes.id] }),
+  processo: one(processos, { fields: [leads.processoId], references: [processos.id] }),
   financeiros: one(leadFinanceiros, { fields: [leads.id], references: [leadFinanceiros.leadId] }),
   detalhesCaso: one(leadDetalhesCaso, { fields: [leads.id], references: [leadDetalhesCaso.leadId] }),
   checklist: one(leadChecklist, { fields: [leads.id], references: [leadChecklist.leadId] }),
