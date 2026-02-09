@@ -111,7 +111,13 @@ export function HerminioChat() {
 
   const handleAction = (action: AssistantAction) => {
     setIsOpen(false);
-    setLocation(action.url);
+    const [path, search] = action.url.split("?");
+    if (window.location.pathname === path) {
+      window.history.replaceState({}, "", action.url);
+      window.dispatchEvent(new CustomEvent("herminio-navigate", { detail: { search: search ? `?${search}` : "" } }));
+    } else {
+      setLocation(action.url);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
