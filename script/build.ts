@@ -10,10 +10,14 @@ esbuild.buildSync({
   platform: "node",
   target: "node20",
   format: "esm",
+  define: {
+    "process.env.NODE_ENV": '"production"',
+  },
   banner: {
     js: 'import { createRequire } from "module"; const require = createRequire(import.meta.url); import { fileURLToPath } from "url"; import { dirname } from "path"; const __filename = fileURLToPath(import.meta.url); const __dirname = dirname(__filename);',
   },
   packages: "external",
+  external: ["./vite", "../vite.config"],
 });
 
 console.log("Build completed successfully");

@@ -1,0 +1,188 @@
+2026-Feb-09 15:36:41
+^
+2026-Feb-09 15:36:41
+2026-Feb-09 15:36:41
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+2026-Feb-09 15:36:41
+at packageResolve (node:internal/modules/esm/resolve:873:9)
+2026-Feb-09 15:36:41
+at moduleResolve (node:internal/modules/esm/resolve:946:18)
+2026-Feb-09 15:36:41
+at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+2026-Feb-09 15:36:41
+at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+2026-Feb-09 15:36:41
+at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+2026-Feb-09 15:36:41
+at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+2026-Feb-09 15:36:41
+at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+2026-Feb-09 15:36:41
+at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+2026-Feb-09 15:36:41
+code: 'ERR_MODULE_NOT_FOUND'
+2026-Feb-09 15:36:41
+}
+2026-Feb-09 15:36:41
+2026-Feb-09 15:36:41
+Node.js v20.20.0
+2026-Feb-09 15:36:43
+node:internal/modules/esm/resolve:873
+2026-Feb-09 15:36:43
+throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+2026-Feb-09 15:36:43
+^
+2026-Feb-09 15:36:43
+2026-Feb-09 15:36:43
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+2026-Feb-09 15:36:43
+at packageResolve (node:internal/modules/esm/resolve:873:9)
+2026-Feb-09 15:36:43
+at moduleResolve (node:internal/modules/esm/resolve:946:18)
+2026-Feb-09 15:36:43
+at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+2026-Feb-09 15:36:43
+at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+2026-Feb-09 15:36:43
+at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+2026-Feb-09 15:36:43
+at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+2026-Feb-09 15:36:43
+at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+2026-Feb-09 15:36:43
+at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+2026-Feb-09 15:36:43
+code: 'ERR_MODULE_NOT_FOUND'
+2026-Feb-09 15:36:43
+}
+2026-Feb-09 15:36:43
+2026-Feb-09 15:36:43
+Node.js v20.20.0
+2026-Feb-09 15:36:45
+node:internal/modules/esm/resolve:873
+2026-Feb-09 15:36:45
+throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+2026-Feb-09 15:36:45
+^
+2026-Feb-09 15:36:45
+2026-Feb-09 15:36:45
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+2026-Feb-09 15:36:45
+at packageResolve (node:internal/modules/esm/resolve:873:9)
+2026-Feb-09 15:36:45
+at moduleResolve (node:internal/modules/esm/resolve:946:18)
+2026-Feb-09 15:36:45
+at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+2026-Feb-09 15:36:45
+at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+2026-Feb-09 15:36:45
+at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+2026-Feb-09 15:36:45
+at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+2026-Feb-09 15:36:45
+at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+2026-Feb-09 15:36:45
+at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+2026-Feb-09 15:36:45
+code: 'ERR_MODULE_NOT_FOUND'
+2026-Feb-09 15:36:45
+}
+2026-Feb-09 15:36:45
+2026-Feb-09 15:36:45
+Node.js v20.20.0
+2026-Feb-09 15:36:48
+node:internal/modules/esm/resolve:873
+2026-Feb-09 15:36:48
+throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+2026-Feb-09 15:36:48
+^
+2026-Feb-09 15:36:48
+2026-Feb-09 15:36:48
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+2026-Feb-09 15:36:48
+at packageResolve (node:internal/modules/esm/resolve:873:9)
+2026-Feb-09 15:36:48
+at moduleResolve (node:internal/modules/esm/resolve:946:18)
+2026-Feb-09 15:36:48
+at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+2026-Feb-09 15:36:48
+at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+2026-Feb-09 15:36:48
+at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+2026-Feb-09 15:36:48
+at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+2026-Feb-09 15:36:48
+at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+2026-Feb-09 15:36:48
+at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+2026-Feb-09 15:36:48
+code: 'ERR_MODULE_NOT_FOUND'
+2026-Feb-09 15:36:48
+}
+2026-Feb-09 15:36:48
+2026-Feb-09 15:36:48
+Node.js v20.20.0
+2026-Feb-09 15:36:55
+node:internal/modules/esm/resolve:873
+2026-Feb-09 15:36:55
+throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+2026-Feb-09 15:36:55
+^
+2026-Feb-09 15:36:55
+2026-Feb-09 15:36:55
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+2026-Feb-09 15:36:55
+at packageResolve (node:internal/modules/esm/resolve:873:9)
+2026-Feb-09 15:36:55
+at moduleResolve (node:internal/modules/esm/resolve:946:18)
+2026-Feb-09 15:36:55
+at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+2026-Feb-09 15:36:55
+at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+2026-Feb-09 15:36:55
+at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+2026-Feb-09 15:36:55
+at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+2026-Feb-09 15:36:55
+at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+2026-Feb-09 15:36:55
+at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+2026-Feb-09 15:36:55
+code: 'ERR_MODULE_NOT_FOUND'
+2026-Feb-09 15:36:55
+}
+2026-Feb-09 15:36:55
+2026-Feb-09 15:36:55
+Node.js v20.20.0
+2026-Feb-09 15:37:09
+node:internal/modules/esm/resolve:873
+2026-Feb-09 15:37:09
+throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+2026-Feb-09 15:37:09
+^
+2026-Feb-09 15:37:09
+2026-Feb-09 15:37:09
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/dist/index.js
+2026-Feb-09 15:37:09
+at packageResolve (node:internal/modules/esm/resolve:873:9)
+2026-Feb-09 15:37:09
+at moduleResolve (node:internal/modules/esm/resolve:946:18)
+2026-Feb-09 15:37:09
+at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+2026-Feb-09 15:37:09
+at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+2026-Feb-09 15:37:09
+at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+2026-Feb-09 15:37:09
+at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+2026-Feb-09 15:37:09
+at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+2026-Feb-09 15:37:09
+at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+2026-Feb-09 15:37:09
+code: 'ERR_MODULE_NOT_FOUND'
+2026-Feb-09 15:37:09
+}
+2026-Feb-09 15:37:09
+2026-Feb-09 15:37:09
+Node.js v20.20.0
