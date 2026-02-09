@@ -2629,6 +2629,7 @@ export default function PipelinePage() {
             return lead.escritorioId === filter.id;
           
           case "cnj": {
+            if (lead.titulo === filter.value) return true;
             const entityLawsuits: { cnj: string | null }[] = [];
             if (lead.advogadoId) {
               const lawyer = lawyersWithLawsuits.find(a => a.id === lead.advogadoId);
