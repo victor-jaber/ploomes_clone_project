@@ -3,8 +3,9 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, X, Send, ArrowRight, Sparkles, Loader2 } from "lucide-react";
+import { X, Send, ArrowRight, Loader2 } from "lucide-react";
 import { getToken } from "@/lib/auth";
+import herminioAvatar from "@assets/herminio-avatar.png";
 
 interface AssistantAction {
   label: string;
@@ -127,9 +128,7 @@ export function HerminioChat() {
           <Card className="flex flex-col h-[520px] shadow-2xl border-purple-500/20 overflow-hidden">
             <div className="flex items-center justify-between gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-md">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-                  <Bot className="h-4 w-4" />
-                </div>
+                <img src={herminioAvatar} alt="Hermínio" className="h-8 w-8 rounded-full object-cover" />
                 <div>
                   <p className="font-semibold text-sm">Hermínio</p>
                   <p className="text-[10px] text-white/70">Assistente Hermes CRM</p>
@@ -221,13 +220,15 @@ export function HerminioChat() {
 
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center cursor-pointer transition-opacity hover:opacity-90"
+        className="h-14 w-14 rounded-full shadow-lg cursor-pointer transition-transform hover:scale-105 active:scale-95 overflow-hidden"
         data-testid="button-open-herminio"
       >
         {isOpen ? (
-          <X className="h-5 w-5 text-white" />
+          <div className="h-full w-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
+            <X className="h-5 w-5 text-white" />
+          </div>
         ) : (
-          <Sparkles className="h-5 w-5 text-white" />
+          <img src={herminioAvatar} alt="Hermínio" className="h-full w-full object-cover" />
         )}
       </div>
     </div>
