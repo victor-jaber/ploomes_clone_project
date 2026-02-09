@@ -25,31 +25,17 @@ function FloatingOrbs() {
       <div className="login-orb login-orb-1" />
       <div className="login-orb login-orb-2" />
       <div className="login-orb login-orb-3" />
-      <div className="login-orb login-orb-4" />
-      <div className="login-orb login-orb-5" />
 
-      <svg className="absolute inset-0 w-full h-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
-            <path d="M 60 0 L 0 0 0 60" fill="none" stroke="white" strokeWidth="0.5" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#grid)" />
-      </svg>
-
-      <div className="login-sparkle" style={{ top: '15%', left: '20%', animationDelay: '0s' }} />
-      <div className="login-sparkle" style={{ top: '35%', right: '15%', animationDelay: '1.5s' }} />
-      <div className="login-sparkle" style={{ bottom: '25%', left: '30%', animationDelay: '3s' }} />
-      <div className="login-sparkle" style={{ top: '60%', right: '25%', animationDelay: '0.8s' }} />
-      <div className="login-sparkle" style={{ top: '80%', left: '15%', animationDelay: '2.2s' }} />
-      <div className="login-sparkle" style={{ top: '10%', right: '35%', animationDelay: '4s' }} />
+      <div className="login-sparkle" style={{ top: '20%', left: '25%', animationDelay: '0s' }} />
+      <div className="login-sparkle" style={{ top: '40%', right: '20%', animationDelay: '2s' }} />
+      <div className="login-sparkle" style={{ bottom: '30%', left: '35%', animationDelay: '4s' }} />
     </div>
   );
 }
 
 function HermesIcon() {
   return (
-    <svg width="56" height="56" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="loginLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="hsl(263 70% 60%)" />
@@ -154,29 +140,31 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         <div className="login-card">
           <div className="login-card-glow" />
 
-          <div className="flex flex-col items-center mb-8">
-            <div className="login-logo-ring mb-5">
+          <div className="flex items-center gap-3 mb-10">
+            <div className="login-logo-ring">
               <HermesIcon />
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight" data-testid="text-brand-name">
-              Hermes
-            </h1>
-            <span className="text-xs tracking-[0.3em] uppercase text-white/40 mt-1">
-              CRM
-            </span>
+            <div>
+              <h1 className="text-xl font-bold text-white tracking-tight" data-testid="text-brand-name">
+                Hermes
+              </h1>
+              <span className="text-[10px] tracking-[0.25em] uppercase text-white/35">
+                C R M
+              </span>
+            </div>
           </div>
 
-          <div className="text-center mb-8">
-            <h2 className="text-lg font-semibold text-white/90 mb-1" data-testid="text-login-title">
+          <div className="mb-6">
+            <h2 className="text-[15px] font-medium text-white/80 mb-0.5" data-testid="text-login-title">
               Bem-vindo de volta
             </h2>
-            <p className="text-sm text-white/40" data-testid="text-login-description">
-              Entre com suas credenciais para continuar
+            <p className="text-xs text-white/35" data-testid="text-login-description">
+              Entre com suas credenciais
             </p>
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-3">
               <FormField
                 control={form.control}
                 name="email"
@@ -222,7 +210,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 )}
               />
 
-              <div className="pt-3">
+              <div className="pt-2">
                 <Button
                   type="submit"
                   disabled={isLoading}
@@ -242,7 +230,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </form>
           </Form>
 
-          <p className="text-[11px] text-white/20 text-center mt-8" data-testid="text-footer">
+          <p className="text-[10px] text-white/15 text-center mt-6" data-testid="text-footer">
             Sistema interno &middot; Hermes CRM
           </p>
         </div>
