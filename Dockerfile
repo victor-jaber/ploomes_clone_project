@@ -30,4 +30,4 @@ USER hermes
 
 EXPOSE 5000
 
-CMD ["node", "dist/index.cjs"]
+CMD ["node", "dist/index.js"]
