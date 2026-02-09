@@ -31,6 +31,7 @@ import {
   type EscritorioAdvogado,
   type InsertEscritorioAdvogado,
   type Processo,
+  type InsertProcesso,
   type ProcessoAdvogado,
   type ProcessoReclamante,
   type Lead,
@@ -161,10 +162,7 @@ export interface IStorage {
   createUser(user: { name: string; email: string; password: string }): Promise<{ id: string; name: string; email: string; createdAt: Date | null }>;
   deleteUser(id: string): Promise<boolean>;
 
-  // Sync functions
-  syncLawyersToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
-  syncClaimantsToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
-  syncLawsuitsToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }>;
+  createLawsuitWithLead(data: InsertProcesso, userId: string): Promise<{ processo: Processo; lead: Lead }>;
   syncLawsuitsFromApi(userId: string): Promise<{ total: number; linked: number; errors: number }>;
   
   // Backward compatibility
@@ -1050,112 +1048,40 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Sync Lawyers to Leads
-  async syncLawyersToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }> {
-    const allLawyers = await this.getLawyers(userId);
-    const notSynced = allLawyers.filter(l => !l.enviadoParaPipeline);
+  async createLawsuitWithLead(data: InsertProcesso, userId: string): Promise<{ processo: Processo; lead: Lead }> {
+    const [processo] = await db.insert(processos).values(data).returning();
     
-    const newLeads: Lead[] = [];
-    for (const lawyer of notSynced) {
-      const lead = await this.createLead({
-        titulo: lawyer.nome,
-        tipoPipeline: "advogados",
-        etapa: "novo_lead",
-        posicao: 0,
-        valor: null,
-        probabilidade: 0,
-        vendedorId: userId,
-        proprietarioId: userId,
-        advogadoId: lawyer.id,
-      });
-      newLeads.push(lead);
-      await this.updateLawyer(lawyer.id, userId, { enviadoParaPipeline: true });
-    }
-    
-    return {
-      synced: newLeads.length,
-      skipped: allLawyers.length - notSynced.length,
-      leads: newLeads,
-    };
-  }
+    const lead = await this.createLead({
+      titulo: processo.cnj || `Processo ${processo.id.substring(0, 8)}`,
+      tipoPipeline: "triagem",
+      etapa: "novo_caso",
+      posicao: 0,
+      valor: processo.valorCausa || null,
+      probabilidade: processo.probabilidadeSucesso ? Math.round(Number(processo.probabilidadeSucesso)) : 0,
+      vendedorId: userId,
+      proprietarioId: userId,
+      processoId: processo.id,
+      advogadoId: null,
+      escritorioId: null,
+      reclamanteId: null,
+    });
 
-  // Sync Claimants to Leads
-  async syncClaimantsToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }> {
-    const allClaimants = await this.getClaimants(userId);
-    const notSynced = allClaimants.filter(c => !c.enviadoParaPipeline);
-    
-    const newLeads: Lead[] = [];
-    for (const claimant of notSynced) {
-      const lead = await this.createLead({
-        titulo: claimant.nome,
-        tipoPipeline: "reclamantes",
-        etapa: "novo_lead",
-        posicao: 0,
-        valor: null,
-        probabilidade: 0,
-        vendedorId: userId,
-        proprietarioId: userId,
-        reclamanteId: claimant.id,
-      });
-      newLeads.push(lead);
-      await this.updateClaimant(claimant.id, userId, { enviadoParaPipeline: true });
-    }
-    
-    return {
-      synced: newLeads.length,
-      skipped: allClaimants.length - notSynced.length,
-      leads: newLeads,
-    };
-  }
+    await this.upsertLeadCaseDetails(lead.id, {
+      leadId: lead.id,
+      cnj: processo.cnj || undefined,
+      tribunal: processo.tribunal || undefined,
+      orgaoJulgador: processo.vara || undefined,
+      assuntoPrincipal: processo.assunto || undefined,
+      cliente: processo.autor || undefined,
+    });
 
-  async syncLawsuitsToLeads(userId: string): Promise<{ synced: number; skipped: number; leads: Lead[] }> {
-    const allLawsuits = await db.select().from(processos).where(eq(processos.enviadoParaPipeline, false));
-    
-    const newLeads: Lead[] = [];
-    for (const lawsuit of allLawsuits) {
-      const lead = await this.createLead({
-        titulo: lawsuit.cnj || `Processo ${lawsuit.id.substring(0, 8)}`,
-        tipoPipeline: "triagem",
-        etapa: "novo_caso",
-        posicao: 0,
-        valor: lawsuit.valorCausa || null,
-        probabilidade: lawsuit.probabilidadeSucesso ? Math.round(Number(lawsuit.probabilidadeSucesso)) : 0,
-        vendedorId: userId,
-        proprietarioId: userId,
-        advogadoId: null,
-        escritorioId: null,
-        reclamanteId: null,
-      });
-      newLeads.push(lead);
+    await this.upsertLeadChecklist(lead.id, {
+      leadId: lead.id,
+      reclamante: processo.autor || undefined,
+      reclamado: processo.reu || undefined,
+    });
 
-      await this.upsertLeadCaseDetails(lead.id, {
-        leadId: lead.id,
-        cnj: lawsuit.cnj || undefined,
-        tribunal: lawsuit.tribunal || undefined,
-        orgaoJulgador: lawsuit.vara || undefined,
-        assuntoPrincipal: lawsuit.assunto || undefined,
-        cliente: lawsuit.autor || undefined,
-      });
-
-      await this.upsertLeadChecklist(lead.id, {
-        leadId: lead.id,
-        reclamante: lawsuit.autor || undefined,
-        reclamado: lawsuit.reu || undefined,
-      });
-
-      await db.update(processos)
-        .set({ enviadoParaPipeline: true, atualizadoEm: new Date() })
-        .where(eq(processos.id, lawsuit.id));
-    }
-    
-    const totalLawsuits = await db.select({ count: sql<number>`count(*)` }).from(processos);
-    const skipped = Number(totalLawsuits[0]?.count || 0) - newLeads.length;
-    
-    return {
-      synced: newLeads.length,
-      skipped,
-      leads: newLeads,
-    };
+    return { processo, lead };
   }
 
   // Sync Lawsuits from external API
@@ -1224,15 +1150,15 @@ export class DatabaseStorage implements IStorage {
           }).where(eq(processos.cnj, cnj));
           processoId = existing.id;
         } else {
-          const [newProcesso] = await db.insert(processos).values({
+          const result = await this.createLawsuitWithLead({
             cnj,
             valorCausa: processo.valor_causa?.toString(),
             teseId: processo.tese_id?.toString(),
             autor,
             apiData: JSON.stringify(processo),
             proprietarioId: userId,
-          }).returning();
-          processoId = newProcesso.id;
+          }, userId);
+          processoId = result.processo.id;
         }
 
         totalProcessed++;
