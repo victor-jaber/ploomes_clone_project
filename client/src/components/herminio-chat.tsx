@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,6 +20,7 @@ interface ChatMessage {
 }
 
 export function HerminioChat() {
+  const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -108,7 +110,7 @@ export function HerminioChat() {
 
   const handleAction = (action: AssistantAction) => {
     setIsOpen(false);
-    window.location.href = action.url;
+    setLocation(action.url);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
