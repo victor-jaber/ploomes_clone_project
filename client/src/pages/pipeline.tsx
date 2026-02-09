@@ -1207,6 +1207,51 @@ function LeadDetailPanel({
               </div>
             ) : null}
 
+            {(pipelineType === "advogados" || pipelineType === "escritorios" || pipelineType === "reclamantes") && (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Gestão de Casos
+                </h3>
+                <Card className="p-4">
+                  {(() => {
+                    let cnjs: string[] = [];
+                    if (pipelineType === "advogados" && lead.advogadoId) {
+                      const lawyerLawsuits = lawyersWithLawsuits.find(a => a.id === lead.advogadoId)?.lawsuits || [];
+                      cnjs = lawyerLawsuits.map(l => l.cnj).filter(Boolean) as string[];
+                    } else if (pipelineType === "escritorios" && lead.escritorioId) {
+                      const firmLawsuits = lawFirmsWithLawsuits.find(f => f.id === lead.escritorioId)?.lawsuits || [];
+                      cnjs = firmLawsuits.map(l => l.cnj).filter(Boolean) as string[];
+                    } else if (pipelineType === "reclamantes" && lead.reclamanteId) {
+                      const claimantLawsuits = claimantsWithLawsuits.find(c => c.id === lead.reclamanteId)?.lawsuits || [];
+                      cnjs = claimantLawsuits.map(l => l.cnj).filter(Boolean) as string[];
+                    }
+
+                    if (cnjs.length === 0) {
+                      return <p className="text-sm text-muted-foreground">Nenhum CNJ vinculado para buscar casos</p>;
+                    }
+
+                    return (
+                      <Button 
+                        variant="outline" 
+                        className="w-full gap-2 justify-start"
+                        onClick={() => {
+                          onNavigatePipeline("triagem", cnjs.map(cnj => ({
+                            type: "cnj" as const,
+                            value: cnj,
+                            label: `CNJ: ${cnj}`
+                          })));
+                        }}
+                        data-testid="button-nav-casos"
+                      >
+                        <FileSearch className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Ver Casos ({cnjs.length} CNJs)</span>
+                      </Button>
+                    );
+                  })()}
+                </Card>
+              </div>
+            )}
+
             {(() => {
               const linkedLawsuits = (() => {
                 if (pipelineType === "advogados" && lead.advogadoId) {
