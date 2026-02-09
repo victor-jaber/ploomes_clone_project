@@ -145,7 +145,7 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="hermes-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="hermes-theme">
         <TooltipProvider>
           <AppContent />
           <Toaster />
