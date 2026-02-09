@@ -97,7 +97,7 @@ export interface IStorage {
   // Aggregated data for pipeline (dados públicos - sem filtro por ownerId)
   getLawyersWithLawsuits(): Promise<(Advogado & { lawsuits: Processo[] })[]>;
   getClaimantsWithLawsuits(): Promise<(Reclamante & { lawsuits: Processo[] })[]>;
-  getLawFirmsWithLawsuits(): Promise<(Escritorio & { lawsuits: Processo[] })[]>;
+  getLawFirmsWithLawsuits(): Promise<(Escritorio & { lawsuits: Processo[]; lawyerIds: number[] })[]>;
 
   // Leads (dados públicos - sem filtro por ownerId)
   getLeads(pipelineType?: string): Promise<Lead[]>;
@@ -681,7 +681,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getLawFirmsWithLawsuits(): Promise<(Escritorio & { lawsuits: Processo[] })[]> {
+  async getLawFirmsWithLawsuits(): Promise<(Escritorio & { lawsuits: Processo[]; lawyerIds: number[] })[]> {
     const allLawFirms = await this.getAllLawFirms();
     
     if (allLawFirms.length === 0) return [];
@@ -692,9 +692,12 @@ export class DatabaseStorage implements IStorage {
     .where(inArray(escritorioAdvogados.escritorioId, lawFirmIds));
     
     const lawyerToFirms = new Map<number, string[]>();
+    const firmToLawyers = new Map<string, number[]>();
     for (const fl of firmLawyerLinks) {
       if (!lawyerToFirms.has(fl.advogadoId)) lawyerToFirms.set(fl.advogadoId, []);
       lawyerToFirms.get(fl.advogadoId)!.push(fl.escritorioId);
+      if (!firmToLawyers.has(fl.escritorioId)) firmToLawyers.set(fl.escritorioId, []);
+      firmToLawyers.get(fl.escritorioId)!.push(fl.advogadoId);
     }
     
     const uniqueLawyerIds = Array.from(lawyerToFirms.keys());
@@ -727,6 +730,7 @@ export class DatabaseStorage implements IStorage {
     return allLawFirms.map(lawFirm => ({
       ...lawFirm,
       lawsuits: lawsuitsByLawFirm.get(lawFirm.id) || [],
+      lawyerIds: firmToLawyers.get(lawFirm.id) || [],
     }));
   }
 
