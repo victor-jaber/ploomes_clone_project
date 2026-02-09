@@ -119,9 +119,9 @@ export function HerminioChat() {
   };
 
   return (
-    <>
+    <div className="fixed bottom-4 right-4 z-[9999]">
       {isOpen && (
-        <div className="fixed bottom-20 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)]">
+        <div className="absolute bottom-16 right-0 w-[380px] max-w-[calc(100vw-2rem)]">
           <Card className="flex flex-col h-[520px] shadow-2xl border-purple-500/20 overflow-hidden">
             <div className="flex items-center justify-between gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-md">
               <div className="flex items-center gap-2">
@@ -137,7 +137,7 @@ export function HerminioChat() {
                 size="icon"
                 variant="ghost"
                 onClick={() => setIsOpen(false)}
-                className="h-7 w-7 text-white hover:bg-white/20 no-default-hover-elevate"
+                className="text-white no-default-hover-elevate no-default-active-elevate"
                 data-testid="button-close-herminio"
               >
                 <X className="h-4 w-4" />
@@ -206,7 +206,7 @@ export function HerminioChat() {
                   size="icon"
                   onClick={sendMessage}
                   disabled={!input.trim() || isLoading}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 no-default-hover-elevate"
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 no-default-hover-elevate no-default-active-elevate"
                   data-testid="button-send-herminio"
                 >
                   <Send className="h-4 w-4" />
@@ -217,10 +217,9 @@ export function HerminioChat() {
         </div>
       )}
 
-      <Button
+      <div
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 no-default-hover-elevate"
-        size="icon"
+        className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center cursor-pointer transition-opacity hover:opacity-90"
         data-testid="button-open-herminio"
       >
         {isOpen ? (
@@ -228,7 +227,7 @@ export function HerminioChat() {
         ) : (
           <Sparkles className="h-5 w-5 text-white" />
         )}
-      </Button>
-    </>
+      </div>
+    </div>
   );
 }
