@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { type Server } from "http";
 import { z } from "zod";
 import Redis from "ioredis";
+import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { isAuthenticated, registerAuthRoutes, AuthRequest } from "./auth";
 import { processAssistantMessage } from "./assistant";
@@ -1708,6 +1709,31 @@ export async function registerRoutes(
     } catch (error) {
       logger.error("fetching users", error as Error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post("/api/users", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      if (authReq.user!.papel !== 'admin') {
+        res.status(403).json({ message: "Apenas administradores podem criar usuários" });
+        return;
+      }
+      const { nome, email, senha } = req.body;
+      if (!nome || !email || !senha) {
+        res.status(400).json({ message: "Nome, email e senha são obrigatórios" });
+        return;
+      }
+      const hashedPassword = await bcrypt.hash(senha, 10);
+      const newUser = await storage.createUser({ name: nome, email, password: hashedPassword });
+      res.status(201).json(newUser);
+    } catch (error: any) {
+      if (error?.message?.includes("duplicate") || error?.code === "23505") {
+        res.status(400).json({ message: "Email já cadastrado" });
+        return;
+      }
+      logger.error("creating user", error as Error);
+      res.status(500).json({ message: "Falha ao criar usuário" });
     }
   });
 
