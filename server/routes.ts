@@ -339,7 +339,7 @@ export async function registerRoutes(
         tipoPipeline: 'advogados',
         etapa: 'novo_lead',
         valor: null,
-        vendedorId: userId,
+        usuarioId: userId,
       });
       wsManager.broadcastLeadCreated(lead);
       
@@ -436,7 +436,7 @@ export async function registerRoutes(
         tipoPipeline: 'advogados',
         etapa: 'novo_lead',
         valor: null,
-        vendedorId: userId,
+        usuarioId: userId,
       });
       wsManager.broadcastLeadCreated(lead);
       
@@ -1097,7 +1097,7 @@ export async function registerRoutes(
   app.post("/api/leads", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertLeadSchema.safeParse({ ...req.body, vendedorId: userId });
+      const parsed = insertLeadSchema.safeParse({ ...req.body, usuarioId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -1284,7 +1284,7 @@ export async function registerRoutes(
       const parsed = insertInteracaoSchema.safeParse({
         ...req.body,
         leadId: getParam(req.params.id),
-        vendedorId: userId,
+        usuarioId: userId,
       });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });

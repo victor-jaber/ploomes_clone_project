@@ -707,13 +707,12 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(leads.tipoPipeline, pipelineType as any));
     }
     if (visibleUserIds !== null && visibleUserIds !== undefined && visibleUserIds.length > 0) {
-      const allLeads = await db.select({ id: leads.id, comercialResponsavelId: leads.comercialResponsavelId, vendedorId: leads.vendedorId }).from(leads);
+      const allLeads = await db.select({ id: leads.id, usuarioId: leads.usuarioId }).from(leads);
       const visibleSet = new Set(visibleUserIds);
       const visibleLeadIds = allLeads
         .filter(l => 
-          (l.comercialResponsavelId && visibleSet.has(l.comercialResponsavelId)) ||
-          (l.vendedorId && visibleSet.has(l.vendedorId)) ||
-          !l.comercialResponsavelId
+          (l.usuarioId && visibleSet.has(l.usuarioId)) ||
+          !l.usuarioId
         )
         .map(l => l.id);
       if (visibleLeadIds.length === 0) {
@@ -953,7 +952,7 @@ export class DatabaseStorage implements IStorage {
         vendedorName: usuarios.nome,
       })
       .from(interacoes)
-      .leftJoin(usuarios, eq(interacoes.vendedorId, usuarios.id))
+      .leftJoin(usuarios, eq(interacoes.usuarioId, usuarios.id))
       .where(eq(interacoes.leadId, leadId))
       .orderBy(desc(interacoes.criadoEm));
     
@@ -1127,7 +1126,7 @@ export class DatabaseStorage implements IStorage {
       posicao: 0,
       valor: processo.valorCausa || null,
       probabilidade: processo.probabilidadeSucesso ? Math.round(Number(processo.probabilidadeSucesso)) : 0,
-      vendedorId: userId,
+      usuarioId: userId,
       processoId: processo.id,
       advogadoId: null,
       escritorioId: null,

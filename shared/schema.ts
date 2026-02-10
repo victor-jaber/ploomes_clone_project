@@ -250,8 +250,7 @@ export const leads = pgTable("leads", {
   escritorioId: varchar("escritorio_id").references(() => escritorios.id, { onDelete: "set null" }),
   reclamanteId: varchar("reclamante_id").references(() => reclamantes.id, { onDelete: "set null" }),
   processoId: varchar("processo_id").references(() => processos.id, { onDelete: "set null" }),
-  vendedorId: varchar("vendedor_id"),
-  comercialResponsavelId: varchar("comercial_responsavel_id").references(() => usuarios.id, { onDelete: "set null" }),
+  usuarioId: varchar("usuario_id").references(() => usuarios.id, { onDelete: "set null" }),
   advogadoResponsavel: text("advogado_responsavel"),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
@@ -310,7 +309,7 @@ export const interacoes = pgTable("interacoes", {
   urlArquivo: text("url_arquivo"),
   tipoArquivo: text("tipo_arquivo"),
   metadados: text("metadados"),
-  vendedorId: varchar("vendedor_id").notNull().references(() => usuarios.id),
+  usuarioId: varchar("usuario_id").notNull().references(() => usuarios.id),
   criadoEm: timestamp("criado_em").defaultNow(),
 });
 
@@ -439,7 +438,7 @@ export const processoReclamantesRelations = relations(processoReclamantes, ({ on
 }));
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
-  vendedor: one(usuarios, { fields: [leads.vendedorId], references: [usuarios.id] }),
+  usuario: one(usuarios, { fields: [leads.usuarioId], references: [usuarios.id] }),
   advogado: one(advogados, { fields: [leads.advogadoId], references: [advogados.id] }),
   escritorio: one(escritorios, { fields: [leads.escritorioId], references: [escritorios.id] }),
   reclamante: one(reclamantes, { fields: [leads.reclamanteId], references: [reclamantes.id] }),
@@ -466,7 +465,7 @@ export const leadChecklistRelations = relations(leadChecklist, ({ one }) => ({
 
 export const interacoesRelations = relations(interacoes, ({ one }) => ({
   lead: one(leads, { fields: [interacoes.leadId], references: [leads.id] }),
-  vendedor: one(usuarios, { fields: [interacoes.vendedorId], references: [usuarios.id] }),
+  usuario: one(usuarios, { fields: [interacoes.usuarioId], references: [usuarios.id] }),
 }));
 
 export const atividadesRelations = relations(atividades, ({ one }) => ({

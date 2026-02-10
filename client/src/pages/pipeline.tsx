@@ -1497,13 +1497,13 @@ function LeadDetailPanel({
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs flex items-center gap-2">
                       <User className="h-3 w-3 text-blue-500" />
-                      Comercial Responsável
+                      Usuário Responsável
                     </Label>
                     <Select
-                      value={lead.comercialResponsavelId || "_none"}
+                      value={lead.usuarioId || "_none"}
                       onValueChange={(val) => {
                         const userId = val === "_none" ? null : val;
-                        handleUpdateField("comercialResponsavelId", userId);
+                        handleUpdateField("usuarioId", userId);
                       }}
                     >
                       <SelectTrigger className="h-8 text-sm" data-testid="select-comercial-responsavel">
