@@ -70,7 +70,7 @@ import {
   PhoneCall, Video, MapPinIcon, MessageCircle, Copy, Check
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Lead, Advogado, Escritorio, Reclamante, Atividade, Interacao, InsertLead, Processo, LeadFinanceiro, LeadDetalhesCaso, LeadChecklist, LeadResponsaveis } from "@shared/schema";
+import type { Lead, Advogado, Escritorio, Reclamante, Atividade, Interacao, InsertLead, Processo, LeadFinanceiro, LeadDetalhesCaso, LeadChecklist } from "@shared/schema";
 import { PIPELINE_STAGES, type PipelineType } from "@shared/schema";
 
 // Tipo combinado para lead com detalhes normalizados
@@ -78,7 +78,6 @@ type LeadWithDetails = Lead & {
   financials?: LeadFinanceiro | null;
   caseDetails?: LeadDetalhesCaso | null;
   checklist?: LeadChecklist | null;
-  assignments?: LeadResponsaveis | null;
 };
 
 type AdvogadoComDetalhes = Advogado & { email?: string | null; telefone?: string | null; celular?: string | null; estado?: string | null; municipio?: string | null };
@@ -360,13 +359,6 @@ function LeadDetailPanel({
     },
   });
 
-  const { data: assignments } = useQuery<LeadResponsaveis>({
-    queryKey: ["/api/leads", lead.id, "assignments"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/leads/${lead.id}/assignments`);
-      return res.json();
-    },
-  });
 
   const { data: allUsers } = useQuery<{ id: string; name: string; email: string; papel: string }[]>({
     queryKey: ["/api/users"],
@@ -436,24 +428,11 @@ function LeadDetailPanel({
     },
   });
 
-  const updateAssignmentsMutation = useMutation({
-    mutationFn: async (data: Record<string, any>) => {
-      return apiRequest("PUT", `/api/leads/${lead.id}/assignments`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads", lead.id, "assignments"] });
-    },
-    onError: () => {
-      toast({ title: "Erro ao atualizar responsáveis", variant: "destructive" });
-    },
-  });
 
   // Campos por tabela para roteamento
   const financialsFields = ["valorFechamento", "percentualComissao", "formaPagamento", "observacoesFinanceiras"];
   const caseDetailsFields = ["tribunal", "assuntoPrincipal", "assuntos", "orgaoJulgador", "cnj", "cliente", "abordagem", "origem"];
   const checklistFields = ["reclamante", "reclamado", "liquidacaoIndicada", "valorBruto", "valorLiquido", "valorControverso", "sucumbente", "fgts", "dataPlanilha", "valorOutros", "prazoCaso"];
-  const assignmentsFields = ["comercialResponsavel", "comercialResponsavelId", "advogadoResponsavel"];
-
   const handleUpdateField = (field: string, value: any) => {
     if (financialsFields.includes(field)) {
       updateFinancialsMutation.mutate({ [field]: value });
@@ -461,8 +440,6 @@ function LeadDetailPanel({
       updateCaseDetailsMutation.mutate({ [field]: value });
     } else if (checklistFields.includes(field)) {
       updateChecklistMutation.mutate({ [field]: value });
-    } else if (assignmentsFields.includes(field)) {
-      updateAssignmentsMutation.mutate({ [field]: value });
     } else {
       updateFieldMutation.mutate({ [field]: value });
     }
@@ -1523,14 +1500,10 @@ function LeadDetailPanel({
                       Comercial Responsável
                     </Label>
                     <Select
-                      value={assignments?.comercialResponsavelId || "_none"}
+                      value={lead.comercialResponsavelId || "_none"}
                       onValueChange={(val) => {
                         const userId = val === "_none" ? null : val;
-                        const userName = allUsers?.find(u => u.id === userId)?.name || null;
-                        updateAssignmentsMutation.mutate({
-                          comercialResponsavelId: userId,
-                          comercialResponsavel: userName,
-                        });
+                        handleUpdateField("comercialResponsavelId", userId);
                       }}
                     >
                       <SelectTrigger className="h-8 text-sm" data-testid="select-comercial-responsavel">
@@ -1552,7 +1525,7 @@ function LeadDetailPanel({
                       Advogado Responsável
                     </Label>
                     <InlineEditField
-                      value={assignments?.advogadoResponsavel || ""}
+                      value={lead.advogadoResponsavel || ""}
                       onSave={(val) => handleUpdateField("advogadoResponsavel", val)}
                       placeholder="Adicionar..."
                     />
