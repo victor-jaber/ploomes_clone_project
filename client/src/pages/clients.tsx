@@ -333,7 +333,6 @@ export default function ClientsPage() {
       numero: formData.get("numero") as string || null,
       complemento: formData.get("complemento") as string || null,
       observacoes: formData.get("observacoes") as string || null,
-      proprietarioId: "",
     } as any;
     if (editingEntity) {
       updateTodosAdvogadosInfosMutation.mutate({ id: String(editingEntity.id), data });
@@ -354,7 +353,6 @@ export default function ClientsPage() {
       cidade: formData.get("cidade") as string || null,
       estado: formData.get("estado") as string || null,
       observacoes: formData.get("observacoes") as string || null,
-      proprietarioId: "",
     } as any;
     if (editingEntity) {
       updateEscritorioMutation.mutate({ id: String(editingEntity.id), data, advogadoIds: escritorioAdvogados });
@@ -383,7 +381,6 @@ export default function ClientsPage() {
       email: formData.get("email") as string || null,
       telefone: formData.get("telefone") as string || null,
       observacoes: formData.get("observacoes") as string || null,
-      proprietarioId: "",
     } as any;
     if (editingEntity) {
       updateReclamanteMutation.mutate({ id: String(editingEntity.id), data });

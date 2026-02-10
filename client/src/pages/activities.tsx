@@ -166,7 +166,6 @@ export default function ActivitiesPage() {
       descricao: formData.get("description") as string,
       dataVencimento: formData.get("dueDate") ? new Date(formData.get("dueDate") as string) : null,
       leadId: formData.get("leadId") as string || null,
-      proprietarioId: "",
     };
 
     if (editingActivity) {

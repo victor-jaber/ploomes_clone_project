@@ -131,7 +131,6 @@ export default function ProductsPage() {
       unidade: formData.get("unit") as string || "un",
       categoria: formData.get("category") as string,
       ativo: formData.get("isActive") === "on",
-      proprietarioId: "",
     };
 
     if (editingProduct) {
