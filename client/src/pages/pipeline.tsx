@@ -1519,17 +1519,6 @@ function LeadDetailPanel({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-xs flex items-center gap-2">
-                      <Scale className="h-3 w-3 text-purple-500" />
-                      Advogado Responsável
-                    </Label>
-                    <InlineEditField
-                      value={lead.advogadoResponsavel || ""}
-                      onSave={(val) => handleUpdateField("advogadoResponsavel", val)}
-                      placeholder="Adicionar..."
-                    />
-                  </div>
                 </div>
               </Card>
             </div>

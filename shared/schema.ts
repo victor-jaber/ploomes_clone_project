@@ -251,7 +251,6 @@ export const leads = pgTable("leads", {
   reclamanteId: varchar("reclamante_id").references(() => reclamantes.id, { onDelete: "set null" }),
   processoId: varchar("processo_id").references(() => processos.id, { onDelete: "set null" }),
   usuarioId: varchar("usuario_id").references(() => usuarios.id, { onDelete: "set null" }),
-  advogadoResponsavel: text("advogado_responsavel"),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
