@@ -535,7 +535,7 @@ export default function UsersPage() {
                             <SelectValue placeholder="Selecione o coordenador" />
                           </SelectTrigger>
                           <SelectContent>
-                            {users.map((user) => (
+                            {users.filter((u) => u.papel === "coordenador" || u.papel === "admin").map((user) => (
                               <SelectItem key={user.id} value={user.id} data-testid={`select-coordenador-option-${user.id}`}>
                                 {user.name}
                               </SelectItem>
@@ -675,7 +675,7 @@ export default function UsersPage() {
                   <SelectValue placeholder="Selecione o coordenador" />
                 </SelectTrigger>
                 <SelectContent>
-                  {users.map((user) => (
+                  {users.filter((u) => u.papel === "coordenador" || u.papel === "admin").map((user) => (
                     <SelectItem key={user.id} value={user.id} data-testid={`select-edit-coordenador-option-${user.id}`}>
                       {user.name}
                     </SelectItem>
