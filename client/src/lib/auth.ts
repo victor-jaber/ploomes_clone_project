@@ -5,6 +5,7 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  papel: string;
 }
 
 export function getToken(): string | null {

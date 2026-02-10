@@ -16,7 +16,7 @@ const loginFormSchema = z.object({
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
 interface LoginPageProps {
-  onLogin: (user: { id: string; name: string; email: string }, token: string) => void;
+  onLogin: (user: { id: string; name: string; email: string; papel: string }, token: string) => void;
 }
 
 function FloatingOrbs() {

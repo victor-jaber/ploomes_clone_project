@@ -10,6 +10,7 @@ import {
   FileText,
   LogOut,
   UserCog,
+  UsersRound,
   Settings,
 } from "lucide-react";
 import { HermesLogo } from "@/components/hermes-logo";
@@ -47,7 +48,7 @@ const mainMenuItems = [
 ];
 
 const configMenuItems = [
-  { title: "Usuários", url: "/usuarios", icon: UserCog },
+  { title: "Usuários e Equipes", url: "/usuarios", icon: UserCog },
 ];
 
 export function AppSidebar({ user, onLogout }: AppSidebarProps) {
