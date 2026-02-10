@@ -10,7 +10,6 @@ import {
   leadFinanceiros,
   leadDetalhesCaso,
   leadChecklist,
-  leadResponsaveis,
   atividades,
   propostas,
   propostaItens,
@@ -44,8 +43,6 @@ import {
   type InsertLeadDetalhesCaso,
   type LeadChecklist,
   type InsertLeadChecklist,
-  type LeadResponsaveis,
-  type InsertLeadResponsaveis,
   type Atividade,
   type InsertAtividade,
   type Proposta,
@@ -62,7 +59,7 @@ import {
   type InsertEquipeMembro,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, inArray, sql, isNotNull, isNull } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Lawyers (Advogados)
@@ -108,7 +105,7 @@ export interface IStorage {
   // Leads (com filtro de visibilidade por papel do usuário)
   getLeads(pipelineType?: string, visibleUserIds?: string[] | null): Promise<Lead[]>;
   getLead(id: string): Promise<Lead | undefined>;
-  getLeadWithDetails(id: string): Promise<(Lead & { financials?: LeadFinanceiro | null, caseDetails?: LeadDetalhesCaso | null, checklist?: LeadChecklist | null, assignments?: LeadResponsaveis | null }) | undefined>;
+  getLeadWithDetails(id: string): Promise<(Lead & { financials?: LeadFinanceiro | null, caseDetails?: LeadDetalhesCaso | null, checklist?: LeadChecklist | null }) | undefined>;
   createLead(lead: InsertLead): Promise<Lead>;
   updateLead(id: string, lead: Partial<InsertLead>): Promise<Lead | undefined>;
   deleteLead(id: string): Promise<boolean>;
@@ -124,10 +121,6 @@ export interface IStorage {
   // Lead Checklist (1:1)
   getLeadChecklist(leadId: string): Promise<LeadChecklist | undefined>;
   upsertLeadChecklist(leadId: string, data: Partial<InsertLeadChecklist>): Promise<LeadChecklist>;
-
-  // Lead Assignments (1:1)
-  getLeadAssignments(leadId: string): Promise<LeadResponsaveis | undefined>;
-  upsertLeadAssignments(leadId: string, data: Partial<InsertLeadResponsaveis>): Promise<LeadResponsaveis>;
 
   // Products
   getProducts(): Promise<Produto[]>;
@@ -714,27 +707,19 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(leads.tipoPipeline, pipelineType as any));
     }
     if (visibleUserIds !== null && visibleUserIds !== undefined && visibleUserIds.length > 0) {
-      const leadsComResponsavel = await db.select({ leadId: leadResponsaveis.leadId })
-        .from(leadResponsaveis)
-        .where(inArray(leadResponsaveis.comercialResponsavelId, visibleUserIds));
-      const leadIdsComResponsavel = leadsComResponsavel.map(l => l.leadId);
-      const leadsVendedor = await db.select({ id: leads.id })
-        .from(leads)
-        .where(inArray(leads.vendedorId, visibleUserIds));
-      const leadIdsVendedor = leadsVendedor.map(l => l.id);
-      const leadsComResponsavelDefinido = await db.select({ leadId: leadResponsaveis.leadId })
-        .from(leadResponsaveis)
-        .where(isNotNull(leadResponsaveis.comercialResponsavelId));
-      const leadIdsComResponsavelDefinido = new Set(leadsComResponsavelDefinido.map(l => l.leadId));
-      const todosLeads = await db.select({ id: leads.id }).from(leads);
-      const leadIdsSemResponsavel = todosLeads
-        .filter(l => !leadIdsComResponsavelDefinido.has(l.id))
+      const allLeads = await db.select({ id: leads.id, comercialResponsavelId: leads.comercialResponsavelId, vendedorId: leads.vendedorId }).from(leads);
+      const visibleSet = new Set(visibleUserIds);
+      const visibleLeadIds = allLeads
+        .filter(l => 
+          (l.comercialResponsavelId && visibleSet.has(l.comercialResponsavelId)) ||
+          (l.vendedorId && visibleSet.has(l.vendedorId)) ||
+          !l.comercialResponsavelId
+        )
         .map(l => l.id);
-      const allVisibleLeadIds = Array.from(new Set([...leadIdsComResponsavel, ...leadIdsVendedor, ...leadIdsSemResponsavel]));
-      if (allVisibleLeadIds.length === 0) {
+      if (visibleLeadIds.length === 0) {
         return [];
       }
-      conditions.push(inArray(leads.id, allVisibleLeadIds));
+      conditions.push(inArray(leads.id, visibleLeadIds));
     }
     if (conditions.length > 0) {
       return db.select().from(leads).where(and(...conditions)).orderBy(desc(leads.criadoEm));
@@ -766,21 +751,19 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async getLeadWithDetails(id: string): Promise<(Lead & { financials?: LeadFinanceiro | null, caseDetails?: LeadDetalhesCaso | null, checklist?: LeadChecklist | null, assignments?: LeadResponsaveis | null }) | undefined> {
+  async getLeadWithDetails(id: string): Promise<(Lead & { financials?: LeadFinanceiro | null, caseDetails?: LeadDetalhesCaso | null, checklist?: LeadChecklist | null }) | undefined> {
     const [lead] = await db.select().from(leads).where(eq(leads.id, id));
     if (!lead) return undefined;
 
     const [financials] = await db.select().from(leadFinanceiros).where(eq(leadFinanceiros.leadId, id));
     const [caseDetails] = await db.select().from(leadDetalhesCaso).where(eq(leadDetalhesCaso.leadId, id));
     const [checklist] = await db.select().from(leadChecklist).where(eq(leadChecklist.leadId, id));
-    const [assignments] = await db.select().from(leadResponsaveis).where(eq(leadResponsaveis.leadId, id));
 
     return {
       ...lead,
       financials: financials || null,
       caseDetails: caseDetails || null,
       checklist: checklist || null,
-      assignments: assignments || null,
     };
   }
 
@@ -842,27 +825,6 @@ export class DatabaseStorage implements IStorage {
       return updated;
     }
     const [created] = await db.insert(leadChecklist)
-      .values({ ...data, leadId })
-      .returning();
-    return created;
-  }
-
-  // Lead Assignments (1:1)
-  async getLeadAssignments(leadId: string): Promise<LeadResponsaveis | undefined> {
-    const [result] = await db.select().from(leadResponsaveis).where(eq(leadResponsaveis.leadId, leadId));
-    return result;
-  }
-
-  async upsertLeadAssignments(leadId: string, data: Partial<InsertLeadResponsaveis>): Promise<LeadResponsaveis> {
-    const existing = await this.getLeadAssignments(leadId);
-    if (existing) {
-      const [updated] = await db.update(leadResponsaveis)
-        .set({ ...data, atualizadoEm: new Date() })
-        .where(eq(leadResponsaveis.leadId, leadId))
-        .returning();
-      return updated;
-    }
-    const [created] = await db.insert(leadResponsaveis)
       .values({ ...data, leadId })
       .returning();
     return created;

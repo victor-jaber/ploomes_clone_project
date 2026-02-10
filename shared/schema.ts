@@ -251,6 +251,8 @@ export const leads = pgTable("leads", {
   reclamanteId: varchar("reclamante_id").references(() => reclamantes.id, { onDelete: "set null" }),
   processoId: varchar("processo_id").references(() => processos.id, { onDelete: "set null" }),
   vendedorId: varchar("vendedor_id"),
+  comercialResponsavelId: varchar("comercial_responsavel_id").references(() => usuarios.id, { onDelete: "set null" }),
+  advogadoResponsavel: text("advogado_responsavel"),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
@@ -295,16 +297,6 @@ export const leadChecklist = pgTable("lead_checklist", {
   dataPlanilha: timestamp("data_planilha"),
   valorOutros: numeric("valor_outros", { precision: 12, scale: 2 }),
   prazoCaso: timestamp("prazo_caso"),
-  criadoEm: timestamp("criado_em").defaultNow(),
-  atualizadoEm: timestamp("atualizado_em").defaultNow(),
-});
-
-export const leadResponsaveis = pgTable("lead_responsaveis", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }).unique(),
-  comercialResponsavel: text("comercial_responsavel"),
-  comercialResponsavelId: varchar("comercial_responsavel_id").references(() => usuarios.id, { onDelete: "set null" }),
-  advogadoResponsavel: text("advogado_responsavel"),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
@@ -455,7 +447,6 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
   financeiros: one(leadFinanceiros, { fields: [leads.id], references: [leadFinanceiros.leadId] }),
   detalhesCaso: one(leadDetalhesCaso, { fields: [leads.id], references: [leadDetalhesCaso.leadId] }),
   checklist: one(leadChecklist, { fields: [leads.id], references: [leadChecklist.leadId] }),
-  responsaveis: one(leadResponsaveis, { fields: [leads.id], references: [leadResponsaveis.leadId] }),
   interacoes: many(interacoes),
   atividades: many(atividades),
   propostas: many(propostas),
@@ -471,10 +462,6 @@ export const leadDetalhesCasoRelations = relations(leadDetalhesCaso, ({ one }) =
 
 export const leadChecklistRelations = relations(leadChecklist, ({ one }) => ({
   lead: one(leads, { fields: [leadChecklist.leadId], references: [leads.id] }),
-}));
-
-export const leadResponsaveisRelations = relations(leadResponsaveis, ({ one }) => ({
-  lead: one(leads, { fields: [leadResponsaveis.leadId], references: [leads.id] }),
 }));
 
 export const interacoesRelations = relations(interacoes, ({ one }) => ({
@@ -515,7 +502,6 @@ export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, criad
 export const insertLeadFinanceiroSchema = createInsertSchema(leadFinanceiros).omit({ id: true, criadoEm: true, atualizadoEm: true });
 export const insertLeadDetalhesCasoSchema = createInsertSchema(leadDetalhesCaso).omit({ id: true, criadoEm: true, atualizadoEm: true });
 export const insertLeadChecklistSchema = createInsertSchema(leadChecklist).omit({ id: true, criadoEm: true, atualizadoEm: true });
-export const insertLeadResponsaveisSchema = createInsertSchema(leadResponsaveis).omit({ id: true, criadoEm: true, atualizadoEm: true });
 export const insertInteracaoSchema = createInsertSchema(interacoes).omit({ id: true, criadoEm: true });
 export const insertAtividadeSchema = createInsertSchema(atividades).omit({ id: true, criadoEm: true });
 export const insertProdutoSchema = createInsertSchema(produtos).omit({ id: true, criadoEm: true, atualizadoEm: true });
@@ -559,8 +545,6 @@ export type LeadDetalhesCaso = typeof leadDetalhesCaso.$inferSelect;
 export type InsertLeadDetalhesCaso = z.infer<typeof insertLeadDetalhesCasoSchema>;
 export type LeadChecklist = typeof leadChecklist.$inferSelect;
 export type InsertLeadChecklist = z.infer<typeof insertLeadChecklistSchema>;
-export type LeadResponsaveis = typeof leadResponsaveis.$inferSelect;
-export type InsertLeadResponsaveis = z.infer<typeof insertLeadResponsaveisSchema>;
 export type Interacao = typeof interacoes.$inferSelect;
 export type InsertInteracao = z.infer<typeof insertInteracaoSchema>;
 export type Atividade = typeof atividades.$inferSelect;

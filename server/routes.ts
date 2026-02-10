@@ -35,7 +35,6 @@ import {
   insertLeadFinanceiroSchema,
   insertLeadDetalhesCasoSchema,
   insertLeadChecklistSchema,
-  insertLeadResponsaveisSchema,
   insertProdutoSchema,
   insertAtividadeSchema,
   insertPropostaSchema,
@@ -1255,38 +1254,6 @@ export async function registerRoutes(
     } catch (error) {
       logger.error("updating lead checklist", error as Error);
       res.status(500).json({ message: "Failed to update lead checklist" });
-    }
-  });
-
-  // Lead Assignments (1:1)
-  app.get("/api/leads/:id/assignments", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const assignments = await storage.getLeadAssignments(getParam(req.params.id));
-      res.json(assignments || {});
-    } catch (error) {
-      logger.error("fetching lead assignments", error as Error);
-      res.status(500).json({ message: "Failed to fetch lead assignments" });
-    }
-  });
-
-  app.put("/api/leads/:id/assignments", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const leadId = getParam(req.params.id);
-      const lead = await storage.getLead(leadId);
-      if (!lead) {
-        res.status(404).json({ message: "Lead not found" });
-        return;
-      }
-      const parsed = insertLeadResponsaveisSchema.partial().safeParse(req.body);
-      if (!parsed.success) {
-        res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
-        return;
-      }
-      const assignments = await storage.upsertLeadAssignments(leadId, parsed.data);
-      res.json(assignments);
-    } catch (error) {
-      logger.error("updating lead assignments", error as Error);
-      res.status(500).json({ message: "Failed to update lead assignments" });
     }
   });
 
