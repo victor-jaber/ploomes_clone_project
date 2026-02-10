@@ -62,7 +62,7 @@ import {
   type InsertEquipeMembro,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, inArray, sql, isNotNull, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // Lawyers (Advogados)
@@ -767,7 +767,15 @@ export class DatabaseStorage implements IStorage {
         .from(leads)
         .where(inArray(leads.vendedorId, visibleUserIds));
       const leadIdsVendedor = leadsVendedor.map(l => l.id);
-      const allVisibleLeadIds = Array.from(new Set([...leadIdsComResponsavel, ...leadIdsVendedor]));
+      const leadsComResponsavelDefinido = await db.select({ leadId: leadResponsaveis.leadId })
+        .from(leadResponsaveis)
+        .where(isNotNull(leadResponsaveis.comercialResponsavelId));
+      const leadIdsComResponsavelDefinido = new Set(leadsComResponsavelDefinido.map(l => l.leadId));
+      const todosLeads = await db.select({ id: leads.id }).from(leads);
+      const leadIdsSemResponsavel = todosLeads
+        .filter(l => !leadIdsComResponsavelDefinido.has(l.id))
+        .map(l => l.id);
+      const allVisibleLeadIds = Array.from(new Set([...leadIdsComResponsavel, ...leadIdsVendedor, ...leadIdsSemResponsavel]));
       if (allVisibleLeadIds.length === 0) {
         return [];
       }
