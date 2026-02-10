@@ -3351,7 +3351,7 @@ export default function PipelinePage() {
           </SelectContent>
         </Select>
 
-        <Sheet>
+        <Sheet modal={false}>
           <SheetTrigger asChild>
             <Button variant="outline" className="gap-2" data-testid="button-open-filters">
               <Filter className="h-4 w-4" />
