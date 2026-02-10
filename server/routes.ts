@@ -40,6 +40,7 @@ import {
   insertPropostaSchema,
   insertPropostaItemSchema,
   insertInteracaoSchema,
+  insertEquipeSchema,
   type Lead,
   type Advogado,
   type Escritorio,
@@ -1097,11 +1098,13 @@ export async function registerRoutes(
     }
   });
 
-  // Leads (dados públicos - sem filtro por ownerId)
+  // Leads (com filtro de visibilidade por papel do usuário)
   app.get("/api/leads", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const authReq = req as AuthRequest;
       const pipelineType = req.query.pipelineType as string | undefined;
-      const leads = await storage.getLeads(pipelineType);
+      const visibleUserIds = await storage.getVisibleUserIds(authReq.user!.id, authReq.user!.papel || 'funcionario');
+      const leads = await storage.getLeads(pipelineType, visibleUserIds);
       res.json(leads);
     } catch (error) {
       logger.error("fetching leads", error as Error);
@@ -1705,6 +1708,157 @@ export async function registerRoutes(
     } catch (error) {
       logger.error("fetching users", error as Error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Update user role (admin only)
+  app.patch("/api/users/:id/role", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      if (authReq.user!.papel !== 'admin') {
+        res.status(403).json({ message: "Apenas administradores podem alterar papéis" });
+        return;
+      }
+      const { papel } = req.body;
+      if (!['admin', 'coordenador', 'funcionario'].includes(papel)) {
+        res.status(400).json({ message: "Papel inválido" });
+        return;
+      }
+      const success = await storage.updateUserRole(getParam(req.params.id), papel);
+      if (!success) {
+        res.status(404).json({ message: "Usuário não encontrado" });
+        return;
+      }
+      res.json({ message: "Papel atualizado com sucesso" });
+    } catch (error) {
+      logger.error("updating user role", error as Error);
+      res.status(500).json({ message: "Falha ao atualizar papel" });
+    }
+  });
+
+  // Teams (Equipes) CRUD
+  app.get("/api/teams", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const teams = await storage.getTeams();
+      res.json(teams);
+    } catch (error) {
+      logger.error("fetching teams", error as Error);
+      res.status(500).json({ message: "Falha ao buscar equipes" });
+    }
+  });
+
+  app.get("/api/teams/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const team = await storage.getTeam(getParam(req.params.id));
+      if (!team) {
+        res.status(404).json({ message: "Equipe não encontrada" });
+        return;
+      }
+      res.json(team);
+    } catch (error) {
+      logger.error("fetching team", error as Error);
+      res.status(500).json({ message: "Falha ao buscar equipe" });
+    }
+  });
+
+  app.post("/api/teams", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      if (authReq.user!.papel !== 'admin') {
+        res.status(403).json({ message: "Apenas administradores podem criar equipes" });
+        return;
+      }
+      const parsed = insertEquipeSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
+        return;
+      }
+      const team = await storage.createTeam(parsed.data);
+      res.status(201).json(team);
+    } catch (error) {
+      logger.error("creating team", error as Error);
+      res.status(500).json({ message: "Falha ao criar equipe" });
+    }
+  });
+
+  app.patch("/api/teams/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      if (authReq.user!.papel !== 'admin') {
+        res.status(403).json({ message: "Apenas administradores podem editar equipes" });
+        return;
+      }
+      const team = await storage.updateTeam(getParam(req.params.id), req.body);
+      if (!team) {
+        res.status(404).json({ message: "Equipe não encontrada" });
+        return;
+      }
+      res.json(team);
+    } catch (error) {
+      logger.error("updating team", error as Error);
+      res.status(500).json({ message: "Falha ao atualizar equipe" });
+    }
+  });
+
+  app.delete("/api/teams/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      if (authReq.user!.papel !== 'admin') {
+        res.status(403).json({ message: "Apenas administradores podem excluir equipes" });
+        return;
+      }
+      const success = await storage.deleteTeam(getParam(req.params.id));
+      if (!success) {
+        res.status(404).json({ message: "Equipe não encontrada" });
+        return;
+      }
+      res.json({ message: "Equipe excluída com sucesso" });
+    } catch (error) {
+      logger.error("deleting team", error as Error);
+      res.status(500).json({ message: "Falha ao excluir equipe" });
+    }
+  });
+
+  app.post("/api/teams/:id/members", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      if (authReq.user!.papel !== 'admin') {
+        res.status(403).json({ message: "Apenas administradores podem gerenciar membros" });
+        return;
+      }
+      const { usuarioId } = req.body;
+      if (!usuarioId) {
+        res.status(400).json({ message: "usuarioId é obrigatório" });
+        return;
+      }
+      const member = await storage.addTeamMember(getParam(req.params.id), usuarioId);
+      res.status(201).json(member);
+    } catch (error: any) {
+      if (error.code === '23505') {
+        res.status(409).json({ message: "Usuário já é membro desta equipe" });
+        return;
+      }
+      logger.error("adding team member", error as Error);
+      res.status(500).json({ message: "Falha ao adicionar membro" });
+    }
+  });
+
+  app.delete("/api/teams/:id/members/:usuarioId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      if (authReq.user!.papel !== 'admin') {
+        res.status(403).json({ message: "Apenas administradores podem gerenciar membros" });
+        return;
+      }
+      const success = await storage.removeTeamMember(getParam(req.params.id), getParam(req.params.usuarioId));
+      if (!success) {
+        res.status(404).json({ message: "Membro não encontrado" });
+        return;
+      }
+      res.json({ message: "Membro removido com sucesso" });
+    } catch (error) {
+      logger.error("removing team member", error as Error);
+      res.status(500).json({ message: "Falha ao remover membro" });
     }
   });
 

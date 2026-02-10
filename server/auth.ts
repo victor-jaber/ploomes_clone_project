@@ -13,6 +13,7 @@ export interface AuthRequest extends Request {
     id: string;
     email: string;
     name: string;
+    papel: string;
   };
 }
 
@@ -27,7 +28,7 @@ export const isAuthenticated: RequestHandler = (req: Request, res: Response, nex
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; name: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; name: string; papel: string };
     (req as AuthRequest).user = decoded;
     next();
   } catch (error) {
@@ -62,13 +63,13 @@ export function registerAuthRoutes(app: Express) {
       }).returning();
 
       const token = jwt.sign(
-        { id: newUser.id, email: newUser.email, name: newUser.nome },
+        { id: newUser.id, email: newUser.email, name: newUser.nome, papel: newUser.papel || 'funcionario' },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
 
       res.status(201).json({
-        user: { id: newUser.id, name: newUser.nome, email: newUser.email },
+        user: { id: newUser.id, name: newUser.nome, email: newUser.email, papel: newUser.papel || 'funcionario' },
         token,
       });
     } catch (error) {
@@ -100,13 +101,13 @@ export function registerAuthRoutes(app: Express) {
       }
 
       const token = jwt.sign(
-        { id: user.id, email: user.email, name: user.nome },
+        { id: user.id, email: user.email, name: user.nome, papel: user.papel || 'funcionario' },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
 
       res.json({
-        user: { id: user.id, name: user.nome, email: user.email },
+        user: { id: user.id, name: user.nome, email: user.email, papel: user.papel || 'funcionario' },
         token,
       });
     } catch (error) {
@@ -129,7 +130,7 @@ export function registerAuthRoutes(app: Express) {
         return;
       }
 
-      res.json({ id: user.id, name: user.nome, email: user.email, preferences: user.preferencias ? JSON.parse(user.preferencias) : {} });
+      res.json({ id: user.id, name: user.nome, email: user.email, papel: user.papel || 'funcionario', preferences: user.preferencias ? JSON.parse(user.preferencias) : {} });
     } catch (error) {
       console.error("Get user error:", error);
       res.status(500).json({ message: "Failed to get user" });
