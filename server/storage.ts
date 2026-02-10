@@ -272,6 +272,11 @@ export class DatabaseStorage implements IStorage {
       estado: r.endereco?.estado || null,
       municipio: r.endereco?.municipio || null,
       cidade: r.endereco?.cidade || null,
+      bairro: r.endereco?.bairro || null,
+      logradouro: r.endereco?.logradouro || null,
+      numero: r.endereco?.numero || null,
+      complemento: r.endereco?.complemento || null,
+      cep: r.endereco?.cep || null,
     }));
     return this.attachLawyerContacts(mapped);
   }
@@ -388,6 +393,11 @@ export class DatabaseStorage implements IStorage {
       estado: r.endereco?.estado || null,
       municipio: r.endereco?.municipio || null,
       cidade: r.endereco?.cidade || null,
+      bairro: r.endereco?.bairro || null,
+      logradouro: r.endereco?.logradouro || null,
+      numero: r.endereco?.numero || null,
+      complemento: r.endereco?.complemento || null,
+      cep: r.endereco?.cep || null,
     }));
     return this.attachFirmContacts(mapped);
   }
@@ -504,6 +514,11 @@ export class DatabaseStorage implements IStorage {
       estado: r.endereco?.estado || null,
       municipio: r.endereco?.municipio || null,
       cidade: r.endereco?.cidade || null,
+      bairro: r.endereco?.bairro || null,
+      logradouro: r.endereco?.logradouro || null,
+      numero: r.endereco?.numero || null,
+      complemento: r.endereco?.complemento || null,
+      cep: r.endereco?.cep || null,
     }));
     return this.attachClaimantContacts(mapped);
   }

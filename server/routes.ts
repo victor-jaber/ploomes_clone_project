@@ -296,8 +296,7 @@ export async function registerRoutes(
   // Lawyers (Advogados)
   app.get("/api/lawyers", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const lawyers = await storage.getLawyers(userId);
+      const lawyers = await storage.getAllLawyers();
       res.json(lawyers);
     } catch (error) {
       logger.error("fetching lawyers", error as Error);
@@ -398,8 +397,7 @@ export async function registerRoutes(
   // Backward compatibility: /api/todos-advogados-infos
   app.get("/api/todos-advogados-infos", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const lawyers = await storage.getLawyers(userId);
+      const lawyers = await storage.getAllLawyers();
       res.json(lawyers);
     } catch (error) {
       logger.error("fetching lawyers", error as Error);
@@ -517,8 +515,7 @@ export async function registerRoutes(
   // Law Firms (Escritórios)
   app.get("/api/law-firms", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const lawFirms = await storage.getLawFirms(userId);
+      const lawFirms = await storage.getAllLawFirms();
       res.json(lawFirms);
     } catch (error) {
       logger.error("fetching law firms", error as Error);
@@ -667,8 +664,7 @@ export async function registerRoutes(
   // Backward compatibility: /api/escritorios
   app.get("/api/escritorios", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const lawFirms = await storage.getLawFirms(userId);
+      const lawFirms = await storage.getAllLawFirms();
       res.json(lawFirms);
     } catch (error) {
       logger.error("fetching law firms", error as Error);
@@ -756,8 +752,7 @@ export async function registerRoutes(
   // Claimants (Reclamantes)
   app.get("/api/claimants", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const claimants = await storage.getClaimants(userId);
+      const claimants = await storage.getAllClaimants();
       res.json(claimants);
     } catch (error) {
       logger.error("fetching claimants", error as Error);
@@ -845,8 +840,7 @@ export async function registerRoutes(
   // Backward compatibility: /api/reclamantes
   app.get("/api/reclamantes", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const claimants = await storage.getClaimants(userId);
+      const claimants = await storage.getAllClaimants();
       res.json(claimants);
     } catch (error) {
       logger.error("fetching claimants", error as Error);
