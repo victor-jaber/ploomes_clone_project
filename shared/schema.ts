@@ -3,14 +3,33 @@ import { pgTable, text, varchar, timestamp, integer, numeric, boolean, pgEnum, u
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const papelUsuarioEnum = pgEnum("papel_usuario", ["admin", "coordenador", "funcionario"]);
+
 export const usuarios = pgTable("usuarios", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   nome: text("nome").notNull(),
   email: text("email").notNull().unique(),
   senha: text("senha").notNull(),
+  papel: papelUsuarioEnum("papel").notNull().default("funcionario"),
   preferencias: text("preferencias"),
   criadoEm: timestamp("criado_em").defaultNow(),
 });
+
+export const equipes = pgTable("equipes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  nome: text("nome").notNull(),
+  coordenadorId: varchar("coordenador_id").notNull().references(() => usuarios.id, { onDelete: "cascade" }),
+  criadoEm: timestamp("criado_em").defaultNow(),
+});
+
+export const equipeMembros = pgTable("equipe_membros", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  equipeId: varchar("equipe_id").notNull().references(() => equipes.id, { onDelete: "cascade" }),
+  usuarioId: varchar("usuario_id").notNull().references(() => usuarios.id, { onDelete: "cascade" }),
+  criadoEm: timestamp("criado_em").defaultNow(),
+}, (table) => ({
+  unique: unique("equipe_membro_unique").on(table.equipeId, table.usuarioId),
+}));
 
 export const tokensOAuthUsuario = pgTable("tokens_oauth_usuario", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -286,6 +305,7 @@ export const leadResponsaveis = pgTable("lead_responsaveis", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   leadId: varchar("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }).unique(),
   comercialResponsavel: text("comercial_responsavel"),
+  comercialResponsavelId: varchar("comercial_responsavel_id").references(() => usuarios.id, { onDelete: "set null" }),
   advogadoResponsavel: text("advogado_responsavel"),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
@@ -358,6 +378,21 @@ export const propostaItens = pgTable("proposta_itens", {
   desconto: numeric("desconto", { precision: 12, scale: 2 }).default("0"),
   total: numeric("total", { precision: 12, scale: 2 }).notNull(),
 });
+
+export const usuariosRelations = relations(usuarios, ({ many }) => ({
+  equipesCoordena: many(equipes),
+  membroEquipes: many(equipeMembros),
+}));
+
+export const equipesRelations = relations(equipes, ({ one, many }) => ({
+  coordenador: one(usuarios, { fields: [equipes.coordenadorId], references: [usuarios.id] }),
+  membros: many(equipeMembros),
+}));
+
+export const equipeMembrosRelations = relations(equipeMembros, ({ one }) => ({
+  equipe: one(equipes, { fields: [equipeMembros.equipeId], references: [equipes.id] }),
+  usuario: one(usuarios, { fields: [equipeMembros.usuarioId], references: [usuarios.id] }),
+}));
 
 export const enderecosRelations = relations(enderecos, ({ many }) => ({}));
 export const contatosRelations = relations(contatos, ({ many }) => ({}));
@@ -467,6 +502,9 @@ export const propostaItensRelations = relations(propostaItens, ({ one }) => ({
   produto: one(produtos, { fields: [propostaItens.produtoId], references: [produtos.id] }),
 }));
 
+export const insertEquipeSchema = createInsertSchema(equipes).omit({ id: true, criadoEm: true });
+export const insertEquipeMembroSchema = createInsertSchema(equipeMembros).omit({ id: true, criadoEm: true });
+
 export const insertEnderecoSchema = createInsertSchema(enderecos).omit({ id: true, criadoEm: true, atualizadoEm: true });
 export const insertContatoSchema = createInsertSchema(contatos).omit({ id: true, criadoEm: true, atualizadoEm: true });
 export const insertAdvogadoSchema = createInsertSchema(advogados).omit({ id: true, criadoEm: true, atualizadoEm: true });
@@ -489,6 +527,11 @@ export const insertAtividadeSchema = createInsertSchema(atividades).omit({ id: t
 export const insertProdutoSchema = createInsertSchema(produtos).omit({ id: true, criadoEm: true, atualizadoEm: true });
 export const insertPropostaSchema = createInsertSchema(propostas).omit({ id: true, criadoEm: true, atualizadoEm: true });
 export const insertPropostaItemSchema = createInsertSchema(propostaItens).omit({ id: true });
+
+export type Equipe = typeof equipes.$inferSelect;
+export type InsertEquipe = z.infer<typeof insertEquipeSchema>;
+export type EquipeMembro = typeof equipeMembros.$inferSelect;
+export type InsertEquipeMembro = z.infer<typeof insertEquipeMembroSchema>;
 
 export type Endereco = typeof enderecos.$inferSelect;
 export type InsertEndereco = z.infer<typeof insertEnderecoSchema>;
