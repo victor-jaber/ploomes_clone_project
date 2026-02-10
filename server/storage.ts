@@ -170,12 +170,12 @@ export interface IStorage {
   deleteUser(id: string): Promise<boolean>;
 
   // Teams (Equipes)
-  getTeams(): Promise<(Equipe & { coordenador?: { id: string; nome: string } | null; membros?: { id: string; nome: string; email: string }[] })[]>;
-  getTeam(id: string): Promise<(Equipe & { coordenador?: { id: string; nome: string } | null; membros?: { id: string; nome: string; email: string }[] }) | undefined>;
+  getTeams(): Promise<(Equipe & { coordenadores?: { id: string; nome: string }[]; membros?: { id: string; nome: string; email: string }[] })[]>;
+  getTeam(id: string): Promise<(Equipe & { coordenadores?: { id: string; nome: string }[]; membros?: { id: string; nome: string; email: string }[] }) | undefined>;
   createTeam(team: InsertEquipe): Promise<Equipe>;
   updateTeam(id: string, team: Partial<InsertEquipe>): Promise<Equipe | undefined>;
   deleteTeam(id: string): Promise<boolean>;
-  addTeamMember(equipeId: string, usuarioId: string): Promise<EquipeMembro>;
+  addTeamMember(equipeId: string, usuarioId: string, papel?: string): Promise<EquipeMembro>;
   removeTeamMember(equipeId: string, usuarioId: string): Promise<boolean>;
   getTeamMemberIds(coordenadorId: string): Promise<string[]>;
   getVisibleUserIds(userId: string, papel: string): Promise<string[] | null>;
@@ -1094,39 +1094,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Teams (Equipes)
-  async getTeams(): Promise<(Equipe & { coordenador?: { id: string; nome: string } | null; membros?: { id: string; nome: string; email: string }[] })[]> {
+  async getTeams(): Promise<(Equipe & { coordenadores?: { id: string; nome: string }[]; membros?: { id: string; nome: string; email: string }[] })[]> {
     const allTeams = await db.select().from(equipes).orderBy(equipes.nome);
     const result = [];
     for (const team of allTeams) {
-      const coordenador = team.coordenadorId
-        ? await db.select({ id: usuarios.id, nome: usuarios.nome }).from(usuarios).where(eq(usuarios.id, team.coordenadorId)).then(r => r[0] || null)
-        : null;
+      const coordenadoresRows = await db.select({
+        id: usuarios.id,
+        nome: usuarios.nome,
+      }).from(equipeMembros)
+        .innerJoin(usuarios, eq(equipeMembros.usuarioId, usuarios.id))
+        .where(and(eq(equipeMembros.equipeId, team.id), eq(equipeMembros.papel, 'coordenador')));
       const membrosRows = await db.select({
         id: usuarios.id,
         nome: usuarios.nome,
         email: usuarios.email,
       }).from(equipeMembros)
         .innerJoin(usuarios, eq(equipeMembros.usuarioId, usuarios.id))
-        .where(eq(equipeMembros.equipeId, team.id));
-      result.push({ ...team, coordenador, membros: membrosRows });
+        .where(and(eq(equipeMembros.equipeId, team.id), eq(equipeMembros.papel, 'membro')));
+      result.push({ ...team, coordenadores: coordenadoresRows, membros: membrosRows });
     }
     return result;
   }
 
-  async getTeam(id: string): Promise<(Equipe & { coordenador?: { id: string; nome: string } | null; membros?: { id: string; nome: string; email: string }[] }) | undefined> {
+  async getTeam(id: string): Promise<(Equipe & { coordenadores?: { id: string; nome: string }[]; membros?: { id: string; nome: string; email: string }[] }) | undefined> {
     const [team] = await db.select().from(equipes).where(eq(equipes.id, id));
     if (!team) return undefined;
-    const coordenador = team.coordenadorId
-      ? await db.select({ id: usuarios.id, nome: usuarios.nome }).from(usuarios).where(eq(usuarios.id, team.coordenadorId)).then(r => r[0] || null)
-      : null;
+    const coordenadoresRows = await db.select({
+      id: usuarios.id,
+      nome: usuarios.nome,
+    }).from(equipeMembros)
+      .innerJoin(usuarios, eq(equipeMembros.usuarioId, usuarios.id))
+      .where(and(eq(equipeMembros.equipeId, team.id), eq(equipeMembros.papel, 'coordenador')));
     const membrosRows = await db.select({
       id: usuarios.id,
       nome: usuarios.nome,
       email: usuarios.email,
     }).from(equipeMembros)
       .innerJoin(usuarios, eq(equipeMembros.usuarioId, usuarios.id))
-      .where(eq(equipeMembros.equipeId, team.id));
-    return { ...team, coordenador, membros: membrosRows };
+      .where(and(eq(equipeMembros.equipeId, team.id), eq(equipeMembros.papel, 'membro')));
+    return { ...team, coordenadores: coordenadoresRows, membros: membrosRows };
   }
 
   async createTeam(team: InsertEquipe): Promise<Equipe> {
@@ -1144,8 +1150,17 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async addTeamMember(equipeId: string, usuarioId: string): Promise<EquipeMembro> {
-    const [member] = await db.insert(equipeMembros).values({ equipeId, usuarioId }).returning();
+  async addTeamMember(equipeId: string, usuarioId: string, papel: string = 'membro'): Promise<EquipeMembro> {
+    const existing = await db.select().from(equipeMembros)
+      .where(and(eq(equipeMembros.equipeId, equipeId), eq(equipeMembros.usuarioId, usuarioId)));
+    if (existing.length > 0) {
+      const [updated] = await db.update(equipeMembros)
+        .set({ papel: papel as any })
+        .where(and(eq(equipeMembros.equipeId, equipeId), eq(equipeMembros.usuarioId, usuarioId)))
+        .returning();
+      return updated;
+    }
+    const [member] = await db.insert(equipeMembros).values({ equipeId, usuarioId, papel: papel as any }).returning();
     return member;
   }
 
@@ -1157,9 +1172,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTeamMemberIds(coordenadorId: string): Promise<string[]> {
-    const teams = await db.select({ id: equipes.id }).from(equipes).where(eq(equipes.coordenadorId, coordenadorId));
-    if (teams.length === 0) return [];
-    const teamIds = teams.map(t => t.id);
+    const coordTeams = await db.select({ equipeId: equipeMembros.equipeId })
+      .from(equipeMembros)
+      .where(and(eq(equipeMembros.usuarioId, coordenadorId), eq(equipeMembros.papel, 'coordenador')));
+    if (coordTeams.length === 0) return [];
+    const teamIds = coordTeams.map(t => t.equipeId);
     const members = await db.select({ usuarioId: equipeMembros.usuarioId })
       .from(equipeMembros)
       .where(inArray(equipeMembros.equipeId, teamIds));

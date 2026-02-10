@@ -52,8 +52,8 @@ interface TeamMember {
 interface Team {
   id: string;
   nome: string;
-  coordenadorId: string;
-  coordenador: { id: string; nome: string } | null;
+  coordenadorId: string | null;
+  coordenadores: { id: string; nome: string }[];
   membros: TeamMember[];
   criadoEm: string | null;
 }
@@ -78,11 +78,11 @@ export default function UsersPage() {
   const [newUser, setNewUser] = useState({ nome: "", email: "", senha: "" });
 
   const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
-  const [newTeam, setNewTeam] = useState({ nome: "", coordenadorId: "" });
+  const [newTeam, setNewTeam] = useState({ nome: "", coordenadorIds: [] as string[] });
 
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [isEditTeamOpen, setIsEditTeamOpen] = useState(false);
-  const [editTeamData, setEditTeamData] = useState({ nome: "", coordenadorId: "" });
+  const [editTeamData, setEditTeamData] = useState({ nome: "", coordenadorIds: [] as string[] });
 
   const [managingTeam, setManagingTeam] = useState<Team | null>(null);
   const [isMembersOpen, setIsMembersOpen] = useState(false);
@@ -146,13 +146,13 @@ export default function UsersPage() {
   });
 
   const createTeamMutation = useMutation({
-    mutationFn: async (data: { nome: string; coordenadorId: string }) => {
+    mutationFn: async (data: { nome: string; coordenadorIds: string[] }) => {
       return apiRequest("POST", "/api/teams", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/teams"] });
       setIsCreateTeamOpen(false);
-      setNewTeam({ nome: "", coordenadorId: "" });
+      setNewTeam({ nome: "", coordenadorIds: [] });
       toast({ title: "Equipe criada com sucesso" });
     },
     onError: (error: any) => {
@@ -165,7 +165,7 @@ export default function UsersPage() {
   });
 
   const editTeamMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { nome: string; coordenadorId: string } }) => {
+    mutationFn: async ({ id, data }: { id: string; data: { nome: string; coordenadorIds: string[] } }) => {
       return apiRequest("PATCH", `/api/teams/${id}`, data);
     },
     onSuccess: () => {
@@ -246,8 +246,8 @@ export default function UsersPage() {
 
   const handleCreateTeam = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTeam.nome.trim() || !newTeam.coordenadorId) {
-      toast({ title: "Preencha todos os campos", variant: "destructive" });
+    if (!newTeam.nome.trim() || newTeam.coordenadorIds.length === 0) {
+      toast({ title: "Preencha o nome e selecione pelo menos um coordenador", variant: "destructive" });
       return;
     }
     createTeamMutation.mutate(newTeam);
@@ -255,8 +255,8 @@ export default function UsersPage() {
 
   const handleEditTeam = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingTeam || !editTeamData.nome.trim() || !editTeamData.coordenadorId) {
-      toast({ title: "Preencha todos os campos", variant: "destructive" });
+    if (!editingTeam || !editTeamData.nome.trim() || editTeamData.coordenadorIds.length === 0) {
+      toast({ title: "Preencha o nome e selecione pelo menos um coordenador", variant: "destructive" });
       return;
     }
     editTeamMutation.mutate({ id: editingTeam.id, data: editTeamData });
@@ -264,8 +264,26 @@ export default function UsersPage() {
 
   const openEditTeam = (team: Team) => {
     setEditingTeam(team);
-    setEditTeamData({ nome: team.nome, coordenadorId: team.coordenadorId });
+    setEditTeamData({ nome: team.nome, coordenadorIds: (team.coordenadores || []).map(c => c.id) });
     setIsEditTeamOpen(true);
+  };
+
+  const toggleCoordCreate = (userId: string) => {
+    setNewTeam(prev => ({
+      ...prev,
+      coordenadorIds: prev.coordenadorIds.includes(userId)
+        ? prev.coordenadorIds.filter(id => id !== userId)
+        : [...prev.coordenadorIds, userId],
+    }));
+  };
+
+  const toggleCoordEdit = (userId: string) => {
+    setEditTeamData(prev => ({
+      ...prev,
+      coordenadorIds: prev.coordenadorIds.includes(userId)
+        ? prev.coordenadorIds.filter(id => id !== userId)
+        : [...prev.coordenadorIds, userId],
+    }));
   };
 
   const openManageMembers = (team: Team) => {
@@ -526,22 +544,36 @@ export default function UsersPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="team-coordenador">Coordenador</Label>
-                        <Select
-                          value={newTeam.coordenadorId}
-                          onValueChange={(value) => setNewTeam({ ...newTeam, coordenadorId: value })}
-                        >
-                          <SelectTrigger data-testid="select-team-coordenador">
-                            <SelectValue placeholder="Selecione o coordenador" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {users.filter((u) => u.papel === "coordenador" || u.papel === "admin").map((user) => (
-                              <SelectItem key={user.id} value={user.id} data-testid={`select-coordenador-option-${user.id}`}>
-                                {user.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Label>Coordenadores</Label>
+                        <div className="border rounded-md p-2 space-y-1 max-h-40 overflow-y-auto" data-testid="list-team-coordenadores">
+                          {users.filter((u) => u.papel === "coordenador" || u.papel === "admin").map((user) => (
+                            <label
+                              key={user.id}
+                              className="flex items-center gap-2 p-1.5 rounded cursor-pointer hover-elevate"
+                              data-testid={`checkbox-coordenador-${user.id}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={newTeam.coordenadorIds.includes(user.id)}
+                                onChange={() => toggleCoordCreate(user.id)}
+                                className="accent-purple-600"
+                              />
+                              <span className="text-sm">{user.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                        {newTeam.coordenadorIds.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {newTeam.coordenadorIds.map(id => {
+                              const u = users.find(u => u.id === id);
+                              return u ? (
+                                <Badge key={id} variant="secondary" className="text-xs" data-testid={`badge-coord-selected-${id}`}>
+                                  {u.name}
+                                </Badge>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
                       </div>
                       <div className="flex justify-end gap-2">
                         <Button type="button" variant="outline" onClick={() => setIsCreateTeamOpen(false)} data-testid="button-cancel-team">
@@ -580,7 +612,9 @@ export default function UsersPage() {
                       <div className="space-y-1">
                         <CardTitle className="text-lg">{team.nome}</CardTitle>
                         <p className="text-sm text-muted-foreground">
-                          Coordenador: {team.coordenador?.nome || "N/A"}
+                          {(team.coordenadores || []).length > 0
+                            ? `Coordenador${(team.coordenadores || []).length > 1 ? 'es' : ''}: ${(team.coordenadores || []).map(c => c.nome).join(", ")}`
+                            : "Sem coordenador"}
                         </p>
                       </div>
                       {isAdmin && (
@@ -666,22 +700,36 @@ export default function UsersPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-team-coordenador">Coordenador</Label>
-              <Select
-                value={editTeamData.coordenadorId}
-                onValueChange={(value) => setEditTeamData({ ...editTeamData, coordenadorId: value })}
-              >
-                <SelectTrigger data-testid="select-edit-team-coordenador">
-                  <SelectValue placeholder="Selecione o coordenador" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.filter((u) => u.papel === "coordenador" || u.papel === "admin").map((user) => (
-                    <SelectItem key={user.id} value={user.id} data-testid={`select-edit-coordenador-option-${user.id}`}>
-                      {user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Coordenadores</Label>
+              <div className="border rounded-md p-2 space-y-1 max-h-40 overflow-y-auto" data-testid="list-edit-team-coordenadores">
+                {users.filter((u) => u.papel === "coordenador" || u.papel === "admin").map((user) => (
+                  <label
+                    key={user.id}
+                    className="flex items-center gap-2 p-1.5 rounded cursor-pointer hover-elevate"
+                    data-testid={`checkbox-edit-coordenador-${user.id}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={editTeamData.coordenadorIds.includes(user.id)}
+                      onChange={() => toggleCoordEdit(user.id)}
+                      className="accent-purple-600"
+                    />
+                    <span className="text-sm">{user.name}</span>
+                  </label>
+                ))}
+              </div>
+              {editTeamData.coordenadorIds.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {editTeamData.coordenadorIds.map(id => {
+                    const u = users.find(u => u.id === id);
+                    return u ? (
+                      <Badge key={id} variant="secondary" className="text-xs" data-testid={`badge-edit-coord-selected-${id}`}>
+                        {u.name}
+                      </Badge>
+                    ) : null;
+                  })}
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setIsEditTeamOpen(false)} data-testid="button-cancel-edit-team">

@@ -1794,13 +1794,20 @@ export async function registerRoutes(
         res.status(403).json({ message: "Apenas administradores podem criar equipes" });
         return;
       }
-      const parsed = insertEquipeSchema.safeParse(req.body);
+      const { coordenadorIds, ...teamData } = req.body;
+      const parsed = insertEquipeSchema.safeParse(teamData);
       if (!parsed.success) {
         res.status(400).json({ message: "Dados inválidos", errors: parsed.error.errors });
         return;
       }
       const team = await storage.createTeam(parsed.data);
-      res.status(201).json(team);
+      if (coordenadorIds && Array.isArray(coordenadorIds)) {
+        for (const coordId of coordenadorIds) {
+          await storage.addTeamMember(team.id, coordId, 'coordenador');
+        }
+      }
+      const fullTeam = await storage.getTeam(team.id);
+      res.status(201).json(fullTeam);
     } catch (error) {
       logger.error("creating team", error as Error);
       res.status(500).json({ message: "Falha ao criar equipe" });
@@ -1814,12 +1821,35 @@ export async function registerRoutes(
         res.status(403).json({ message: "Apenas administradores podem editar equipes" });
         return;
       }
-      const team = await storage.updateTeam(getParam(req.params.id), req.body);
-      if (!team) {
-        res.status(404).json({ message: "Equipe não encontrada" });
-        return;
+      const teamId = getParam(req.params.id);
+      const { coordenadorIds, ...teamData } = req.body;
+      if (Object.keys(teamData).length > 0) {
+        const team = await storage.updateTeam(teamId, teamData);
+        if (!team) {
+          res.status(404).json({ message: "Equipe não encontrada" });
+          return;
+        }
       }
-      res.json(team);
+      if (coordenadorIds && Array.isArray(coordenadorIds)) {
+        const existingTeam = await storage.getTeam(teamId);
+        if (!existingTeam) {
+          res.status(404).json({ message: "Equipe não encontrada" });
+          return;
+        }
+        const existingCoordIds = (existingTeam.coordenadores || []).map(c => c.id);
+        for (const oldCoordId of existingCoordIds) {
+          if (!coordenadorIds.includes(oldCoordId)) {
+            await storage.removeTeamMember(teamId, oldCoordId);
+          }
+        }
+        for (const newCoordId of coordenadorIds) {
+          if (!existingCoordIds.includes(newCoordId)) {
+            await storage.addTeamMember(teamId, newCoordId, 'coordenador');
+          }
+        }
+      }
+      const fullTeam = await storage.getTeam(teamId);
+      res.json(fullTeam);
     } catch (error) {
       logger.error("updating team", error as Error);
       res.status(500).json({ message: "Falha ao atualizar equipe" });
@@ -1852,12 +1882,12 @@ export async function registerRoutes(
         res.status(403).json({ message: "Apenas administradores podem gerenciar membros" });
         return;
       }
-      const { usuarioId } = req.body;
+      const { usuarioId, papel } = req.body;
       if (!usuarioId) {
         res.status(400).json({ message: "usuarioId é obrigatório" });
         return;
       }
-      const member = await storage.addTeamMember(getParam(req.params.id), usuarioId);
+      const member = await storage.addTeamMember(getParam(req.params.id), usuarioId, papel || 'membro');
       res.status(201).json(member);
     } catch (error: any) {
       if (error.code === '23505') {
