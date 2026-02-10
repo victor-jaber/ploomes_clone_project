@@ -22,6 +22,8 @@ import {
   advogadoContatos,
   escritorioContatos,
   reclamanteContatos,
+  equipes,
+  equipeMembros,
   type Advogado,
   type InsertAdvogado,
   type Escritorio,
@@ -54,6 +56,10 @@ import {
   type InsertInteracao,
   type Produto,
   type InsertProduto,
+  type Equipe,
+  type InsertEquipe,
+  type EquipeMembro,
+  type InsertEquipeMembro,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
@@ -99,8 +105,8 @@ export interface IStorage {
   getClaimantsWithLawsuits(): Promise<(Reclamante & { lawsuits: Processo[] })[]>;
   getLawFirmsWithLawsuits(): Promise<(Escritorio & { lawsuits: Processo[]; lawyerIds: number[] })[]>;
 
-  // Leads (dados públicos - sem filtro por ownerId)
-  getLeads(pipelineType?: string): Promise<Lead[]>;
+  // Leads (com filtro de visibilidade por papel do usuário)
+  getLeads(pipelineType?: string, visibleUserIds?: string[] | null): Promise<Lead[]>;
   getLead(id: string): Promise<Lead | undefined>;
   getLeadWithDetails(id: string): Promise<(Lead & { financials?: LeadFinanceiro | null, caseDetails?: LeadDetalhesCaso | null, checklist?: LeadChecklist | null, assignments?: LeadResponsaveis | null }) | undefined>;
   createLead(lead: InsertLead): Promise<Lead>;
@@ -157,10 +163,22 @@ export interface IStorage {
   deleteInteraction(id: string, ownerId: string): Promise<boolean>;
 
   // Users
-  getUsers(): Promise<{ id: string; name: string; email: string; createdAt: Date | null }[]>;
+  getUsers(): Promise<{ id: string; name: string; email: string; papel: string; createdAt: Date | null }[]>;
   getUserByEmail(email: string): Promise<{ id: string; name: string; email: string } | undefined>;
   createUser(user: { name: string; email: string; password: string }): Promise<{ id: string; name: string; email: string; createdAt: Date | null }>;
+  updateUserRole(id: string, papel: string): Promise<boolean>;
   deleteUser(id: string): Promise<boolean>;
+
+  // Teams (Equipes)
+  getTeams(): Promise<(Equipe & { coordenador?: { id: string; nome: string } | null; membros?: { id: string; nome: string; email: string }[] })[]>;
+  getTeam(id: string): Promise<(Equipe & { coordenador?: { id: string; nome: string } | null; membros?: { id: string; nome: string; email: string }[] }) | undefined>;
+  createTeam(team: InsertEquipe): Promise<Equipe>;
+  updateTeam(id: string, team: Partial<InsertEquipe>): Promise<Equipe | undefined>;
+  deleteTeam(id: string): Promise<boolean>;
+  addTeamMember(equipeId: string, usuarioId: string): Promise<EquipeMembro>;
+  removeTeamMember(equipeId: string, usuarioId: string): Promise<boolean>;
+  getTeamMemberIds(coordenadorId: string): Promise<string[]>;
+  getVisibleUserIds(userId: string, papel: string): Promise<string[] | null>;
 
   createLawsuitWithLead(data: InsertProcesso, userId: string): Promise<{ processo: Processo; lead: Lead }>;
   syncLawsuitsFromApi(userId: string): Promise<{ total: number; linked: number; errors: number }>;
@@ -734,12 +752,29 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  // Leads (dados públicos - sem filtro por ownerId)
-  async getLeads(pipelineType?: string): Promise<Lead[]> {
+  // Leads (com filtro de visibilidade por papel do usuário)
+  async getLeads(pipelineType?: string, visibleUserIds?: string[] | null): Promise<Lead[]> {
+    const conditions = [];
     if (pipelineType) {
-      return db.select().from(leads).where(
-        eq(leads.tipoPipeline, pipelineType as any)
-      ).orderBy(desc(leads.criadoEm));
+      conditions.push(eq(leads.tipoPipeline, pipelineType as any));
+    }
+    if (visibleUserIds !== null && visibleUserIds !== undefined && visibleUserIds.length > 0) {
+      const leadsComResponsavel = await db.select({ leadId: leadResponsaveis.leadId })
+        .from(leadResponsaveis)
+        .where(inArray(leadResponsaveis.comercialResponsavelId, visibleUserIds));
+      const leadIdsComResponsavel = leadsComResponsavel.map(l => l.leadId);
+      const leadsVendedor = await db.select({ id: leads.id })
+        .from(leads)
+        .where(inArray(leads.vendedorId, visibleUserIds));
+      const leadIdsVendedor = leadsVendedor.map(l => l.id);
+      const allVisibleLeadIds = Array.from(new Set([...leadIdsComResponsavel, ...leadIdsVendedor]));
+      if (allVisibleLeadIds.length === 0) {
+        return [];
+      }
+      conditions.push(inArray(leads.id, allVisibleLeadIds));
+    }
+    if (conditions.length > 0) {
+      return db.select().from(leads).where(and(...conditions)).orderBy(desc(leads.criadoEm));
     }
     return db.select().from(leads).orderBy(desc(leads.criadoEm));
   }
@@ -1014,14 +1049,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Users
-  async getUsers(): Promise<{ id: string; name: string; email: string; createdAt: Date | null }[]> {
+  async getUsers(): Promise<{ id: string; name: string; email: string; papel: string; createdAt: Date | null }[]> {
     const result = await db.select({
       id: usuarios.id,
       name: usuarios.nome,
       email: usuarios.email,
+      papel: usuarios.papel,
       createdAt: usuarios.criadoEm,
     }).from(usuarios);
-    return result;
+    return result.map(u => ({ ...u, papel: u.papel || 'funcionario' }));
   }
 
   async getUserByEmail(email: string): Promise<{ id: string; name: string; email: string } | undefined> {
@@ -1047,9 +1083,96 @@ export class DatabaseStorage implements IStorage {
     return newUser;
   }
 
+  async updateUserRole(id: string, papel: string): Promise<boolean> {
+    const result = await db.update(usuarios).set({ papel: papel as any }).where(eq(usuarios.id, id)).returning();
+    return result.length > 0;
+  }
+
   async deleteUser(id: string): Promise<boolean> {
     const result = await db.delete(usuarios).where(eq(usuarios.id, id)).returning();
     return result.length > 0;
+  }
+
+  // Teams (Equipes)
+  async getTeams(): Promise<(Equipe & { coordenador?: { id: string; nome: string } | null; membros?: { id: string; nome: string; email: string }[] })[]> {
+    const allTeams = await db.select().from(equipes).orderBy(equipes.nome);
+    const result = [];
+    for (const team of allTeams) {
+      const coordenador = team.coordenadorId
+        ? await db.select({ id: usuarios.id, nome: usuarios.nome }).from(usuarios).where(eq(usuarios.id, team.coordenadorId)).then(r => r[0] || null)
+        : null;
+      const membrosRows = await db.select({
+        id: usuarios.id,
+        nome: usuarios.nome,
+        email: usuarios.email,
+      }).from(equipeMembros)
+        .innerJoin(usuarios, eq(equipeMembros.usuarioId, usuarios.id))
+        .where(eq(equipeMembros.equipeId, team.id));
+      result.push({ ...team, coordenador, membros: membrosRows });
+    }
+    return result;
+  }
+
+  async getTeam(id: string): Promise<(Equipe & { coordenador?: { id: string; nome: string } | null; membros?: { id: string; nome: string; email: string }[] }) | undefined> {
+    const [team] = await db.select().from(equipes).where(eq(equipes.id, id));
+    if (!team) return undefined;
+    const coordenador = team.coordenadorId
+      ? await db.select({ id: usuarios.id, nome: usuarios.nome }).from(usuarios).where(eq(usuarios.id, team.coordenadorId)).then(r => r[0] || null)
+      : null;
+    const membrosRows = await db.select({
+      id: usuarios.id,
+      nome: usuarios.nome,
+      email: usuarios.email,
+    }).from(equipeMembros)
+      .innerJoin(usuarios, eq(equipeMembros.usuarioId, usuarios.id))
+      .where(eq(equipeMembros.equipeId, team.id));
+    return { ...team, coordenador, membros: membrosRows };
+  }
+
+  async createTeam(team: InsertEquipe): Promise<Equipe> {
+    const [newTeam] = await db.insert(equipes).values(team).returning();
+    return newTeam;
+  }
+
+  async updateTeam(id: string, team: Partial<InsertEquipe>): Promise<Equipe | undefined> {
+    const [updated] = await db.update(equipes).set(team).where(eq(equipes.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTeam(id: string): Promise<boolean> {
+    const result = await db.delete(equipes).where(eq(equipes.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async addTeamMember(equipeId: string, usuarioId: string): Promise<EquipeMembro> {
+    const [member] = await db.insert(equipeMembros).values({ equipeId, usuarioId }).returning();
+    return member;
+  }
+
+  async removeTeamMember(equipeId: string, usuarioId: string): Promise<boolean> {
+    const result = await db.delete(equipeMembros)
+      .where(and(eq(equipeMembros.equipeId, equipeId), eq(equipeMembros.usuarioId, usuarioId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getTeamMemberIds(coordenadorId: string): Promise<string[]> {
+    const teams = await db.select({ id: equipes.id }).from(equipes).where(eq(equipes.coordenadorId, coordenadorId));
+    if (teams.length === 0) return [];
+    const teamIds = teams.map(t => t.id);
+    const members = await db.select({ usuarioId: equipeMembros.usuarioId })
+      .from(equipeMembros)
+      .where(inArray(equipeMembros.equipeId, teamIds));
+    return Array.from(new Set(members.map(m => m.usuarioId)));
+  }
+
+  async getVisibleUserIds(userId: string, papel: string): Promise<string[] | null> {
+    if (papel === 'admin') return null;
+    if (papel === 'coordenador') {
+      const memberIds = await this.getTeamMemberIds(userId);
+      return Array.from(new Set([userId, ...memberIds]));
+    }
+    return [userId];
   }
 
   async createLawsuitWithLead(data: InsertProcesso, userId: string): Promise<{ processo: Processo; lead: Lead }> {
