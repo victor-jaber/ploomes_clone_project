@@ -2476,14 +2476,29 @@ export default function PipelinePage() {
     }));
   }, [selectedPipeline, userPreferences]);
 
+  const filterTypeToPipeline: Record<string, PipelineType> = {
+    advogado: "advogados",
+    reclamante: "reclamantes",
+    escritorio: "escritorios",
+    cnj: "triagem",
+  };
+
   const addFilter = useCallback((filter: PipelineFilter) => {
     setActiveFilters(prev => {
       const exists = prev.some(f => f.type === filter.type && f.value === filter.value);
       if (exists) return prev;
+      const currentType = prev.length > 0 ? prev[0].type : null;
+      if (currentType && currentType !== filter.type) {
+        return [filter];
+      }
       return [...prev, filter];
     });
+    const targetPipeline = filterTypeToPipeline[filter.type];
+    if (targetPipeline && targetPipeline !== selectedPipeline) {
+      setSelectedPipeline(targetPipeline);
+    }
     toast({ title: `Filtro aplicado: ${filter.label}` });
-  }, [toast]);
+  }, [toast, selectedPipeline]);
 
   const cleanUrlParams = useCallback(() => {
     if (window.location.search) {
@@ -3368,8 +3383,10 @@ export default function PipelinePage() {
               <SheetTitle>Filtrar Pipeline</SheetTitle>
             </SheetHeader>
             <div className="mt-6 space-y-6">
+              <p className="text-xs text-muted-foreground">Selecione um tipo de filtro. Vários filtros do mesmo tipo podem ser combinados. Ao trocar de tipo, os filtros anteriores serão substituídos.</p>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Filtrar por Advogado</Label>
+                <p className="text-xs text-muted-foreground">Direciona ao pipeline de Advogados</p>
                 <Select
                   value=""
                   onValueChange={(value) => {
@@ -3399,6 +3416,7 @@ export default function PipelinePage() {
 
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Filtrar por Reclamante</Label>
+                <p className="text-xs text-muted-foreground">Direciona ao pipeline de Reclamantes</p>
                 <Select
                   value=""
                   onValueChange={(value) => {
@@ -3428,6 +3446,7 @@ export default function PipelinePage() {
 
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Filtrar por Escritório</Label>
+                <p className="text-xs text-muted-foreground">Direciona ao pipeline de Escritórios</p>
                 <Select
                   value=""
                   onValueChange={(value) => {
@@ -3457,6 +3476,7 @@ export default function PipelinePage() {
 
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Filtrar por CNJ</Label>
+                <p className="text-xs text-muted-foreground">Direciona ao pipeline de Gestão de Casos</p>
                 <div className="flex gap-2">
                   <Input
                     placeholder="Digite o número CNJ..."
@@ -3476,7 +3496,7 @@ export default function PipelinePage() {
                     }}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">Busca em advogados e reclamantes</p>
+                <p className="text-xs text-muted-foreground">Pressione Enter para adicionar</p>
               </div>
 
               {activeFilters.length > 0 && (
