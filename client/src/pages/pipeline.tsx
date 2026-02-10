@@ -368,6 +368,14 @@ function LeadDetailPanel({
     },
   });
 
+  const { data: allUsers } = useQuery<{ id: string; name: string; email: string; papel: string }[]>({
+    queryKey: ["/api/users"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/users");
+      return res.json();
+    },
+  });
+
   const updateFieldMutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
       return apiRequest("PATCH", `/api/leads/${lead.id}`, data);
@@ -444,7 +452,7 @@ function LeadDetailPanel({
   const financialsFields = ["valorFechamento", "percentualComissao", "formaPagamento", "observacoesFinanceiras"];
   const caseDetailsFields = ["tribunal", "assuntoPrincipal", "assuntos", "orgaoJulgador", "cnj", "cliente", "abordagem", "origem"];
   const checklistFields = ["reclamante", "reclamado", "liquidacaoIndicada", "valorBruto", "valorLiquido", "valorControverso", "sucumbente", "fgts", "dataPlanilha", "valorOutros", "prazoCaso"];
-  const assignmentsFields = ["comercialResponsavel", "advogadoResponsavel"];
+  const assignmentsFields = ["comercialResponsavel", "comercialResponsavelId", "advogadoResponsavel"];
 
   const handleUpdateField = (field: string, value: any) => {
     if (financialsFields.includes(field)) {
@@ -1514,11 +1522,29 @@ function LeadDetailPanel({
                       <User className="h-3 w-3 text-blue-500" />
                       Comercial Responsável
                     </Label>
-                    <InlineEditField
-                      value={assignments?.comercialResponsavel || ""}
-                      onSave={(val) => handleUpdateField("comercialResponsavel", val)}
-                      placeholder="Adicionar..."
-                    />
+                    <Select
+                      value={assignments?.comercialResponsavelId || "_none"}
+                      onValueChange={(val) => {
+                        const userId = val === "_none" ? null : val;
+                        const userName = allUsers?.find(u => u.id === userId)?.name || null;
+                        updateAssignmentsMutation.mutate({
+                          comercialResponsavelId: userId,
+                          comercialResponsavel: userName,
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-sm" data-testid="select-comercial-responsavel">
+                        <SelectValue placeholder="Selecionar..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">Nenhum</SelectItem>
+                        {allUsers?.map(user => (
+                          <SelectItem key={user.id} value={user.id} data-testid={`select-user-${user.id}`}>
+                            {user.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs flex items-center gap-2">
