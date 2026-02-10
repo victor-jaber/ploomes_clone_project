@@ -15,10 +15,12 @@ export const usuarios = pgTable("usuarios", {
   criadoEm: timestamp("criado_em").defaultNow(),
 });
 
+export const papelMembroEnum = pgEnum("papel_membro", ["coordenador", "membro"]);
+
 export const equipes = pgTable("equipes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   nome: text("nome").notNull(),
-  coordenadorId: varchar("coordenador_id").notNull().references(() => usuarios.id, { onDelete: "cascade" }),
+  coordenadorId: varchar("coordenador_id").references(() => usuarios.id, { onDelete: "set null" }),
   criadoEm: timestamp("criado_em").defaultNow(),
 });
 
@@ -26,6 +28,7 @@ export const equipeMembros = pgTable("equipe_membros", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   equipeId: varchar("equipe_id").notNull().references(() => equipes.id, { onDelete: "cascade" }),
   usuarioId: varchar("usuario_id").notNull().references(() => usuarios.id, { onDelete: "cascade" }),
+  papel: papelMembroEnum("papel").notNull().default("membro"),
   criadoEm: timestamp("criado_em").defaultNow(),
 }, (table) => ({
   unique: unique("equipe_membro_unique").on(table.equipeId, table.usuarioId),
