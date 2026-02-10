@@ -134,7 +134,7 @@ export const advogados = pgTable("advogados", {
   nome: text("nome").notNull(),
   observacoes: text("observacoes"),
   enderecoId: varchar("endereco_id").references(() => enderecos.id, { onDelete: "set null" }),
-  proprietarioId: varchar("proprietario_id").notNull(),
+  proprietarioId: varchar("proprietario_id"),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
@@ -145,7 +145,7 @@ export const escritorios = pgTable("escritorios", {
   cnpj: varchar("cnpj", { length: 18 }),
   observacoes: text("observacoes"),
   enderecoId: varchar("endereco_id").references(() => enderecos.id, { onDelete: "set null" }),
-  proprietarioId: varchar("proprietario_id").notNull(),
+  proprietarioId: varchar("proprietario_id"),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
@@ -156,7 +156,7 @@ export const reclamantes = pgTable("reclamantes", {
   cpf: varchar("cpf", { length: 14 }),
   observacoes: text("observacoes"),
   enderecoId: varchar("endereco_id").references(() => enderecos.id, { onDelete: "set null" }),
-  proprietarioId: varchar("proprietario_id").notNull(),
+  proprietarioId: varchar("proprietario_id"),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
@@ -207,7 +207,7 @@ export const processos = pgTable("processos", {
   probabilidadeSucesso: numeric("probabilidade_sucesso", { precision: 5, scale: 2 }),
   valorEstimado: numeric("valor_estimado", { precision: 12, scale: 2 }),
   apiData: text("api_data"),
-  proprietarioId: varchar("proprietario_id").notNull(),
+  proprietarioId: varchar("proprietario_id"),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
@@ -324,7 +324,7 @@ export const interacoes = pgTable("interacoes", {
   tipoArquivo: text("tipo_arquivo"),
   metadados: text("metadados"),
   vendedorId: varchar("vendedor_id").notNull().references(() => usuarios.id),
-  proprietarioId: varchar("proprietario_id").notNull(),
+  proprietarioId: varchar("proprietario_id"),
   criadoEm: timestamp("criado_em").defaultNow(),
 });
 
@@ -337,7 +337,7 @@ export const atividades = pgTable("atividades", {
   dataVencimento: timestamp("data_vencimento"),
   concluidoEm: timestamp("concluido_em"),
   leadId: varchar("lead_id").references(() => leads.id, { onDelete: "cascade" }),
-  proprietarioId: varchar("proprietario_id").notNull(),
+  proprietarioId: varchar("proprietario_id"),
   criadoEm: timestamp("criado_em").defaultNow(),
 });
 
@@ -350,7 +350,7 @@ export const produtos = pgTable("produtos", {
   unidade: varchar("unidade", { length: 20 }).default("un"),
   categoria: text("categoria"),
   ativo: boolean("ativo").default(true),
-  proprietarioId: varchar("proprietario_id").notNull(),
+  proprietarioId: varchar("proprietario_id"),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });
@@ -366,7 +366,7 @@ export const propostas = pgTable("propostas", {
   total: numeric("total", { precision: 12, scale: 2 }).default("0"),
   observacoes: text("observacoes"),
   termos: text("termos"),
-  proprietarioId: varchar("proprietario_id").notNull(),
+  proprietarioId: varchar("proprietario_id"),
   criadoEm: timestamp("criado_em").defaultNow(),
   atualizadoEm: timestamp("atualizado_em").defaultNow(),
 });

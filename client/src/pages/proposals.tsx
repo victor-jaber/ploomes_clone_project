@@ -163,7 +163,6 @@ export default function ProposalsPage() {
       total: formData.get("total") as string || "0",
       observacoes: formData.get("notes") as string,
       termos: formData.get("terms") as string,
-      proprietarioId: "",
     };
 
     if (editingProposal) {

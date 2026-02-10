@@ -306,9 +306,8 @@ export async function registerRoutes(
 
   app.get("/api/lawyers/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const id = parseInt(getParam(req.params.id), 10);
-      const lawyer = await storage.getLawyer(id, userId);
+      const lawyer = await storage.getLawyer(id);
       if (!lawyer) {
         res.status(404).json({ message: "Lawyer not found" });
         return;
@@ -324,7 +323,7 @@ export async function registerRoutes(
     try {
       const userId = (req as AuthRequest).user!.id;
       const strippedBody = stripContactFields(req.body);
-      const parsed = insertAdvogadoSchema.safeParse({ ...strippedBody, proprietarioId: userId });
+      const parsed = insertAdvogadoSchema.safeParse(strippedBody);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -341,7 +340,6 @@ export async function registerRoutes(
         tipoPipeline: 'advogados',
         etapa: 'novo_lead',
         valor: null,
-        proprietarioId: userId,
         vendedorId: userId,
       });
       wsManager.broadcastLeadCreated(lead);
@@ -355,7 +353,6 @@ export async function registerRoutes(
 
   app.patch("/api/lawyers/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const id = parseInt(getParam(req.params.id), 10);
       const strippedBody = stripContactFields(req.body);
       const partial = insertAdvogadoSchema.partial().safeParse(strippedBody);
@@ -363,7 +360,7 @@ export async function registerRoutes(
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const lawyer = await storage.updateLawyer(id, userId, partial.data);
+      const lawyer = await storage.updateLawyer(id, partial.data);
       if (!lawyer) {
         res.status(404).json({ message: "Lawyer not found" });
         return;
@@ -379,9 +376,8 @@ export async function registerRoutes(
 
   app.delete("/api/lawyers/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const id = parseInt(getParam(req.params.id), 10);
-      const deleted = await storage.deleteLawyer(id, userId);
+      const deleted = await storage.deleteLawyer(id);
       if (!deleted) {
         res.status(404).json({ message: "Lawyer not found" });
         return;
@@ -407,9 +403,8 @@ export async function registerRoutes(
 
   app.get("/api/todos-advogados-infos/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const id = parseInt(getParam(req.params.id), 10);
-      const lawyer = await storage.getLawyer(id, userId);
+      const lawyer = await storage.getLawyer(id);
       if (!lawyer) {
         res.status(404).json({ message: "Lawyer not found" });
         return;
@@ -425,7 +420,7 @@ export async function registerRoutes(
     try {
       const userId = (req as AuthRequest).user!.id;
       const strippedBody = stripContactFields(req.body);
-      const parsed = insertAdvogadoSchema.safeParse({ ...strippedBody, proprietarioId: userId });
+      const parsed = insertAdvogadoSchema.safeParse(strippedBody);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -442,7 +437,6 @@ export async function registerRoutes(
         tipoPipeline: 'advogados',
         etapa: 'novo_lead',
         valor: null,
-        proprietarioId: userId,
         vendedorId: userId,
       });
       wsManager.broadcastLeadCreated(lead);
@@ -464,7 +458,7 @@ export async function registerRoutes(
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const lawyer = await storage.updateLawyer(id, userId, partial.data);
+      const lawyer = await storage.updateLawyer(id, partial.data);
       if (!lawyer) {
         res.status(404).json({ message: "Lawyer not found" });
         return;
@@ -480,9 +474,8 @@ export async function registerRoutes(
 
   app.delete("/api/todos-advogados-infos/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const id = parseInt(getParam(req.params.id), 10);
-      const deleted = await storage.deleteLawyer(id, userId);
+      const deleted = await storage.deleteLawyer(id);
       if (!deleted) {
         res.status(404).json({ message: "Lawyer not found" });
         return;
@@ -498,7 +491,7 @@ export async function registerRoutes(
   app.post("/api/lawsuits", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertProcessoSchema.safeParse({ ...req.body, proprietarioId: userId });
+      const parsed = insertProcessoSchema.safeParse(req.body);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -525,8 +518,7 @@ export async function registerRoutes(
 
   app.get("/api/law-firms/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const lawFirm = await storage.getLawFirm(getParam(req.params.id), userId);
+      const lawFirm = await storage.getLawFirm(getParam(req.params.id));
       if (!lawFirm) {
         res.status(404).json({ message: "Law firm not found" });
         return;
@@ -540,9 +532,8 @@ export async function registerRoutes(
 
   app.post("/api/law-firms", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const strippedBody = stripContactFields(req.body);
-      const parsed = insertEscritorioSchema.safeParse({ ...strippedBody, proprietarioId: userId });
+      const parsed = insertEscritorioSchema.safeParse(strippedBody);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -562,7 +553,6 @@ export async function registerRoutes(
 
   app.patch("/api/law-firms/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const strippedBody = stripContactFields(req.body);
       const partial = insertEscritorioSchema.partial().safeParse(strippedBody);
       if (!partial.success) {
@@ -570,7 +560,7 @@ export async function registerRoutes(
         return;
       }
       const firmId = getParam(req.params.id);
-      const lawFirm = await storage.updateLawFirm(firmId, userId, partial.data);
+      const lawFirm = await storage.updateLawFirm(firmId, partial.data);
       if (!lawFirm) {
         res.status(404).json({ message: "Law firm not found" });
         return;
@@ -586,8 +576,7 @@ export async function registerRoutes(
 
   app.delete("/api/law-firms/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteLawFirm(getParam(req.params.id), userId);
+      const deleted = await storage.deleteLawFirm(getParam(req.params.id));
       if (!deleted) {
         res.status(404).json({ message: "Law firm not found" });
         return;
@@ -605,8 +594,7 @@ export async function registerRoutes(
 
   app.get("/api/law-firms/:id/lawyers", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const lawFirm = await storage.getLawFirm(getParam(req.params.id), userId);
+      const lawFirm = await storage.getLawFirm(getParam(req.params.id));
       if (!lawFirm) {
         res.status(404).json({ message: "Law firm not found" });
         return;
@@ -621,8 +609,7 @@ export async function registerRoutes(
 
   app.post("/api/law-firms/:id/lawyers", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const lawFirm = await storage.getLawFirm(getParam(req.params.id), userId);
+      const lawFirm = await storage.getLawFirm(getParam(req.params.id));
       if (!lawFirm) {
         res.status(404).json({ message: "Law firm not found" });
         return;
@@ -642,8 +629,7 @@ export async function registerRoutes(
 
   app.delete("/api/law-firms/:id/lawyers/:lawyerId", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const lawFirm = await storage.getLawFirm(getParam(req.params.id), userId);
+      const lawFirm = await storage.getLawFirm(getParam(req.params.id));
       if (!lawFirm) {
         res.status(404).json({ message: "Law firm not found" });
         return;
@@ -674,8 +660,7 @@ export async function registerRoutes(
 
   app.get("/api/escritorios/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const lawFirm = await storage.getLawFirm(getParam(req.params.id), userId);
+      const lawFirm = await storage.getLawFirm(getParam(req.params.id));
       if (!lawFirm) {
         res.status(404).json({ message: "Law firm not found" });
         return;
@@ -689,9 +674,8 @@ export async function registerRoutes(
 
   app.post("/api/escritorios", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const strippedBody = stripContactFields(req.body);
-      const parsed = insertEscritorioSchema.safeParse({ ...strippedBody, proprietarioId: userId });
+      const parsed = insertEscritorioSchema.safeParse(strippedBody);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -711,7 +695,6 @@ export async function registerRoutes(
 
   app.patch("/api/escritorios/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const strippedBody = stripContactFields(req.body);
       const partial = insertEscritorioSchema.partial().safeParse(strippedBody);
       if (!partial.success) {
@@ -719,7 +702,7 @@ export async function registerRoutes(
         return;
       }
       const firmId = getParam(req.params.id);
-      const lawFirm = await storage.updateLawFirm(firmId, userId, partial.data);
+      const lawFirm = await storage.updateLawFirm(firmId, partial.data);
       if (!lawFirm) {
         res.status(404).json({ message: "Law firm not found" });
         return;
@@ -735,8 +718,7 @@ export async function registerRoutes(
 
   app.delete("/api/escritorios/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteLawFirm(getParam(req.params.id), userId);
+      const deleted = await storage.deleteLawFirm(getParam(req.params.id));
       if (!deleted) {
         res.status(404).json({ message: "Law firm not found" });
         return;
@@ -762,8 +744,7 @@ export async function registerRoutes(
 
   app.get("/api/claimants/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const claimant = await storage.getClaimant(getParam(req.params.id), userId);
+      const claimant = await storage.getClaimant(getParam(req.params.id));
       if (!claimant) {
         res.status(404).json({ message: "Claimant not found" });
         return;
@@ -777,9 +758,8 @@ export async function registerRoutes(
 
   app.post("/api/claimants", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const strippedBody = stripContactFields(req.body);
-      const parsed = insertReclamanteSchema.safeParse({ ...strippedBody, proprietarioId: userId });
+      const parsed = insertReclamanteSchema.safeParse(strippedBody);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -799,7 +779,6 @@ export async function registerRoutes(
 
   app.patch("/api/claimants/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const strippedBody = stripContactFields(req.body);
       const partial = insertReclamanteSchema.partial().safeParse(strippedBody);
       if (!partial.success) {
@@ -807,7 +786,7 @@ export async function registerRoutes(
         return;
       }
       const claimantId = getParam(req.params.id);
-      const claimant = await storage.updateClaimant(claimantId, userId, partial.data);
+      const claimant = await storage.updateClaimant(claimantId, partial.data);
       if (!claimant) {
         res.status(404).json({ message: "Claimant not found" });
         return;
@@ -823,8 +802,7 @@ export async function registerRoutes(
 
   app.delete("/api/claimants/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteClaimant(getParam(req.params.id), userId);
+      const deleted = await storage.deleteClaimant(getParam(req.params.id));
       if (!deleted) {
         res.status(404).json({ message: "Claimant not found" });
         return;
@@ -850,8 +828,7 @@ export async function registerRoutes(
 
   app.get("/api/reclamantes/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const claimant = await storage.getClaimant(getParam(req.params.id), userId);
+      const claimant = await storage.getClaimant(getParam(req.params.id));
       if (!claimant) {
         res.status(404).json({ message: "Claimant not found" });
         return;
@@ -865,9 +842,8 @@ export async function registerRoutes(
 
   app.post("/api/reclamantes", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const strippedBody = stripContactFields(req.body);
-      const parsed = insertReclamanteSchema.safeParse({ ...strippedBody, proprietarioId: userId });
+      const parsed = insertReclamanteSchema.safeParse(strippedBody);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -887,7 +863,6 @@ export async function registerRoutes(
 
   app.patch("/api/reclamantes/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const strippedBody = stripContactFields(req.body);
       const partial = insertReclamanteSchema.partial().safeParse(strippedBody);
       if (!partial.success) {
@@ -895,7 +870,7 @@ export async function registerRoutes(
         return;
       }
       const claimantId = getParam(req.params.id);
-      const claimant = await storage.updateClaimant(claimantId, userId, partial.data);
+      const claimant = await storage.updateClaimant(claimantId, partial.data);
       if (!claimant) {
         res.status(404).json({ message: "Claimant not found" });
         return;
@@ -911,8 +886,7 @@ export async function registerRoutes(
 
   app.delete("/api/reclamantes/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteClaimant(getParam(req.params.id), userId);
+      const deleted = await storage.deleteClaimant(getParam(req.params.id));
       if (!deleted) {
         res.status(404).json({ message: "Claimant not found" });
         return;
@@ -1124,7 +1098,7 @@ export async function registerRoutes(
   app.post("/api/leads", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertLeadSchema.safeParse({ ...req.body, proprietarioId: userId, vendedorId: userId });
+      const parsed = insertLeadSchema.safeParse({ ...req.body, vendedorId: userId });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -1344,7 +1318,6 @@ export async function registerRoutes(
         ...req.body,
         leadId: getParam(req.params.id),
         vendedorId: userId,
-        proprietarioId: userId,
       });
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
@@ -1361,8 +1334,7 @@ export async function registerRoutes(
 
   app.delete("/api/interactions/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteInteraction(getParam(req.params.id), userId);
+      const deleted = await storage.deleteInteraction(getParam(req.params.id));
       if (!deleted) {
         res.status(404).json({ message: "Interaction not found" });
         return;
@@ -1377,8 +1349,7 @@ export async function registerRoutes(
   // Products
   app.get("/api/products", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const products = await storage.getProducts(userId);
+      const products = await storage.getProducts();
       res.json(products);
     } catch (error) {
       logger.error("fetching products", error as Error);
@@ -1388,8 +1359,7 @@ export async function registerRoutes(
 
   app.get("/api/products/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const product = await storage.getProduct(getParam(req.params.id), userId);
+      const product = await storage.getProduct(getParam(req.params.id));
       if (!product) {
         res.status(404).json({ message: "Product not found" });
         return;
@@ -1403,8 +1373,7 @@ export async function registerRoutes(
 
   app.post("/api/products", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const parsed = insertProdutoSchema.safeParse({ ...req.body, proprietarioId: userId });
+      const parsed = insertProdutoSchema.safeParse(req.body);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -1419,13 +1388,12 @@ export async function registerRoutes(
 
   app.patch("/api/products/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
       const partial = insertProdutoSchema.partial().safeParse(req.body);
       if (!partial.success) {
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const product = await storage.updateProduct(getParam(req.params.id), userId, partial.data);
+      const product = await storage.updateProduct(getParam(req.params.id), partial.data);
       if (!product) {
         res.status(404).json({ message: "Product not found" });
         return;
@@ -1439,8 +1407,7 @@ export async function registerRoutes(
 
   app.delete("/api/products/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteProduct(getParam(req.params.id), userId);
+      const deleted = await storage.deleteProduct(getParam(req.params.id));
       if (!deleted) {
         res.status(404).json({ message: "Product not found" });
         return;
@@ -1455,8 +1422,7 @@ export async function registerRoutes(
   // Activities
   app.get("/api/activities", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const activities = await storage.getActivities(userId);
+      const activities = await storage.getActivities();
       res.json(activities);
     } catch (error) {
       logger.error("fetching activities", error as Error);
@@ -1466,8 +1432,7 @@ export async function registerRoutes(
 
   app.get("/api/activities/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const activity = await storage.getActivity(getParam(req.params.id), userId);
+      const activity = await storage.getActivity(getParam(req.params.id));
       if (!activity) {
         res.status(404).json({ message: "Activity not found" });
         return;
@@ -1481,8 +1446,7 @@ export async function registerRoutes(
 
   app.post("/api/activities", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const body = { ...req.body, proprietarioId: userId };
+      const body = { ...req.body };
       if (body.dataVencimento && typeof body.dataVencimento === "string") {
         body.dataVencimento = new Date(body.dataVencimento);
       }
@@ -1520,7 +1484,7 @@ export async function registerRoutes(
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const activity = await storage.updateActivity(getParam(req.params.id), userId, partial.data);
+      const activity = await storage.updateActivity(getParam(req.params.id), partial.data);
       if (!activity) {
         res.status(404).json({ message: "Activity not found" });
         return;
@@ -1534,8 +1498,7 @@ export async function registerRoutes(
 
   app.delete("/api/activities/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteActivity(getParam(req.params.id), userId);
+      const deleted = await storage.deleteActivity(getParam(req.params.id));
       if (!deleted) {
         res.status(404).json({ message: "Activity not found" });
         return;
@@ -1550,8 +1513,7 @@ export async function registerRoutes(
   // Proposals
   app.get("/api/proposals", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const proposals = await storage.getProposals(userId);
+      const proposals = await storage.getProposals();
       res.json(proposals);
     } catch (error) {
       logger.error("fetching proposals", error as Error);
@@ -1561,8 +1523,7 @@ export async function registerRoutes(
 
   app.get("/api/proposals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const proposal = await storage.getProposal(getParam(req.params.id), userId);
+      const proposal = await storage.getProposal(getParam(req.params.id));
       if (!proposal) {
         res.status(404).json({ message: "Proposal not found" });
         return;
@@ -1577,7 +1538,7 @@ export async function registerRoutes(
   app.post("/api/proposals", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const parsed = insertPropostaSchema.safeParse({ ...req.body, proprietarioId: userId });
+      const parsed = insertPropostaSchema.safeParse(req.body);
       if (!parsed.success) {
         res.status(400).json({ message: "Invalid data", errors: parsed.error.errors });
         return;
@@ -1598,7 +1559,7 @@ export async function registerRoutes(
         res.status(400).json({ message: "Invalid data", errors: partial.error.errors });
         return;
       }
-      const proposal = await storage.updateProposal(getParam(req.params.id), userId, partial.data);
+      const proposal = await storage.updateProposal(getParam(req.params.id), partial.data);
       if (!proposal) {
         res.status(404).json({ message: "Proposal not found" });
         return;
@@ -1612,8 +1573,7 @@ export async function registerRoutes(
 
   app.delete("/api/proposals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as AuthRequest).user!.id;
-      const deleted = await storage.deleteProposal(getParam(req.params.id), userId);
+      const deleted = await storage.deleteProposal(getParam(req.params.id));
       if (!deleted) {
         res.status(404).json({ message: "Proposal not found" });
         return;
@@ -1629,7 +1589,7 @@ export async function registerRoutes(
   app.get("/api/proposals/:id/items", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const proposal = await storage.getProposal(getParam(req.params.id), userId);
+      const proposal = await storage.getProposal(getParam(req.params.id));
       if (!proposal) {
         res.status(404).json({ message: "Proposal not found" });
         return;
@@ -1645,7 +1605,7 @@ export async function registerRoutes(
   app.post("/api/proposals/:id/items", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthRequest).user!.id;
-      const proposal = await storage.getProposal(getParam(req.params.id), userId);
+      const proposal = await storage.getProposal(getParam(req.params.id));
       if (!proposal) {
         res.status(404).json({ message: "Proposal not found" });
         return;

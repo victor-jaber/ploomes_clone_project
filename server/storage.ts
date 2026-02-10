@@ -66,25 +66,25 @@ import { eq, and, desc, inArray, sql, isNotNull, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // Lawyers (Advogados)
-  getLawyers(ownerId: string): Promise<any[]>;
-  getLawyer(id: number, ownerId: string): Promise<any | undefined>;
+  getLawyers(): Promise<any[]>;
+  getLawyer(id: number): Promise<any | undefined>;
   createLawyer(lawyer: InsertAdvogado): Promise<Advogado>;
-  updateLawyer(id: number, ownerId: string, lawyer: Partial<InsertAdvogado>): Promise<Advogado | undefined>;
-  deleteLawyer(id: number, ownerId: string): Promise<boolean>;
+  updateLawyer(id: number, lawyer: Partial<InsertAdvogado>): Promise<Advogado | undefined>;
+  deleteLawyer(id: number): Promise<boolean>;
 
   // Law Firms (Escritórios)
-  getLawFirms(ownerId: string): Promise<any[]>;
-  getLawFirm(id: string, ownerId: string): Promise<any | undefined>;
+  getLawFirms(): Promise<any[]>;
+  getLawFirm(id: string): Promise<any | undefined>;
   createLawFirm(lawFirm: InsertEscritorio): Promise<Escritorio>;
-  updateLawFirm(id: string, ownerId: string, lawFirm: Partial<InsertEscritorio>): Promise<Escritorio | undefined>;
-  deleteLawFirm(id: string, ownerId: string): Promise<boolean>;
+  updateLawFirm(id: string, lawFirm: Partial<InsertEscritorio>): Promise<Escritorio | undefined>;
+  deleteLawFirm(id: string): Promise<boolean>;
 
   // Claimants (Reclamantes)
-  getClaimants(ownerId: string): Promise<any[]>;
-  getClaimant(id: string, ownerId: string): Promise<any | undefined>;
+  getClaimants(): Promise<any[]>;
+  getClaimant(id: string): Promise<any | undefined>;
   createClaimant(claimant: InsertReclamante): Promise<Reclamante>;
-  updateClaimant(id: string, ownerId: string, claimant: Partial<InsertReclamante>): Promise<Reclamante | undefined>;
-  deleteClaimant(id: string, ownerId: string): Promise<boolean>;
+  updateClaimant(id: string, claimant: Partial<InsertReclamante>): Promise<Reclamante | undefined>;
+  deleteClaimant(id: string): Promise<boolean>;
 
   // Law Firm Lawyers (N:N)
   getLawFirmLawyers(lawFirmId: string): Promise<Advogado[]>;
@@ -100,7 +100,7 @@ export interface IStorage {
   removeLawyerFromLawsuit(lawsuitId: string, lawyerId: number): Promise<boolean>;
   removeClaimantFromLawsuit(lawsuitId: string, claimantId: string): Promise<boolean>;
 
-  // Aggregated data for pipeline (dados públicos - sem filtro por ownerId)
+  // Aggregated data for pipeline (dados públicos)
   getLawyersWithLawsuits(): Promise<(Advogado & { lawsuits: Processo[] })[]>;
   getClaimantsWithLawsuits(): Promise<(Reclamante & { lawsuits: Processo[] })[]>;
   getLawFirmsWithLawsuits(): Promise<(Escritorio & { lawsuits: Processo[]; lawyerIds: number[] })[]>;
@@ -130,25 +130,25 @@ export interface IStorage {
   upsertLeadAssignments(leadId: string, data: Partial<InsertLeadResponsaveis>): Promise<LeadResponsaveis>;
 
   // Products
-  getProducts(ownerId: string): Promise<Produto[]>;
-  getProduct(id: string, ownerId: string): Promise<Produto | undefined>;
+  getProducts(): Promise<Produto[]>;
+  getProduct(id: string): Promise<Produto | undefined>;
   createProduct(product: InsertProduto): Promise<Produto>;
-  updateProduct(id: string, ownerId: string, product: Partial<InsertProduto>): Promise<Produto | undefined>;
-  deleteProduct(id: string, ownerId: string): Promise<boolean>;
+  updateProduct(id: string, product: Partial<InsertProduto>): Promise<Produto | undefined>;
+  deleteProduct(id: string): Promise<boolean>;
 
   // Activities
-  getActivities(ownerId: string): Promise<Atividade[]>;
-  getActivity(id: string, ownerId: string): Promise<Atividade | undefined>;
+  getActivities(): Promise<Atividade[]>;
+  getActivity(id: string): Promise<Atividade | undefined>;
   createActivity(activity: InsertAtividade): Promise<Atividade>;
-  updateActivity(id: string, ownerId: string, activity: Partial<InsertAtividade>): Promise<Atividade | undefined>;
-  deleteActivity(id: string, ownerId: string): Promise<boolean>;
+  updateActivity(id: string, activity: Partial<InsertAtividade>): Promise<Atividade | undefined>;
+  deleteActivity(id: string): Promise<boolean>;
 
   // Proposals
-  getProposals(ownerId: string): Promise<Proposta[]>;
-  getProposal(id: string, ownerId: string): Promise<Proposta | undefined>;
+  getProposals(): Promise<Proposta[]>;
+  getProposal(id: string): Promise<Proposta | undefined>;
   createProposal(proposal: InsertProposta): Promise<Proposta>;
-  updateProposal(id: string, ownerId: string, proposal: Partial<InsertProposta>): Promise<Proposta | undefined>;
-  deleteProposal(id: string, ownerId: string): Promise<boolean>;
+  updateProposal(id: string, proposal: Partial<InsertProposta>): Promise<Proposta | undefined>;
+  deleteProposal(id: string): Promise<boolean>;
 
   // Proposal Items
   getProposalItems(proposalId: string): Promise<PropostaItem[]>;
@@ -160,7 +160,7 @@ export interface IStorage {
   // Interactions
   getInteractions(leadId: string): Promise<(Interacao & { vendedorName?: string | null })[]>;
   createInteraction(interaction: InsertInteracao): Promise<Interacao>;
-  deleteInteraction(id: string, ownerId: string): Promise<boolean>;
+  deleteInteraction(id: string): Promise<boolean>;
 
   // Users
   getUsers(): Promise<{ id: string; name: string; email: string; papel: string; createdAt: Date | null }[]>;
@@ -184,23 +184,23 @@ export interface IStorage {
   syncLawsuitsFromApi(userId: string): Promise<{ total: number; linked: number; errors: number }>;
   
   // Backward compatibility
-  getTodosAdvogadosInfos(ownerId: string): Promise<Advogado[]>;
-  getTodosAdvogadosInfo(id: number, ownerId: string): Promise<Advogado | undefined>;
+  getTodosAdvogadosInfos(): Promise<Advogado[]>;
+  getTodosAdvogadosInfo(id: number): Promise<Advogado | undefined>;
   createTodosAdvogadosInfo(info: InsertAdvogado): Promise<Advogado>;
-  updateTodosAdvogadosInfo(id: number, ownerId: string, info: Partial<InsertAdvogado>): Promise<Advogado | undefined>;
-  deleteTodosAdvogadosInfo(id: number, ownerId: string): Promise<boolean>;
+  updateTodosAdvogadosInfo(id: number, info: Partial<InsertAdvogado>): Promise<Advogado | undefined>;
+  deleteTodosAdvogadosInfo(id: number): Promise<boolean>;
   
-  getEscritorios(ownerId: string): Promise<Escritorio[]>;
-  getEscritorio(id: string, ownerId: string): Promise<Escritorio | undefined>;
+  getEscritorios(): Promise<Escritorio[]>;
+  getEscritorio(id: string): Promise<Escritorio | undefined>;
   createEscritorio(escritorio: InsertEscritorio): Promise<Escritorio>;
-  updateEscritorio(id: string, ownerId: string, escritorio: Partial<InsertEscritorio>): Promise<Escritorio | undefined>;
-  deleteEscritorio(id: string, ownerId: string): Promise<boolean>;
+  updateEscritorio(id: string, escritorio: Partial<InsertEscritorio>): Promise<Escritorio | undefined>;
+  deleteEscritorio(id: string): Promise<boolean>;
   
-  getReclamantes(ownerId: string): Promise<Reclamante[]>;
-  getReclamante(id: string, ownerId: string): Promise<Reclamante | undefined>;
+  getReclamantes(): Promise<Reclamante[]>;
+  getReclamante(id: string): Promise<Reclamante | undefined>;
   createReclamante(reclamante: InsertReclamante): Promise<Reclamante>;
-  updateReclamante(id: string, ownerId: string, reclamante: Partial<InsertReclamante>): Promise<Reclamante | undefined>;
-  deleteReclamante(id: string, ownerId: string): Promise<boolean>;
+  updateReclamante(id: string, reclamante: Partial<InsertReclamante>): Promise<Reclamante | undefined>;
+  deleteReclamante(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -234,28 +234,8 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getLawyers(ownerId: string): Promise<any[]> {
-    const rows = await db.select({
-      advogado: advogados,
-      endereco: enderecos,
-    })
-    .from(advogados)
-    .leftJoin(enderecos, eq(advogados.enderecoId, enderecos.id))
-    .where(eq(advogados.proprietarioId, ownerId))
-    .orderBy(desc(advogados.criadoEm));
-
-    const mapped = rows.map(r => ({
-      ...r.advogado,
-      estado: r.endereco?.estado || null,
-      municipio: r.endereco?.municipio || null,
-      cidade: r.endereco?.cidade || null,
-      bairro: r.endereco?.bairro || null,
-      logradouro: r.endereco?.logradouro || null,
-      numero: r.endereco?.numero || null,
-      complemento: r.endereco?.complemento || null,
-      cep: r.endereco?.cep || null,
-    }));
-    return this.attachLawyerContacts(mapped);
+  async getLawyers(): Promise<any[]> {
+    return this.getAllLawyers();
   }
 
   async getAllLawyers(): Promise<any[]> {
@@ -281,14 +261,14 @@ export class DatabaseStorage implements IStorage {
     return this.attachLawyerContacts(mapped);
   }
 
-  async getLawyer(id: number, ownerId: string): Promise<any | undefined> {
+  async getLawyer(id: number): Promise<any | undefined> {
     const [row] = await db.select({
       advogado: advogados,
       endereco: enderecos,
     })
     .from(advogados)
     .leftJoin(enderecos, eq(advogados.enderecoId, enderecos.id))
-    .where(and(eq(advogados.id, id), eq(advogados.proprietarioId, ownerId)));
+    .where(eq(advogados.id, id));
 
     if (!row) return undefined;
     const mapped = {
@@ -311,17 +291,17 @@ export class DatabaseStorage implements IStorage {
     return newLawyer;
   }
 
-  async updateLawyer(id: number, ownerId: string, lawyer: Partial<InsertAdvogado>): Promise<Advogado | undefined> {
+  async updateLawyer(id: number, lawyer: Partial<InsertAdvogado>): Promise<Advogado | undefined> {
     const [updated] = await db
       .update(advogados)
       .set({ ...lawyer, atualizadoEm: new Date() })
-      .where(and(eq(advogados.id, id), eq(advogados.proprietarioId, ownerId)))
+      .where(eq(advogados.id, id))
       .returning();
     return updated;
   }
 
-  async deleteLawyer(id: number, ownerId: string): Promise<boolean> {
-    const result = await db.delete(advogados).where(and(eq(advogados.id, id), eq(advogados.proprietarioId, ownerId))).returning();
+  async deleteLawyer(id: number): Promise<boolean> {
+    const result = await db.delete(advogados).where(eq(advogados.id, id)).returning();
     return result.length > 0;
   }
 
@@ -355,28 +335,8 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getLawFirms(ownerId: string): Promise<any[]> {
-    const rows = await db.select({
-      escritorio: escritorios,
-      endereco: enderecos,
-    })
-    .from(escritorios)
-    .leftJoin(enderecos, eq(escritorios.enderecoId, enderecos.id))
-    .where(eq(escritorios.proprietarioId, ownerId))
-    .orderBy(desc(escritorios.criadoEm));
-
-    const mapped = rows.map(r => ({
-      ...r.escritorio,
-      estado: r.endereco?.estado || null,
-      municipio: r.endereco?.municipio || null,
-      cidade: r.endereco?.cidade || null,
-      bairro: r.endereco?.bairro || null,
-      logradouro: r.endereco?.logradouro || null,
-      numero: r.endereco?.numero || null,
-      complemento: r.endereco?.complemento || null,
-      cep: r.endereco?.cep || null,
-    }));
-    return this.attachFirmContacts(mapped);
+  async getLawFirms(): Promise<any[]> {
+    return this.getAllLawFirms();
   }
 
   async getAllLawFirms(): Promise<any[]> {
@@ -402,14 +362,14 @@ export class DatabaseStorage implements IStorage {
     return this.attachFirmContacts(mapped);
   }
 
-  async getLawFirm(id: string, ownerId: string): Promise<any | undefined> {
+  async getLawFirm(id: string): Promise<any | undefined> {
     const [row] = await db.select({
       escritorio: escritorios,
       endereco: enderecos,
     })
     .from(escritorios)
     .leftJoin(enderecos, eq(escritorios.enderecoId, enderecos.id))
-    .where(and(eq(escritorios.id, id), eq(escritorios.proprietarioId, ownerId)));
+    .where(eq(escritorios.id, id));
 
     if (!row) return undefined;
     const mapped = {
@@ -432,17 +392,17 @@ export class DatabaseStorage implements IStorage {
     return newLawFirm;
   }
 
-  async updateLawFirm(id: string, ownerId: string, lawFirm: Partial<InsertEscritorio>): Promise<Escritorio | undefined> {
+  async updateLawFirm(id: string, lawFirm: Partial<InsertEscritorio>): Promise<Escritorio | undefined> {
     const [updated] = await db
       .update(escritorios)
       .set({ ...lawFirm, atualizadoEm: new Date() })
-      .where(and(eq(escritorios.id, id), eq(escritorios.proprietarioId, ownerId)))
+      .where(eq(escritorios.id, id))
       .returning();
     return updated;
   }
 
-  async deleteLawFirm(id: string, ownerId: string): Promise<boolean> {
-    const result = await db.delete(escritorios).where(and(eq(escritorios.id, id), eq(escritorios.proprietarioId, ownerId))).returning();
+  async deleteLawFirm(id: string): Promise<boolean> {
+    const result = await db.delete(escritorios).where(eq(escritorios.id, id)).returning();
     return result.length > 0;
   }
 
@@ -476,28 +436,8 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getClaimants(ownerId: string): Promise<any[]> {
-    const rows = await db.select({
-      reclamante: reclamantes,
-      endereco: enderecos,
-    })
-    .from(reclamantes)
-    .leftJoin(enderecos, eq(reclamantes.enderecoId, enderecos.id))
-    .where(eq(reclamantes.proprietarioId, ownerId))
-    .orderBy(desc(reclamantes.criadoEm));
-
-    const mapped = rows.map(r => ({
-      ...r.reclamante,
-      estado: r.endereco?.estado || null,
-      municipio: r.endereco?.municipio || null,
-      cidade: r.endereco?.cidade || null,
-      bairro: r.endereco?.bairro || null,
-      logradouro: r.endereco?.logradouro || null,
-      numero: r.endereco?.numero || null,
-      complemento: r.endereco?.complemento || null,
-      cep: r.endereco?.cep || null,
-    }));
-    return this.attachClaimantContacts(mapped);
+  async getClaimants(): Promise<any[]> {
+    return this.getAllClaimants();
   }
 
   async getAllClaimants(): Promise<any[]> {
@@ -523,14 +463,14 @@ export class DatabaseStorage implements IStorage {
     return this.attachClaimantContacts(mapped);
   }
 
-  async getClaimant(id: string, ownerId: string): Promise<any | undefined> {
+  async getClaimant(id: string): Promise<any | undefined> {
     const [row] = await db.select({
       reclamante: reclamantes,
       endereco: enderecos,
     })
     .from(reclamantes)
     .leftJoin(enderecos, eq(reclamantes.enderecoId, enderecos.id))
-    .where(and(eq(reclamantes.id, id), eq(reclamantes.proprietarioId, ownerId)));
+    .where(eq(reclamantes.id, id));
 
     if (!row) return undefined;
     const mapped = {
@@ -553,17 +493,17 @@ export class DatabaseStorage implements IStorage {
     return newClaimant;
   }
 
-  async updateClaimant(id: string, ownerId: string, claimant: Partial<InsertReclamante>): Promise<Reclamante | undefined> {
+  async updateClaimant(id: string, claimant: Partial<InsertReclamante>): Promise<Reclamante | undefined> {
     const [updated] = await db
       .update(reclamantes)
       .set({ ...claimant, atualizadoEm: new Date() })
-      .where(and(eq(reclamantes.id, id), eq(reclamantes.proprietarioId, ownerId)))
+      .where(eq(reclamantes.id, id))
       .returning();
     return updated;
   }
 
-  async deleteClaimant(id: string, ownerId: string): Promise<boolean> {
-    const result = await db.delete(reclamantes).where(and(eq(reclamantes.id, id), eq(reclamantes.proprietarioId, ownerId))).returning();
+  async deleteClaimant(id: string): Promise<boolean> {
+    const result = await db.delete(reclamantes).where(eq(reclamantes.id, id)).returning();
     return result.length > 0;
   }
 
@@ -929,12 +869,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Products
-  async getProducts(ownerId: string): Promise<Produto[]> {
-    return db.select().from(produtos).where(eq(produtos.proprietarioId, ownerId)).orderBy(desc(produtos.criadoEm));
+  async getProducts(): Promise<Produto[]> {
+    return db.select().from(produtos).orderBy(desc(produtos.criadoEm));
   }
 
-  async getProduct(id: string, ownerId: string): Promise<Produto | undefined> {
-    const [product] = await db.select().from(produtos).where(and(eq(produtos.id, id), eq(produtos.proprietarioId, ownerId)));
+  async getProduct(id: string): Promise<Produto | undefined> {
+    const [product] = await db.select().from(produtos).where(eq(produtos.id, id));
     return product;
   }
 
@@ -943,27 +883,27 @@ export class DatabaseStorage implements IStorage {
     return newProduct;
   }
 
-  async updateProduct(id: string, ownerId: string, product: Partial<InsertProduto>): Promise<Produto | undefined> {
+  async updateProduct(id: string, product: Partial<InsertProduto>): Promise<Produto | undefined> {
     const [updated] = await db
       .update(produtos)
       .set({ ...product, atualizadoEm: new Date() })
-      .where(and(eq(produtos.id, id), eq(produtos.proprietarioId, ownerId)))
+      .where(eq(produtos.id, id))
       .returning();
     return updated;
   }
 
-  async deleteProduct(id: string, ownerId: string): Promise<boolean> {
-    const result = await db.delete(produtos).where(and(eq(produtos.id, id), eq(produtos.proprietarioId, ownerId))).returning();
+  async deleteProduct(id: string): Promise<boolean> {
+    const result = await db.delete(produtos).where(eq(produtos.id, id)).returning();
     return result.length > 0;
   }
 
   // Activities
-  async getActivities(ownerId: string): Promise<Atividade[]> {
-    return db.select().from(atividades).where(eq(atividades.proprietarioId, ownerId)).orderBy(desc(atividades.criadoEm));
+  async getActivities(): Promise<Atividade[]> {
+    return db.select().from(atividades).orderBy(desc(atividades.criadoEm));
   }
 
-  async getActivity(id: string, ownerId: string): Promise<Atividade | undefined> {
-    const [activity] = await db.select().from(atividades).where(and(eq(atividades.id, id), eq(atividades.proprietarioId, ownerId)));
+  async getActivity(id: string): Promise<Atividade | undefined> {
+    const [activity] = await db.select().from(atividades).where(eq(atividades.id, id));
     return activity;
   }
 
@@ -972,27 +912,27 @@ export class DatabaseStorage implements IStorage {
     return newActivity;
   }
 
-  async updateActivity(id: string, ownerId: string, activity: Partial<InsertAtividade>): Promise<Atividade | undefined> {
+  async updateActivity(id: string, activity: Partial<InsertAtividade>): Promise<Atividade | undefined> {
     const [updated] = await db
       .update(atividades)
       .set(activity)
-      .where(and(eq(atividades.id, id), eq(atividades.proprietarioId, ownerId)))
+      .where(eq(atividades.id, id))
       .returning();
     return updated;
   }
 
-  async deleteActivity(id: string, ownerId: string): Promise<boolean> {
-    const result = await db.delete(atividades).where(and(eq(atividades.id, id), eq(atividades.proprietarioId, ownerId))).returning();
+  async deleteActivity(id: string): Promise<boolean> {
+    const result = await db.delete(atividades).where(eq(atividades.id, id)).returning();
     return result.length > 0;
   }
 
   // Proposals
-  async getProposals(ownerId: string): Promise<Proposta[]> {
-    return db.select().from(propostas).where(eq(propostas.proprietarioId, ownerId)).orderBy(desc(propostas.criadoEm));
+  async getProposals(): Promise<Proposta[]> {
+    return db.select().from(propostas).orderBy(desc(propostas.criadoEm));
   }
 
-  async getProposal(id: string, ownerId: string): Promise<Proposta | undefined> {
-    const [proposal] = await db.select().from(propostas).where(and(eq(propostas.id, id), eq(propostas.proprietarioId, ownerId)));
+  async getProposal(id: string): Promise<Proposta | undefined> {
+    const [proposal] = await db.select().from(propostas).where(eq(propostas.id, id));
     return proposal;
   }
 
@@ -1001,17 +941,17 @@ export class DatabaseStorage implements IStorage {
     return newProposal;
   }
 
-  async updateProposal(id: string, ownerId: string, proposal: Partial<InsertProposta>): Promise<Proposta | undefined> {
+  async updateProposal(id: string, proposal: Partial<InsertProposta>): Promise<Proposta | undefined> {
     const [updated] = await db
       .update(propostas)
       .set({ ...proposal, atualizadoEm: new Date() })
-      .where(and(eq(propostas.id, id), eq(propostas.proprietarioId, ownerId)))
+      .where(eq(propostas.id, id))
       .returning();
     return updated;
   }
 
-  async deleteProposal(id: string, ownerId: string): Promise<boolean> {
-    const result = await db.delete(propostas).where(and(eq(propostas.id, id), eq(propostas.proprietarioId, ownerId))).returning();
+  async deleteProposal(id: string): Promise<boolean> {
+    const result = await db.delete(propostas).where(eq(propostas.id, id)).returning();
     return result.length > 0;
   }
 
@@ -1066,8 +1006,8 @@ export class DatabaseStorage implements IStorage {
     return newInteraction;
   }
 
-  async deleteInteraction(id: string, ownerId: string): Promise<boolean> {
-    const result = await db.delete(interacoes).where(and(eq(interacoes.id, id), eq(interacoes.proprietarioId, ownerId))).returning();
+  async deleteInteraction(id: string): Promise<boolean> {
+    const result = await db.delete(interacoes).where(eq(interacoes.id, id)).returning();
     return result.length > 0;
   }
 
@@ -1226,7 +1166,6 @@ export class DatabaseStorage implements IStorage {
       valor: processo.valorCausa || null,
       probabilidade: processo.probabilidadeSucesso ? Math.round(Number(processo.probabilidadeSucesso)) : 0,
       vendedorId: userId,
-      proprietarioId: userId,
       processoId: processo.id,
       advogadoId: null,
       escritorioId: null,
@@ -1323,7 +1262,6 @@ export class DatabaseStorage implements IStorage {
             teseId: processo.tese_id?.toString(),
             autor,
             apiData: JSON.stringify(processo),
-            proprietarioId: userId,
           }, userId);
           processoId = result.processo.id;
         }
@@ -1355,64 +1293,64 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Backward compatibility methods
-  async getTodosAdvogadosInfos(ownerId: string): Promise<Advogado[]> {
-    return this.getLawyers(ownerId);
+  async getTodosAdvogadosInfos(): Promise<Advogado[]> {
+    return this.getLawyers();
   }
 
-  async getTodosAdvogadosInfo(id: number, ownerId: string): Promise<Advogado | undefined> {
-    return this.getLawyer(id, ownerId);
+  async getTodosAdvogadosInfo(id: number): Promise<Advogado | undefined> {
+    return this.getLawyer(id);
   }
 
   async createTodosAdvogadosInfo(info: InsertAdvogado): Promise<Advogado> {
     return this.createLawyer(info);
   }
 
-  async updateTodosAdvogadosInfo(id: number, ownerId: string, info: Partial<InsertAdvogado>): Promise<Advogado | undefined> {
-    return this.updateLawyer(id, ownerId, info);
+  async updateTodosAdvogadosInfo(id: number, info: Partial<InsertAdvogado>): Promise<Advogado | undefined> {
+    return this.updateLawyer(id, info);
   }
 
-  async deleteTodosAdvogadosInfo(id: number, ownerId: string): Promise<boolean> {
-    return this.deleteLawyer(id, ownerId);
+  async deleteTodosAdvogadosInfo(id: number): Promise<boolean> {
+    return this.deleteLawyer(id);
   }
 
-  async getEscritorios(ownerId: string): Promise<Escritorio[]> {
-    return this.getLawFirms(ownerId);
+  async getEscritorios(): Promise<Escritorio[]> {
+    return this.getLawFirms();
   }
 
-  async getEscritorio(id: string, ownerId: string): Promise<Escritorio | undefined> {
-    return this.getLawFirm(id, ownerId);
+  async getEscritorio(id: string): Promise<Escritorio | undefined> {
+    return this.getLawFirm(id);
   }
 
   async createEscritorio(escritorio: InsertEscritorio): Promise<Escritorio> {
     return this.createLawFirm(escritorio);
   }
 
-  async updateEscritorio(id: string, ownerId: string, escritorio: Partial<InsertEscritorio>): Promise<Escritorio | undefined> {
-    return this.updateLawFirm(id, ownerId, escritorio);
+  async updateEscritorio(id: string, escritorio: Partial<InsertEscritorio>): Promise<Escritorio | undefined> {
+    return this.updateLawFirm(id, escritorio);
   }
 
-  async deleteEscritorio(id: string, ownerId: string): Promise<boolean> {
-    return this.deleteLawFirm(id, ownerId);
+  async deleteEscritorio(id: string): Promise<boolean> {
+    return this.deleteLawFirm(id);
   }
 
-  async getReclamantes(ownerId: string): Promise<Reclamante[]> {
-    return this.getClaimants(ownerId);
+  async getReclamantes(): Promise<Reclamante[]> {
+    return this.getClaimants();
   }
 
-  async getReclamante(id: string, ownerId: string): Promise<Reclamante | undefined> {
-    return this.getClaimant(id, ownerId);
+  async getReclamante(id: string): Promise<Reclamante | undefined> {
+    return this.getClaimant(id);
   }
 
   async createReclamante(reclamante: InsertReclamante): Promise<Reclamante> {
     return this.createClaimant(reclamante);
   }
 
-  async updateReclamante(id: string, ownerId: string, reclamante: Partial<InsertReclamante>): Promise<Reclamante | undefined> {
-    return this.updateClaimant(id, ownerId, reclamante);
+  async updateReclamante(id: string, reclamante: Partial<InsertReclamante>): Promise<Reclamante | undefined> {
+    return this.updateClaimant(id, reclamante);
   }
 
-  async deleteReclamante(id: string, ownerId: string): Promise<boolean> {
-    return this.deleteClaimant(id, ownerId);
+  async deleteReclamante(id: string): Promise<boolean> {
+    return this.deleteClaimant(id);
   }
 }
 
