@@ -13,3 +13,5 @@ npm-debug.log*
 .cache
 .config
 .upm
+.local/state/replit/
+replit.md
