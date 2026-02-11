@@ -243,7 +243,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </Form>
 
           <p className="text-[11px] text-white/20 text-center mt-8" data-testid="text-footer">
-            Sistema Interno Artemis &middot; Hermes CRM
+            Sistema interno &middot; Hermes CRM
           </p>
         </div>
       </div>
