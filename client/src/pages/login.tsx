@@ -159,10 +159,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               <HermesIcon />
             </div>
             <h1 className="text-2xl font-bold text-white tracking-tight" data-testid="text-brand-name">
-              Sistema Interno Artemis
+              Hermes
             </h1>
             <span className="text-xs tracking-[0.3em] uppercase text-white/40 mt-1">
-              Hermes CRM
+              CRM
             </span>
           </div>
 
@@ -243,7 +243,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </Form>
 
           <p className="text-[11px] text-white/20 text-center mt-8" data-testid="text-footer">
-            Sistema interno &middot; Hermes CRM
+            Sistema Interno Artemis &middot; Hermes CRM
           </p>
         </div>
       </div>
