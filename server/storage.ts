@@ -1159,7 +1159,7 @@ export class DatabaseStorage implements IStorage {
 
     const normalizeCpf = (cpf: string) => cpf?.replace(/[.\-\s]/g, '') || '';
 
-    const allLawyers = await this.getLawyers(userId);
+    const allLawyers = await this.getLawyers();
     const lawyersWithCpf = allLawyers.filter(l => l.cpf);
     
     const lawyersMap: Record<string, number> = {};

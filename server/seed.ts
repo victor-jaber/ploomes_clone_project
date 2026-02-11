@@ -59,11 +59,11 @@ export async function seedData() {
   ]).returning();
 
   const advs = await db.insert(advogados).values([
-    { nome: "Dr. Carlos Eduardo Mendes", cpf: "123.456.789-00", observacoes: "Especialista em direito trabalhista, 15 anos de experiência", enderecoId: endAdv[0].id, proprietarioId: ownerId },
-    { nome: "Dra. Ana Paula Costa", cpf: "234.567.890-11", observacoes: "Foco em reclamações trabalhistas de grande porte", enderecoId: endAdv[1].id, proprietarioId: ownerId },
-    { nome: "Dr. Roberto Augusto Silva", cpf: "345.678.901-22", observacoes: "Atua em casos de indenização e danos morais", enderecoId: endAdv[2].id, proprietarioId: ownerId },
-    { nome: "Dra. Fernanda Lima Oliveira", cpf: "456.789.012-33", observacoes: "Especialista em direito previdenciário e FGTS", enderecoId: endAdv[3].id, proprietarioId: ownerId },
-    { nome: "Dr. Paulo Ricardo Santos", cpf: "567.890.123-44", observacoes: "Advocacia trabalhista com foco em verbas rescisórias", enderecoId: endAdv[4].id, proprietarioId: ownerId },
+    { nome: "Dr. Carlos Eduardo Mendes", cpf: "123.456.789-00", observacoes: "Especialista em direito trabalhista, 15 anos de experiência", enderecoId: endAdv[0].id },
+    { nome: "Dra. Ana Paula Costa", cpf: "234.567.890-11", observacoes: "Foco em reclamações trabalhistas de grande porte", enderecoId: endAdv[1].id },
+    { nome: "Dr. Roberto Augusto Silva", cpf: "345.678.901-22", observacoes: "Atua em casos de indenização e danos morais", enderecoId: endAdv[2].id },
+    { nome: "Dra. Fernanda Lima Oliveira", cpf: "456.789.012-33", observacoes: "Especialista em direito previdenciário e FGTS", enderecoId: endAdv[3].id },
+    { nome: "Dr. Paulo Ricardo Santos", cpf: "567.890.123-44", observacoes: "Advocacia trabalhista com foco em verbas rescisórias", enderecoId: endAdv[4].id },
   ]).returning();
 
   await db.insert(advogadoContatos).values([
@@ -87,9 +87,9 @@ export async function seedData() {
   ]).returning();
 
   const escs = await db.insert(escritorios).values([
-    { nome: "Mendes & Costa Advogados Associados", cnpj: "12.345.678/0001-90", observacoes: "Escritório de médio porte, foco em trabalhista", enderecoId: endEsc[0].id, proprietarioId: ownerId },
-    { nome: "Silva & Lima Advocacia", cnpj: "23.456.789/0001-01", observacoes: "Escritório boutique, casos de alta complexidade", enderecoId: endEsc[1].id, proprietarioId: ownerId },
-    { nome: "Santos & Associados Jurídico", cnpj: "34.567.890/0001-12", observacoes: "Grande escritório, atuação nacional", enderecoId: endEsc[2].id, proprietarioId: ownerId },
+    { nome: "Mendes & Costa Advogados Associados", cnpj: "12.345.678/0001-90", observacoes: "Escritório de médio porte, foco em trabalhista", enderecoId: endEsc[0].id },
+    { nome: "Silva & Lima Advocacia", cnpj: "23.456.789/0001-01", observacoes: "Escritório boutique, casos de alta complexidade", enderecoId: endEsc[1].id },
+    { nome: "Santos & Associados Jurídico", cnpj: "34.567.890/0001-12", observacoes: "Grande escritório, atuação nacional", enderecoId: endEsc[2].id },
   ]).returning();
 
   await db.insert(escritorioContatos).values([
@@ -124,11 +124,11 @@ export async function seedData() {
   ]).returning();
 
   const recs = await db.insert(reclamantes).values([
-    { nome: "Maria de Fátima Oliveira", cpf: "111.222.333-44", observacoes: "Ex-funcionária da Construtora ABC, demitida sem justa causa", enderecoId: endRec[0].id, proprietarioId: ownerId },
-    { nome: "José Carlos Ferreira", cpf: "222.333.444-55", observacoes: "Trabalhador rural, acidente de trabalho", enderecoId: endRec[1].id, proprietarioId: ownerId },
-    { nome: "Lúcia Helena Pereira", cpf: "333.444.555-66", observacoes: "Funcionária pública, desvio de função por 8 anos", enderecoId: endRec[2].id, proprietarioId: ownerId },
-    { nome: "Antônio Carlos Souza", cpf: "444.555.666-77", observacoes: "Motorista de caminhão, horas extras não pagas", enderecoId: endRec[3].id, proprietarioId: ownerId },
-    { nome: "Patrícia Regina Almeida", cpf: "555.666.777-88", observacoes: "Bancária, assédio moral e acúmulo de função", enderecoId: endRec[4].id, proprietarioId: ownerId },
+    { nome: "Maria de Fátima Oliveira", cpf: "111.222.333-44", observacoes: "Ex-funcionária da Construtora ABC, demitida sem justa causa", enderecoId: endRec[0].id },
+    { nome: "José Carlos Ferreira", cpf: "222.333.444-55", observacoes: "Trabalhador rural, acidente de trabalho", enderecoId: endRec[1].id },
+    { nome: "Lúcia Helena Pereira", cpf: "333.444.555-66", observacoes: "Funcionária pública, desvio de função por 8 anos", enderecoId: endRec[2].id },
+    { nome: "Antônio Carlos Souza", cpf: "444.555.666-77", observacoes: "Motorista de caminhão, horas extras não pagas", enderecoId: endRec[3].id },
+    { nome: "Patrícia Regina Almeida", cpf: "555.666.777-88", observacoes: "Bancária, assédio moral e acúmulo de função", enderecoId: endRec[4].id },
   ]).returning();
 
   await db.insert(reclamanteContatos).values([
@@ -140,14 +140,14 @@ export async function seedData() {
   ]);
 
   const procs = await db.insert(processos).values([
-    { cnj: "0001234-56.2024.5.02.0001", tribunal: "TRT-2", vara: "1ª Vara do Trabalho de São Paulo", classe: "Reclamação Trabalhista", assunto: "Verbas Rescisórias", status: "Em andamento", valorCausa: "185000.00", autor: "Maria de Fátima Oliveira", reu: "Construtora ABC Ltda", proprietarioId: ownerId },
-    { cnj: "0002345-67.2024.5.01.0015", tribunal: "TRT-1", vara: "15ª Vara do Trabalho do Rio de Janeiro", classe: "Reclamação Trabalhista", assunto: "Acidente de Trabalho", status: "Em andamento", valorCausa: "320000.00", autor: "José Carlos Ferreira", reu: "Agropecuária Sul Ltda", proprietarioId: ownerId },
-    { cnj: "0003456-78.2023.5.03.0010", tribunal: "TRT-3", vara: "10ª Vara do Trabalho de Belo Horizonte", classe: "Reclamação Trabalhista", assunto: "Desvio de Função", status: "Sentença procedente", valorCausa: "250000.00", autor: "Lúcia Helena Pereira", reu: "Estado de Minas Gerais", proprietarioId: ownerId },
-    { cnj: "0004567-89.2024.5.09.0005", tribunal: "TRT-9", vara: "5ª Vara do Trabalho de Curitiba", classe: "Reclamação Trabalhista", assunto: "Horas Extras", status: "Em andamento", valorCausa: "95000.00", autor: "Antônio Carlos Souza", reu: "Transportes Rápido S.A.", proprietarioId: ownerId },
-    { cnj: "0005678-90.2024.5.04.0020", tribunal: "TRT-4", vara: "20ª Vara do Trabalho de Porto Alegre", classe: "Reclamação Trabalhista", assunto: "Assédio Moral e Acúmulo de Função", status: "Em andamento", valorCausa: "410000.00", autor: "Patrícia Regina Almeida", reu: "Banco Nacional S.A.", proprietarioId: ownerId },
-    { cnj: "0006789-01.2023.5.02.0045", tribunal: "TRT-2", vara: "45ª Vara do Trabalho de São Paulo", classe: "Reclamação Trabalhista", assunto: "FGTS e Multa Rescisória", status: "Recurso ordinário", valorCausa: "78000.00", autor: "Maria de Fátima Oliveira", reu: "Indústria Metalúrgica Beta Ltda", proprietarioId: ownerId },
-    { cnj: "0007890-12.2024.5.01.0032", tribunal: "TRT-1", vara: "32ª Vara do Trabalho do Rio de Janeiro", classe: "Reclamação Trabalhista", assunto: "Insalubridade e Periculosidade", status: "Aguardando perícia", valorCausa: "145000.00", autor: "José Carlos Ferreira", reu: "Química Industrial Rio Ltda", proprietarioId: ownerId },
-    { cnj: "0008901-23.2024.5.03.0008", tribunal: "TRT-3", vara: "8ª Vara do Trabalho de Belo Horizonte", classe: "Reclamação Trabalhista", assunto: "Danos Morais - Dispensa Discriminatória", status: "Em andamento", valorCausa: "200000.00", autor: "Lúcia Helena Pereira", reu: "Supermercados Central S.A.", proprietarioId: ownerId },
+    { cnj: "0001234-56.2024.5.02.0001", tribunal: "TRT-2", vara: "1ª Vara do Trabalho de São Paulo", classe: "Reclamação Trabalhista", assunto: "Verbas Rescisórias", status: "Em andamento", valorCausa: "185000.00", autor: "Maria de Fátima Oliveira", reu: "Construtora ABC Ltda" },
+    { cnj: "0002345-67.2024.5.01.0015", tribunal: "TRT-1", vara: "15ª Vara do Trabalho do Rio de Janeiro", classe: "Reclamação Trabalhista", assunto: "Acidente de Trabalho", status: "Em andamento", valorCausa: "320000.00", autor: "José Carlos Ferreira", reu: "Agropecuária Sul Ltda" },
+    { cnj: "0003456-78.2023.5.03.0010", tribunal: "TRT-3", vara: "10ª Vara do Trabalho de Belo Horizonte", classe: "Reclamação Trabalhista", assunto: "Desvio de Função", status: "Sentença procedente", valorCausa: "250000.00", autor: "Lúcia Helena Pereira", reu: "Estado de Minas Gerais" },
+    { cnj: "0004567-89.2024.5.09.0005", tribunal: "TRT-9", vara: "5ª Vara do Trabalho de Curitiba", classe: "Reclamação Trabalhista", assunto: "Horas Extras", status: "Em andamento", valorCausa: "95000.00", autor: "Antônio Carlos Souza", reu: "Transportes Rápido S.A." },
+    { cnj: "0005678-90.2024.5.04.0020", tribunal: "TRT-4", vara: "20ª Vara do Trabalho de Porto Alegre", classe: "Reclamação Trabalhista", assunto: "Assédio Moral e Acúmulo de Função", status: "Em andamento", valorCausa: "410000.00", autor: "Patrícia Regina Almeida", reu: "Banco Nacional S.A." },
+    { cnj: "0006789-01.2023.5.02.0045", tribunal: "TRT-2", vara: "45ª Vara do Trabalho de São Paulo", classe: "Reclamação Trabalhista", assunto: "FGTS e Multa Rescisória", status: "Recurso ordinário", valorCausa: "78000.00", autor: "Maria de Fátima Oliveira", reu: "Indústria Metalúrgica Beta Ltda" },
+    { cnj: "0007890-12.2024.5.01.0032", tribunal: "TRT-1", vara: "32ª Vara do Trabalho do Rio de Janeiro", classe: "Reclamação Trabalhista", assunto: "Insalubridade e Periculosidade", status: "Aguardando perícia", valorCausa: "145000.00", autor: "José Carlos Ferreira", reu: "Química Industrial Rio Ltda" },
+    { cnj: "0008901-23.2024.5.03.0008", tribunal: "TRT-3", vara: "8ª Vara do Trabalho de Belo Horizonte", classe: "Reclamação Trabalhista", assunto: "Danos Morais - Dispensa Discriminatória", status: "Em andamento", valorCausa: "200000.00", autor: "Lúcia Helena Pereira", reu: "Supermercados Central S.A." },
   ]).returning();
 
   await db.insert(processoAdvogados).values([
